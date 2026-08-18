@@ -7,6 +7,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 
 import java.util.List;
 
@@ -41,13 +48,61 @@ public class ResumeService {
     }
 
     @Transactional
-    public Profile updateProfile(ProfileUpdateRequest request) {
-        Profile profile = getProfileOrNull();
-        if (profile == null) {
-            return profileRepository.save(Profile.create(request));
-        }
+    public void updateProfile(
+            ProfileUpdateRequest request,
+            MultipartFile profileImage
+    ) {
+        Profile profile = getProfile();
+
+        // 이름, 직무, 이메일, 전화번호, Github, 소개글 수정
         profile.update(request);
-        return profile;
+
+        // 새 프로필 이미지가 들어온 경우에만 이미지 변경
+        if (profileImage != null && !profileImage.isEmpty()) {
+            String imageUrl = saveProfileImage(profileImage);
+            profile.updateProfileImage(imageUrl);
+        }
+    }
+
+    private String saveProfileImage(MultipartFile file) {
+        try {
+            Path uploadDir = Paths.get(
+                    System.getProperty("user.dir"),
+                    "uploads",
+                    "profile"
+            );
+
+            Files.createDirectories(uploadDir);
+
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(
+                        originalFilename.lastIndexOf(".")
+                );
+            }
+
+            String filename =
+                    UUID.randomUUID() + extension;
+
+            Path targetPath = uploadDir
+                    .resolve(filename)
+                    .normalize();
+
+            Files.copy(
+                    file.getInputStream(),
+                    targetPath
+            );
+
+            return "/uploads/profile/" + filename;
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "프로필 이미지 저장에 실패했습니다.",
+                    e
+            );
+        }
     }
 
     @Transactional(readOnly = true)

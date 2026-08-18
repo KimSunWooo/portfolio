@@ -34,6 +34,26 @@ const emptyProfile: ResumeProfile = {
   shortIntro: "",
 };
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+function resolveBackendAssetUrl(path?: string | null) {
+  if (!path) return null;
+
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return path;
+  }
+
+  return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 function Field({
   label,
   value,
@@ -55,6 +75,43 @@ function Field({
         className="h-11 w-full border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
       />
     </label>
+  );
+}
+
+function ProfileImage({
+  image,
+  onChange,
+}: {
+  image: File | null;
+  onChange: (file: File | null) => void;
+}) {
+  return (
+    <div className="block">
+      <span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">
+        PROFILE IMAGE
+      </span>
+
+      <label className="flex h-11 cursor-pointer items-center justify-between border border-black/20 bg-white px-3 transition hover:border-black">
+        <span className="truncate text-[10px] text-[#555]">
+          {image ? image.name : "SELECT IMAGE"}
+        </span>
+
+        <span className="shrink-0 text-[8px] tracking-[0.12em] text-[#777]">
+          BROWSE ↗
+        </span>
+
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0] ?? null;
+            onChange(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
+    </div>
   );
 }
 
@@ -107,6 +164,11 @@ export default function ResumeAdmin() {
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] =
+    useState<string | null>(null);
+
+  const savedProfileImageUrl = resolveBackendAssetUrl(profile.profileImage);
 
   async function reload(options?: { showErrorModal?: boolean }) {
     setLoading(true);
@@ -129,6 +191,21 @@ export default function ResumeAdmin() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!profileImage) {
+      setProfileImagePreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(profileImage);
+
+    setProfileImagePreview(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [profileImage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +244,39 @@ export default function ResumeAdmin() {
       }
     } catch (error) {
       setNotification({ type: "error", message: error instanceof Error ? error.message : "요청에 실패했습니다." });
+    }
+  }
+
+  async function saveProfile() {
+    try {
+      await updateResumeProfile({
+        name: profile.name,
+        jobTitle: profile.jobTitle,
+        email: profile.email,
+        phone: profile.phone,
+        githubUrl: profile.githubUrl,
+        profileImage,
+        shortIntro: profile.shortIntro,
+      });
+
+      setProfileImage(null);
+
+      const reloaded = await reload({ showErrorModal: true });
+
+      if (reloaded) {
+        setNotification({
+          type: "success",
+          message: "프로필을 저장했습니다.",
+        });
+      }
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "요청에 실패했습니다.",
+      });
     }
   }
 
@@ -211,29 +321,97 @@ export default function ResumeAdmin() {
 
       <section className="border-t border-black py-10">
         <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1">
-          <h2 className="text-[11px] tracking-[0.14em]">PROFILE</h2>
+          <div>
+            <h2 className="text-[11px] tracking-[0.14em]">
+              PROFILE
+            </h2>
+            
+          <div className="flex min-h-[320px] items-center justify-center border-b border-black/10 bg-[#f5f4f2]">
+            {profileImagePreview || savedProfileImageUrl ? (
+              <img
+                src={profileImagePreview || savedProfileImageUrl || ""}
+                alt={profile.name ?? "Profile"}
+                className="h-[260px] w-[200px] object-cover"
+              />
+            ) : (
+              <div className="flex h-[260px] w-[200px] items-center justify-center border border-black/10 text-[9px] tracking-[0.14em] text-[#aaa]">
+                PROFILE IMAGE
+              </div>
+            )}
+          </div>
+
+            <p className="mt-3 max-w-[150px] text-[9px] leading-5 text-[#999]">
+              Basic information displayed on the portfolio.
+            </p>  
+          </div>
+
+
           <div>
             <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-              <Field label="NAME" value={profile.name ?? ""} onChange={(v) => setProfile({ ...profile, name: v })} />
-              <Field label="JOB TITLE" value={profile.jobTitle ?? ""} onChange={(v) => setProfile({ ...profile, jobTitle: v })} />
-              <Field label="EMAIL" value={profile.email ?? ""} onChange={(v) => setProfile({ ...profile, email: v })} />
-              <Field label="PHONE" value={profile.phone ?? ""} onChange={(v) => setProfile({ ...profile, phone: v })} />
-              <Field label="GITHUB URL" value={profile.githubUrl ?? ""} onChange={(v) => setProfile({ ...profile, githubUrl: v })} />
-              <Field label="PROFILE IMAGE" value={profile.profileImage ?? ""} onChange={(v) => setProfile({ ...profile, profileImage: v })} />
+              <Field
+                label="NAME"
+                value={profile.name ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, name: v })
+                }
+              />
+
+              <Field
+                label="JOB TITLE"
+                value={profile.jobTitle ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, jobTitle: v })
+                }
+              />
+
+              <Field
+                label="EMAIL"
+                value={profile.email ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, email: v })
+                }
+              />
+
+              <Field
+                label="PHONE"
+                value={profile.phone ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, phone: v })
+                }
+              />
+
+              <Field
+                label="GITHUB URL"
+                value={profile.githubUrl ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, githubUrl: v })
+                }
+              />
+
+              <ProfileImage
+                image={profileImage}
+                onChange={setProfileImage}
+              />
             </div>
+
             <div className="mt-4">
-              <TextArea label="SHORT INTRO" value={profile.shortIntro ?? ""} onChange={(v) => setProfile({ ...profile, shortIntro: v })} />
+              <TextArea
+                label="SHORT INTRO"
+                value={profile.shortIntro ?? ""}
+                onChange={(v) =>
+                  setProfile({ ...profile, shortIntro: v })
+                }
+              />
             </div>
-            <div className="mt-4 flex justify-end">
-              <ActionButton onClick={() => run(() => updateResumeProfile({
-                name: profile.name,
-                jobTitle: profile.jobTitle,
-                email: profile.email,
-                phone: profile.phone,
-                githubUrl: profile.githubUrl,
-                profileImage: profile.profileImage,
-                shortIntro: profile.shortIntro,
-              }), "프로필을 저장했습니다.")}>SAVE PROFILE</ActionButton>
+
+            <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-4">
+              <p className="text-[8px] tracking-[0.1em] text-[#999]">
+                CHANGES ARE APPLIED AFTER SAVING
+              </p>
+
+              <ActionButton onClick={saveProfile}>
+                SAVE PROFILE
+              </ActionButton>
             </div>
           </div>
         </div>

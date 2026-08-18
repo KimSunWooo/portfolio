@@ -1,5 +1,8 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+  
+export const BACKEND_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
 export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
 
@@ -65,18 +68,25 @@ export async function createCommunityPost(data: CommunityPostCreateRequest) {
 // Resume API
 // =========================
 
-export interface ResumeProfile {
-  id?: number;
-  name: string;
+export type ResumeProfile = {
+  name?: string | null;
   jobTitle?: string | null;
   email?: string | null;
   phone?: string | null;
   githubUrl?: string | null;
   profileImage?: string | null;
   shortIntro?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-}
+};
+
+export type UpdateResumeProfileRequest = {
+  name?: string | null;
+  jobTitle?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  githubUrl?: string | null;
+  profileImage?: File | null;
+  shortIntro?: string | null;
+};
 
 export interface ResumeSkill {
   id: number;
@@ -147,8 +157,51 @@ async function resumeRequest<T>(
   return response.json();
 }
 
-export function updateResumeProfile(data: Omit<ResumeProfile, "id" | "createdAt" | "updatedAt">) {
-  return resumeRequest<ResumeProfile>("/profile", "PUT", data);
+export async function updateResumeProfile(
+  payload: UpdateResumeProfileRequest
+) {
+  const formData = new FormData();
+
+  formData.append("name", payload.name ?? "");
+  formData.append("jobTitle", payload.jobTitle ?? "");
+  formData.append("email", payload.email ?? "");
+  formData.append("phone", payload.phone ?? "");
+  formData.append("githubUrl", payload.githubUrl ?? "");
+  formData.append("shortIntro", payload.shortIntro ?? "");
+
+  if (payload.profileImage) {
+    formData.append("profileImage", payload.profileImage);
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/resume/profile`,
+    {
+      method: "PUT",
+      body: formData,
+    }
+  );
+
+  const contentType = response.headers.get("content-type");
+  const text = await response.text();
+
+  console.log("status:", response.status);
+  console.log("content-type:", contentType);
+  console.log("response:", text);
+
+  if (!response.ok) {
+    throw new Error(
+      `프로필 저장에 실패했습니다. (${response.status})`
+    );
+  }
+
+  if (
+    contentType?.includes("application/json") &&
+    text.trim()
+  ) {
+    return JSON.parse(text);
+  }
+
+  return null;
 }
 
 export function createResumeSkill(data: Omit<ResumeSkill, "id">) {

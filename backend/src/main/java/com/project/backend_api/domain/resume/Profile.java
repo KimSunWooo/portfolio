@@ -57,8 +57,12 @@ public class Profile {
         this.email = request.email();
         this.phone = request.phone();
         this.githubUrl = request.githubUrl();
-        this.profileImage = request.profileImage();
         this.shortIntro = request.shortIntro();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
         this.updatedAt = LocalDateTime.now();
     }
 }

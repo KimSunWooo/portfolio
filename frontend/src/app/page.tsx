@@ -86,6 +86,16 @@ export default async function Home() {
   const displayName = profile.name || "김선우";
   const englishName = displayName === "김선우" ? ["KIM", "SUN WOO"] : [displayName, ""];
 
+  const BACKEND_BASE_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL ??
+    "http://localhost:8080";
+
+  const profileImageUrl = profile.profileImage
+    ? profile.profileImage.startsWith("http")
+      ? profile.profileImage
+      : `${BACKEND_BASE_URL}${profile.profileImage}`
+    : null;
+
   return (
     <>
       <Header />
@@ -98,15 +108,49 @@ export default async function Home() {
             </div>
 
             <div className="py-16 max-sm:py-20">
-              <p className="mb-5 text-[30px] tracking-[0.18em] text-[#777]">DEVELOPER</p>
-              <h1 className="max-w-[1120px] text-[clamp(64px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
-                {englishName[0]}{englishName[1] && <><br />{englishName[1]}</>}
-              </h1>
+              <p className="mb-5 text-[30px] tracking-[0.18em] text-[#777]">
+                DEVELOPER
+              </p>
+
+              <div className="grid grid-cols-[1fr_360px] items-end gap-16 max-lg:grid-cols-[1fr_280px] max-md:grid-cols-1 max-md:gap-10">
+
+                {/* NAME */}
+                <h1 className="text-[clamp(64px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
+                  {englishName[0]}
+
+                  {englishName[1] && (
+                    <>
+                      <br />
+                      {englishName[1]}
+                    </>
+                  )}
+                </h1>
+
+                {/* PROFILE IMAGE */}
+                {profileImageUrl && (
+                  <div className="flex justify-end max-md:justify-start">
+                    <div className="relative w-full max-w-[320px] overflow-hidden">
+                      <img
+                        src={profileImageUrl}
+                        alt={profile.name ?? "Profile"}
+                        className="aspect-[3/4] w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
                 <p className="max-w-[680px] text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[15px]">
                   {profile.shortIntro}
                 </p>
-                <a href="#experience" className="text-[10px] tracking-[0.16em] text-[#111] no-underline hover:opacity-50">SCROLL TO RESUME ↓</a>
+
+                <a
+                  href="#experience"
+                  className="text-[10px] tracking-[0.16em] text-[#111] no-underline hover:opacity-50"
+                >
+                  SCROLL TO RESUME ↓
+                </a>
               </div>
             </div>
 

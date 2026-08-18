@@ -8,6 +8,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @RestController
@@ -27,9 +32,32 @@ public class ResumeController {
         return resumeService.getProfile();
     }
 
-    @PutMapping("/profile")
-    public Profile updateProfile(@Valid @RequestBody ProfileUpdateRequest request) {
-        return resumeService.updateProfile(request);
+    @PutMapping(
+    value = "/profile",
+    consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<?> updateProfile(
+            @RequestParam String name,
+            @RequestParam String jobTitle,
+            @RequestParam String email,
+            @RequestParam String phone,
+            @RequestParam String githubUrl,
+            @RequestParam String shortIntro,
+            @RequestParam(required = false) MultipartFile profileImage
+    ) {
+        ProfileUpdateRequest request = new ProfileUpdateRequest(
+            name,
+            jobTitle,
+            email,
+            phone,
+            githubUrl,
+            null,
+            shortIntro
+        );
+
+        resumeService.updateProfile(request, profileImage);
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/skills")
