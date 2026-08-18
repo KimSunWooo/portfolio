@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createProject, deleteProject, fetchProjects, updateProject, type PortfolioProject, type ProjectRequest, type ProjectStatus } from "../../lib/api";
+import {
+  createProject,
+  deleteProject,
+  fetchProjects,
+  updateProject,
+
+  fetchProjectMedia,
+  createProjectMedia,
+  updateProjectMedia,
+  deleteProjectMedia,
+
+  resolveAssetUrl,
+
+  type PortfolioProject,
+  type ProjectRequest,
+  type ProjectStatus,
+  type ProjectMedia,
+} from "../../lib/api";
 
 const empty: ProjectRequest = {
   title: "", subtitle: "", description: "", techStack: "", projectUrl: "", githubUrl: "", thumbnail: "",
@@ -45,13 +62,45 @@ export default function ProjectAdmin() {
   );
 }
 
-function ProjectRow({ item, run }: { item: PortfolioProject; run: (a:()=>Promise<unknown>,m:string)=>Promise<void> }) {
-  const [value, setValue] = useState<ProjectRequest>(item);
-  return <div className="border-b border-black/15 py-8">
-    <ProjectForm value={value} setValue={setValue} button="SAVE"
-      onSubmit={() => run(() => updateProject(item.id, value), "프로젝트를 수정했습니다.")}
-      onDelete={() => confirm("삭제할까요?") && run(() => deleteProject(item.id), "프로젝트를 삭제했습니다.")} />
-  </div>;
+function ProjectRow({
+  item,
+  run,
+}: {
+  item: PortfolioProject;
+  run: (
+    a: () => Promise<unknown>,
+    m: string
+  ) => Promise<void>;
+}) {
+  const [value, setValue] =
+    useState<ProjectRequest>(item);
+
+  return (
+    <div className="border-b border-black/15 py-10">
+      <ProjectForm
+        value={value}
+        setValue={setValue}
+        button="SAVE"
+        onSubmit={() =>
+          run(
+            () => updateProject(item.id, value),
+            "프로젝트를 수정했습니다."
+          )
+        }
+        onDelete={() =>
+          confirm("삭제할까요?") &&
+          run(
+            () => deleteProject(item.id),
+            "프로젝트를 삭제했습니다."
+          )
+        }
+      />
+
+      <ProjectMediaSection
+        projectId={item.id}
+      />
+    </div>
+  );
 }
 
 function ProjectForm({ value, setValue, onSubmit, onDelete, button }: {
@@ -87,6 +136,372 @@ function ProjectForm({ value, setValue, onSubmit, onDelete, button }: {
     </div>
   </div>;
 }
+
+function ProjectMediaSection({
+  projectId,
+}: {
+  projectId: number;
+}) {
+  const [items, setItems] =
+    useState<ProjectMedia[]>([]);
+
+  const [file, setFile] =
+    useState<File | null>(null);
+
+  const [caption, setCaption] =
+    useState("");
+
+  const [altText, setAltText] =
+    useState("");
+
+  const [sortOrder, setSortOrder] =
+    useState(0);
+
+  const [preview, setPreview] =
+    useState<string | null>(null);
+
+  const [notice, setNotice] =
+    useState<string | null>(null);
+
+  async function reloadMedia() {
+    try {
+      const next =
+        await fetchProjectMedia(projectId);
+
+      setItems(next);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "미디어를 불러오지 못했습니다."
+      );
+    }
+  }
+
+  useEffect(() => {
+    reloadMedia();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+
+    const url =
+      URL.createObjectURL(file);
+
+    setPreview(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  async function upload() {
+    if (!file) {
+      setNotice("업로드할 파일을 선택해주세요.");
+      return;
+    }
+
+    try {
+      await createProjectMedia(
+        projectId,
+        {
+          file,
+          caption,
+          altText,
+          sortOrder,
+        }
+      );
+
+      setFile(null);
+      setCaption("");
+      setAltText("");
+      setSortOrder(0);
+
+      await reloadMedia();
+
+      setNotice(
+        "프로젝트 미디어를 등록했습니다."
+      );
+
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "미디어 등록에 실패했습니다."
+      );
+    }
+  }
+
+  return (
+    <div className="mt-10 border-t border-black/15 pt-8">
+
+      <div className="mb-6 flex items-end justify-between">
+        <div>
+          <p className="text-[9px] tracking-[0.16em] text-[#777]">
+            PROJECT MEDIA
+          </p>
+
+          <h3 className="mt-2 text-[24px] tracking-[-0.04em]">
+            Images & Videos
+          </h3>
+        </div>
+
+        <span className="text-[9px] tracking-[0.12em] text-[#999]">
+          {items.length} ITEMS
+        </span>
+      </div>
+
+      {items.length > 0 && (
+        <div className="mb-8 grid grid-cols-2 gap-4 max-md:grid-cols-1">
+          {items.map((media) => (
+            <ProjectMediaItem
+              key={media.id}
+              item={media}
+              projectId={projectId}
+              onChanged={reloadMedia}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="border border-black/15 bg-[#f7f6f4] p-5">
+
+        <p className="mb-4 text-[9px] tracking-[0.16em] text-[#777]">
+          ADD MEDIA
+        </p>
+
+        {preview && (
+          <div className="mb-5 overflow-hidden border border-black/10 bg-white">
+
+            {file?.type.startsWith("video/") ? (
+              <video
+                src={preview}
+                controls
+                className="max-h-[420px] w-full object-contain"
+              />
+            ) : (
+              <img
+                src={preview}
+                alt="New project media preview"
+                className="max-h-[420px] w-full object-contain"
+              />
+            )}
+
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
+
+          <label>
+            <span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">
+              FILE
+            </span>
+
+            <label className="flex h-11 cursor-pointer items-center justify-between border border-black/20 bg-white px-3">
+              <span className="truncate text-[10px] text-[#555]">
+                {file
+                  ? file.name
+                  : "SELECT IMAGE OR VIDEO"}
+              </span>
+
+              <span className="text-[8px] tracking-[0.12em] text-[#777]">
+                BROWSE ↗
+              </span>
+
+              <input
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const selected =
+                    e.target.files?.[0] ?? null;
+
+                  setFile(selected);
+
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </label>
+
+          <Input
+            label="ORDER"
+            type="number"
+            value={String(sortOrder)}
+            set={(v) =>
+              setSortOrder(Number(v))
+            }
+          />
+
+          <Input
+            label="ALT TEXT"
+            value={altText}
+            set={setAltText}
+          />
+
+          <Input
+            label="CAPTION"
+            value={caption}
+            set={setCaption}
+          />
+
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={upload}
+            className="h-10 border border-black bg-black px-5 text-[9px] tracking-[0.12em] text-white"
+          >
+            + ADD MEDIA
+          </button>
+        </div>
+      </div>
+
+      {notice && (
+        <p className="mt-3 text-[10px] text-[#666]">
+          {notice}
+        </p>
+      )}
+
+    </div>
+  );
+}
+
+function ProjectMediaItem({
+  item,
+  projectId,
+  onChanged,
+}: {
+  item: ProjectMedia;
+  projectId: number;
+  onChanged: () => Promise<void>;
+}) {
+  const [caption, setCaption] =
+    useState(item.caption ?? "");
+
+  const [altText, setAltText] =
+    useState(item.altText ?? "");
+
+  const [sortOrder, setSortOrder] =
+    useState(item.sortOrder ?? 0);
+
+  const mediaUrl =
+    resolveAssetUrl(item.mediaUrl);
+
+  async function save() {
+    await updateProjectMedia(
+      projectId,
+      item.id,
+      {
+        caption,
+        altText,
+        sortOrder,
+      }
+    );
+
+    await onChanged();
+  }
+
+  async function remove() {
+    if (!confirm("이 미디어를 삭제할까요?")) {
+      return;
+    }
+
+    await deleteProjectMedia(
+      projectId,
+      item.id
+    );
+
+    await onChanged();
+  }
+
+  return (
+    <div className="border border-black/15 bg-white">
+
+      <div className="flex min-h-[260px] items-center justify-center overflow-hidden bg-[#f3f2ef]">
+
+        {item.mediaType === "VIDEO" ? (
+          <video
+            src={mediaUrl ?? ""}
+            controls
+            className="max-h-[420px] w-full object-contain"
+          />
+        ) : (
+          <img
+            src={mediaUrl ?? ""}
+            alt={altText || "Project media"}
+            className="max-h-[420px] w-full object-contain"
+          />
+        )}
+
+      </div>
+
+      <div className="p-4">
+
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-[9px] tracking-[0.14em] text-[#777]">
+            {item.mediaType}
+          </span>
+
+          <span className="text-[9px] text-[#aaa]">
+            #{item.id}
+          </span>
+        </div>
+
+        <div className="grid gap-3">
+
+          <Input
+            label="CAPTION"
+            value={caption}
+            set={setCaption}
+          />
+
+          <Input
+            label="ALT TEXT"
+            value={altText}
+            set={setAltText}
+          />
+
+          <Input
+            label="ORDER"
+            type="number"
+            value={String(sortOrder)}
+            set={(v) =>
+              setSortOrder(Number(v))
+            }
+          />
+
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+
+          <button
+            type="button"
+            onClick={remove}
+            className="h-9 border border-red-300 px-4 text-[9px] text-red-600"
+          >
+            DELETE
+          </button>
+
+          <button
+            type="button"
+            onClick={save}
+            className="h-9 border border-black px-4 text-[9px] transition hover:bg-black hover:text-white"
+          >
+            SAVE MEDIA
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 function Input({label,value,set,type="text"}:{label:string;value:string;set:(v:string)=>void;type?:string}) {
   return <label><span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">{label}</span>
     <input type={type} className="h-11 w-full border border-black/20 px-3 text-[12px]" value={value} onChange={e=>set(e.target.value)} />

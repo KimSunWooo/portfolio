@@ -1,6 +1,6 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
-  
+
 export const BACKEND_BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
@@ -266,6 +266,17 @@ export interface PortfolioProject {
 }
 
 export type ProjectRequest = Omit<PortfolioProject, "id" | "createdAt" | "updatedAt">;
+export type ProjectMediaType = "IMAGE" | "VIDEO";
+export type ProductStatus =
+  | "SALE"
+  | "SOLD_OUT"
+  | "HIDDEN";
+
+export type ProductRequest =
+  Omit<
+    AdminProduct,
+    "id" | "createdAt" | "updatedAt"
+  >;
 
 export async function fetchProjects(featured?: boolean) {
   const query = featured ? "?featured=true" : "";
@@ -297,6 +308,23 @@ async function requestProject(path: string, method: "POST" | "PUT", data: Projec
   return (await response.json()) as PortfolioProject;
 }
 
+export interface AdminProduct {
+  id: number;
+  name: string;
+  subtitle?: string | null;
+  description?: string | null;
+  category?: string | null;
+  price: number;
+  originalPrice?: number | null;
+  thumbnail?: string | null;
+  isNew: boolean;
+  isBest: boolean;
+  stock: number;
+  status: ProductStatus;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface Cafe24IntegrationStatus {
   configured: boolean;
   mallId: string | null;
@@ -306,8 +334,371 @@ export interface Cafe24IntegrationStatus {
   message: string;
 }
 
+export interface ProjectMedia {
+  id: number;
+  projectId: number;
+  mediaType: ProjectMediaType;
+  mediaUrl: string;
+  caption?: string | null;
+  altText?: string | null;
+  sortOrder: number;
+}
+
 export async function fetchCafe24IntegrationStatus() {
   const response = await fetch(`${API_BASE_URL}/integrations/cafe24/status`, { cache: "no-store" });
   if (!response.ok) throw new Error("Cafe24 연동 상태를 확인하지 못했습니다.");
   return (await response.json()) as Cafe24IntegrationStatus;
+}
+
+export async function fetchProjectMedia(projectId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/media`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("프로젝트 미디어를 불러오지 못했습니다.");
+  }
+
+  return (await response.json()) as ProjectMedia[];
+}
+
+export async function createProjectMedia(
+  projectId: number,
+  data: {
+    file: File;
+    caption?: string;
+    altText?: string;
+    sortOrder?: number;
+  }
+) {
+  const formData = new FormData();
+
+  formData.append("file", data.file);
+  formData.append("caption", data.caption ?? "");
+  formData.append("altText", data.altText ?? "");
+  formData.append("sortOrder", String(data.sortOrder ?? 0));
+
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/media`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+      body?.error ??
+      "프로젝트 미디어 등록에 실패했습니다."
+    );
+  }
+
+  return (await response.json()) as ProjectMedia;
+}
+
+export async function updateProjectMedia(
+  projectId: number,
+  mediaId: number,
+  data: {
+    caption?: string;
+    altText?: string;
+    sortOrder?: number;
+  }
+) {
+  const formData = new FormData();
+
+  formData.append("caption", data.caption ?? "");
+  formData.append("altText", data.altText ?? "");
+  formData.append("sortOrder", String(data.sortOrder ?? 0));
+
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/media/${mediaId}`,
+    {
+      method: "PUT",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+      body?.error ??
+      "프로젝트 미디어 수정에 실패했습니다."
+    );
+  }
+
+  return (await response.json()) as ProjectMedia;
+}
+
+export async function deleteProjectMedia(
+  projectId: number,
+  mediaId: number
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/media/${mediaId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+      body?.error ??
+      "프로젝트 미디어 삭제에 실패했습니다."
+    );
+  }
+}
+
+export function resolveAssetUrl(path?: string | null) {
+  if (!path) return null;
+
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return path;
+  }
+
+  return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+export async function fetchProject(id: number | string) {
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${id}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("프로젝트 정보를 불러오지 못했습니다.");
+  }
+
+  return (await response.json()) as PortfolioProject;
+}
+
+export async function fetchAdminProducts() {
+  const response = await fetch(
+    `${API_BASE_URL}/products/admin`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "상품 목록을 불러오지 못했습니다."
+    );
+  }
+
+  return (await response.json()) as AdminProduct[];
+}
+
+export async function createProduct(
+  data: ProductRequest
+) {
+  return requestProduct("", "POST", data);
+}
+
+export async function updateProduct(
+  id: number,
+  data: ProductRequest
+) {
+  return requestProduct(
+    `/${id}`,
+    "PUT",
+    data
+  );
+}
+
+export async function deleteProduct(
+  id: number
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/products/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "상품 삭제에 실패했습니다."
+    );
+  }
+}
+
+async function requestProduct(
+  path: string,
+  method: "POST" | "PUT",
+  data: ProductRequest
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/products${path}`,
+    {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!response.ok) {
+    const body =
+      await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+      body?.error ??
+      "상품 저장에 실패했습니다."
+    );
+  }
+
+  return (await response.json()) as AdminProduct;
+}
+
+export type ProductImageType = "MAIN" | "DETAIL";
+
+export interface ProductImage {
+  id: number;
+  productId: number;
+  imageUrl: string;
+  caption?: string | null;
+  altText?: string | null;
+  imageType: ProductImageType;
+  sortOrder: number;
+}
+
+export async function fetchProductImages(productId: number) {
+  const response = await fetch(
+    `${API_BASE_URL}/products/${productId}/images`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("상품 이미지를 불러오지 못했습니다.");
+  }
+
+  return (await response.json()) as ProductImage[];
+}
+
+export async function uploadProductImage(
+  productId: number,
+  data: {
+    file: File;
+    caption?: string;
+    altText?: string;
+    imageType: ProductImageType;
+    sortOrder?: number;
+  }
+) {
+  const formData = new FormData();
+
+  formData.append("file", data.file);
+  formData.append("caption", data.caption ?? "");
+  formData.append("altText", data.altText ?? "");
+  formData.append("imageType", data.imageType);
+  formData.append(
+    "sortOrder",
+    String(data.sortOrder ?? 0)
+  );
+
+  const response = await fetch(
+    `${API_BASE_URL}/products/${productId}/images`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const body =
+      await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+        body?.error ??
+        "상품 이미지 등록에 실패했습니다."
+    );
+  }
+
+  return (await response.json()) as ProductImage;
+}
+
+export async function updateProductImage(
+  productId: number,
+  imageId: number,
+  data: {
+    caption?: string;
+    altText?: string;
+    imageType?: ProductImageType;
+    sortOrder?: number;
+  }
+) {
+  const formData = new FormData();
+
+  formData.append("caption", data.caption ?? "");
+  formData.append("altText", data.altText ?? "");
+
+  if (data.imageType) {
+    formData.append("imageType", data.imageType);
+  }
+
+  formData.append(
+    "sortOrder",
+    String(data.sortOrder ?? 0)
+  );
+
+  const response = await fetch(
+    `${API_BASE_URL}/products/${productId}/images/${imageId}`,
+    {
+      method: "PUT",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const body =
+      await response.json().catch(() => null);
+
+    throw new Error(
+      body?.message ??
+        body?.error ??
+        "상품 이미지 수정에 실패했습니다."
+    );
+  }
+
+  return (await response.json()) as ProductImage;
+}
+
+export async function deleteProductImage(
+  productId: number,
+  imageId: number
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/products/${productId}/images/${imageId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("상품 이미지 삭제에 실패했습니다.");
+  }
 }

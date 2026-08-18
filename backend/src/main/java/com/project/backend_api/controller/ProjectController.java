@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import com.project.backend_api.dto.project.ProjectMediaResponse;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @RestController
@@ -41,5 +45,62 @@ public class ProjectController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProject(@PathVariable Integer id) {
         projectService.delete(id);
+    }
+
+    @GetMapping("/{projectId}/media")
+    public List<ProjectMediaResponse> getProjectMedia(
+            @PathVariable Integer projectId
+    ) {
+        return projectService.getMedia(projectId);
+    }
+
+    @PostMapping(
+            value = "/{projectId}/media",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProjectMediaResponse uploadProjectMedia(
+            @PathVariable Integer projectId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String caption,
+            @RequestParam(required = false) String altText,
+            @RequestParam(defaultValue = "0") Integer sortOrder
+    ) {
+        return projectService.addMedia(
+                projectId,
+                file,
+                caption,
+                altText,
+                sortOrder
+        );
+    }
+
+    @PutMapping("/{projectId}/media/{mediaId}")
+    public ProjectMediaResponse updateProjectMedia(
+            @PathVariable Integer projectId,
+            @PathVariable Integer mediaId,
+            @RequestParam(required = false) String caption,
+            @RequestParam(required = false) String altText,
+            @RequestParam(defaultValue = "0") Integer sortOrder
+    ) {
+        return projectService.updateMedia(
+                projectId,
+                mediaId,
+                caption,
+                altText,
+                sortOrder
+        );
+    }
+
+    @DeleteMapping("/{projectId}/media/{mediaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProjectMedia(
+            @PathVariable Integer projectId,
+            @PathVariable Integer mediaId
+    ) {
+        projectService.deleteMedia(
+                projectId,
+                mediaId
+        );
     }
 }

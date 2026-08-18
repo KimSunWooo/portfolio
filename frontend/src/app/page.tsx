@@ -282,7 +282,7 @@ export default async function Home() {
                     techStack: "Next.js · React · Responsive UI",
                     projectUrl: "/shop",
                     githubUrl: null,
-                    status: "COMPLETED",
+                    status: "IN PROGRESS",
                     isFeatured: true,
                     sortOrder: -2,
                   },
@@ -306,9 +306,9 @@ export default async function Home() {
                 ] as PortfolioProject[]
               ).map((project, index) => {
                 const href =
-                  project.projectUrl ||
-                  project.githubUrl ||
-                  "#";
+                project.id > 0
+                  ? `/projects/${project.id}`
+                  : project.projectUrl || "#";
 
                 const isExternal = href.startsWith("http");
 
