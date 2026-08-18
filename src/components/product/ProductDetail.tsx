@@ -102,6 +102,22 @@ export default function ProductDetail({ product }: { product: ProductDetailType 
         <h2 className="mx-auto mt-5 max-w-[760px] text-[30px] font-normal leading-[1.45] tracking-[-0.025em] max-sm:text-[23px]">Build your own mood, layer by layer.</h2>
         <p className="mx-auto mt-6 max-w-[620px] text-[12px] leading-[2] text-[#777]">정해진 기준보다 나만의 분위기에 집중합니다. 매일 손이 가는 편안한 텍스처와 섬세한 컬러를 통해 자연스럽고 오래 남는 무드를 제안합니다.</p>
       </section>
+
+      <section className="mx-auto max-w-[1440px] px-7 pb-28 max-sm:px-0 max-sm:pb-16">
+        <div className="mb-10 px-0 text-center max-sm:px-5">
+          <p className="text-[10px] tracking-[0.2em] text-[#888]">PRODUCT DETAIL</p>
+        </div>
+        <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
+          {product.detailImages.map((image, index) => (
+            <img
+              key={image}
+              src={image}
+              alt={`${product.name} 상세 이미지 ${index + 1}`}
+              className="h-auto w-full object-cover"
+            />
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
