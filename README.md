@@ -1,6 +1,12 @@
 # Hince-inspired Next.js + Tailwind UI
 
-hince 공식몰의 공개된 UI 구조와 미니멀한 뷰티 커머스 디자인을 참고해 독립적으로 구현한 Tailwind 기반 컴포넌트입니다.
+제작 : 김선우
+디자인 참조 : 힌스 (https://hince.co.kr/?srsltid=AfmBOoquTlfKHfkjheDsfVdyhA1scOr2TneZsfWzmtaGlT_qBf35qf0h)
+
+## 포트폴리오 구성
+- 웹-프론트 : react-next
+- 웹-백앤드 : JAVA
+- 로보틱스 소프트웨어 : Python, Aduino, Ros2
 
 ## 구성
 - Header

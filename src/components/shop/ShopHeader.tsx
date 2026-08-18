@@ -1,6 +1,6 @@
 import Button from "../common/Button";
 
-const categories = ["ALL", "BEST", "NEW", "BASE", "CHEEK", "EYE", "LIP", "FRAGRANCE"];
+const categories = ["ALL", "BEST", "NEW", "BASE", "CHEEK", "EYE", "LIP"];
 
 export default function ShopHeader({ category = "ALL", count = 61 }: { category?: string; count?: number }) {
   return (
@@ -11,7 +11,7 @@ export default function ShopHeader({ category = "ALL", count = 61 }: { category?
         <span className="text-[9px] text-[#777]">{count} PRODUCTS</span>
       </div>
       <nav className="mt-7 flex flex-wrap gap-[17px]">
-        {categories.map((item) => <a key={item} href="#" className={`text-[10px] tracking-[0.05em] no-underline ${item === category ? "text-[#111]" : "text-[#999]"}`}>{item}</a>)}
+        {categories.map((item) => <a key={item} href={item === "ALL" ? "/shop" : `/shop#${item.toLowerCase()}`} className={`text-[10px] tracking-[0.05em] no-underline ${item === category ? "text-[#111]" : "text-[#999]"}`}>{item}</a>)}
       </nav>
       <div className="mt-[25px] flex justify-end gap-[25px]">
         <Button variant="text">FILTER</Button>

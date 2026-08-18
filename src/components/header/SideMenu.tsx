@@ -3,9 +3,9 @@
 import Icon from "../common/Icon";
 
 const groups = [
-  { title: "ABOUT", items: ["BRAND STORY", "LOOK"] },
-  { title: "SHOP", items: ["ALL", "BEST", "NEW", "BASE", "CHEEK", "EYE", "LIP", "FRAGRANCE"] },
-  { title: "COMMUNITY", items: ["NOTICE", "FAQ", "EVENT"] },
+  { title: "ABOUT", items: [{ label: "BRAND STORY", href: "/#brand" }, { label: "LOOK", href: "/#look" }] },
+  { title: "SHOP", items: [{ label: "ALL", href: "/shop" }, { label: "BEST", href: "/shop#best" }, { label: "NEW", href: "/shop#new" }, { label: "BASE", href: "/shop#base" }, { label: "CHEEK", href: "/shop#cheek" }, { label: "EYE", href: "/shop#eye" }, { label: "LIP", href: "/shop#lip" }] },
+  { title: "COMMUNITY", items: [{ label: "NOTICE", href: "/community" }, { label: "FAQ", href: "/community#faq" }, { label: "EVENT", href: "/community#event" }] },
 ];
 
 export default function SideMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -21,12 +21,15 @@ export default function SideMenu({ open, onClose }: { open: boolean; onClose: ()
           {groups.map((group) => (
             <section key={group.title} className="mb-[34px]">
               <h2 className="mb-3 text-[10px] tracking-[0.12em] text-[#777]">{group.title}</h2>
-              {group.items.map((item) => <a href="#" key={item} className="block w-fit text-[15px] leading-[1.95] text-[#111] no-underline hover:opacity-50">{item}</a>)}
+              {group.items.map((item) => <a href={item.href} key={item.label} onClick={onClose} className="block w-fit text-[15px] leading-[1.95] text-[#111] no-underline hover:opacity-50">{item.label}</a>)}
             </section>
           ))}
         </nav>
         <div className="mt-[55px] border-t border-[#ddd] pt-6">
-          {["LOGIN", "MEMBERSHIP", "STORE", "CUSTOMER CENTER"].map((item) => <a href="#" key={item} className="block text-[11px] leading-[2.25] tracking-[0.08em] text-[#111] no-underline hover:opacity-50">{item}</a>)}
+          <a href="#" className="block text-[11px] leading-[2.25] tracking-[0.08em] text-[#111] no-underline hover:opacity-50">LOGIN</a>
+          <a href="#" className="block text-[11px] leading-[2.25] tracking-[0.08em] text-[#111] no-underline hover:opacity-50">MEMBERSHIP</a>
+          <a href="#" className="block text-[11px] leading-[2.25] tracking-[0.08em] text-[#111] no-underline hover:opacity-50">STORE</a>
+          <a href="/community" className="block text-[11px] leading-[2.25] tracking-[0.08em] text-[#111] no-underline hover:opacity-50">CUSTOMER CENTER</a>
         </div>
       </aside>
     </div>
