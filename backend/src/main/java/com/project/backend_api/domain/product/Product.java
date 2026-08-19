@@ -70,15 +70,30 @@ public class Product {
         this.category = request.category();
         this.price = request.price();
         this.originalPrice = request.originalPrice();
-        this.thumbnail = request.thumbnail();
-        this.isNew = request.isNew() != null && request.isNew();
-        this.isBest = request.isBest() != null && request.isBest();
-        this.stock = request.stock() == null ? 0 : request.stock();
+
+        // thumbnail은 상품 정보 수정에서 건드리지 않음.
+        // MAIN 이미지 API가 updateThumbnail()을 통해 관리한다.
+
+        this.isNew =
+                request.isNew() != null &&
+                request.isNew();
+
+        this.isBest =
+                request.isBest() != null &&
+                request.isBest();
+
+        this.stock =
+                request.stock() == null
+                        ? 0
+                        : request.stock();
 
         this.status =
-                request.status() == null || request.status().isBlank()
+                request.status() == null ||
+                request.status().isBlank()
                         ? ProductStatus.SALE
-                        : ProductStatus.valueOf(request.status().toUpperCase());
+                        : ProductStatus.valueOf(
+                                request.status().toUpperCase()
+                        );
 
         this.updatedAt = LocalDateTime.now();
     }

@@ -1,4 +1,4 @@
-import Button from "../common/Button";
+import Button from "../../common/Button";
 
 const categories = ["ALL", "BEST", "NEW", "BASE", "CHEEK", "EYE", "LIP"];
 

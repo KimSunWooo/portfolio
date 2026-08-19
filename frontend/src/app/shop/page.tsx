@@ -1,5 +1,5 @@
 import Header from "../../components/header/Header";
-import ShopHeader from "../../components/shop/ShopHeader";
+import ShopHeader from "../../components/admin/shop/ShopHeader";
 import ProductGrid from "../../components/product/ProductGrid";
 import Footer from "../../components/layout/Footer";
 import { products } from "../../data/products";
