@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
+import { signupUser } from "../../lib/api";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -24,8 +27,20 @@ export default function SignupPage() {
       alert("비밀번호가 일치하지 않습니다.");
       return;
     }
-    // 백엔드 API 연동 위치
-    console.log("회원가입 시도:", formData);
+
+    try {
+      await signupUser({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+      });
+
+      alert("회원가입이 완료되었습니다. 로그인해 주세요!");
+      router.push("/login");
+
+    } catch (error: any) {
+      alert(error.message || "회원가입 중 오류가 발생했습니다.");
+    }
   };
 
   return (

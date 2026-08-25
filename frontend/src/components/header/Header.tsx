@@ -15,6 +15,7 @@ export default function Header() {
         </button>
         <a href="/" className="text-[18px] font-semibold tracking-[-0.045em] text-[#111] no-underline max-sm:text-[16px]">KIM SUN WOO</a>
         <div className="flex items-center justify-end gap-[18px]">
+          <a className="text-[10px] tracking-[0.1em] text-[#151515] no-underline" href="/login" target="_blank" rel="noreferrer">Log-In</a>
           <a className="text-[10px] tracking-[0.1em] text-[#151515] no-underline max-sm:hidden" href="/#contact">CONTACT</a>
           <a className="text-[10px] tracking-[0.1em] text-[#151515] no-underline" href="https://github.com/KimSunWooo" target="_blank" rel="noreferrer">GITHUB ↗</a>
         </div>

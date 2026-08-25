@@ -777,3 +777,40 @@ export async function deleteProductImage(
     throw new Error("상품 이미지 삭제에 실패했습니다.");
   }
 }
+
+// 회원가입 API 호출
+export async function signupUser(userData: any) {
+  const response = await fetch("http://localhost:8080/api/users/signup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!response.ok) {
+    // 400 Bad Request 등의 에러 시 백엔드에서 보낸 에러 메시지를 던짐
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  return response.text(); // 성공 메시지 반환
+}
+
+// 로그인 API 호출
+export async function loginUser(loginData: any) {
+  const response = await fetch("http://localhost:8080/api/users/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(loginData),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  return response.json(); // 성공 시 { accessToken: "eyJhbG..." } 형태의 JSON 반환
+}
