@@ -2,9 +2,12 @@ import Header from "../../components/header/Header";
 import ShopHeader from "../../components/admin/shop/ShopHeader";
 import ProductGrid from "../../components/product/ProductGrid";
 import Footer from "../../components/layout/Footer";
-import { products } from "../../data/products";
+import { fetchProducts } from "../../lib/api";
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  // 백엔드 API를 호출하여 실제 상품 데이터를 가져옵니다.
+  const products = await fetchProducts();
+
   return (
     <>
       <Header />

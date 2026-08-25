@@ -1,8 +1,14 @@
+// src/lib/api.ts
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
 
 export const BACKEND_BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+
+// =========================
+// Community API
+// =========================
 
 export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
 
@@ -184,10 +190,6 @@ export async function updateResumeProfile(
   const contentType = response.headers.get("content-type");
   const text = await response.text();
 
-  console.log("status:", response.status);
-  console.log("content-type:", contentType);
-  console.log("response:", text);
-
   if (!response.ok) {
     throw new Error(
       `프로필 저장에 실패했습니다. (${response.status})`
@@ -245,6 +247,10 @@ export function deleteResumeIntroduction(id: number) {
 }
 
 
+// =========================
+// Project API
+// =========================
+
 export type ProjectStatus = "PLANNING" | "IN_PROGRESS" | "COMPLETED";
 
 export interface PortfolioProject {
@@ -267,22 +273,37 @@ export interface PortfolioProject {
 
 export type ProjectRequest = Omit<PortfolioProject, "id" | "createdAt" | "updatedAt">;
 export type ProjectMediaType = "IMAGE" | "VIDEO";
-export type ProductStatus =
-  | "SALE"
-  | "SOLD_OUT"
-  | "HIDDEN";
 
-export type ProductRequest =
-  Omit<
-    AdminProduct,
-    "id" | "createdAt" | "updatedAt"
-  >;
+export interface ProjectMedia {
+  id: number;
+  projectId: number;
+  mediaType: ProjectMediaType;
+  mediaUrl: string;
+  caption?: string | null;
+  altText?: string | null;
+  sortOrder: number;
+}
 
 export async function fetchProjects(featured?: boolean) {
   const query = featured ? "?featured=true" : "";
   const response = await fetch(`${API_BASE_URL}/projects${query}`, { cache: "no-store" });
   if (!response.ok) throw new Error("프로젝트 목록을 불러오지 못했습니다.");
   return (await response.json()) as PortfolioProject[];
+}
+
+export async function fetchProject(id: number | string) {
+  const response = await fetch(
+    `${API_BASE_URL}/projects/${id}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("프로젝트 정보를 불러오지 못했습니다.");
+  }
+
+  return (await response.json()) as PortfolioProject;
 }
 
 export async function createProject(data: ProjectRequest) {
@@ -306,48 +327,6 @@ async function requestProject(path: string, method: "POST" | "PUT", data: Projec
     throw new Error(body?.error ?? "프로젝트 저장에 실패했습니다.");
   }
   return (await response.json()) as PortfolioProject;
-}
-
-export interface AdminProduct {
-  id: number;
-  name: string;
-  subtitle?: string | null;
-  description?: string | null;
-  category?: string | null;
-  price: number;
-  originalPrice?: number | null;
-  thumbnail?: string | null;
-  isNew: boolean;
-  isBest: boolean;
-  stock: number;
-  status: ProductStatus;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-}
-
-export interface Cafe24IntegrationStatus {
-  configured: boolean;
-  mallId: string | null;
-  apiBaseUrl: string | null;
-  redirectUri: string | null;
-  oauthReady: boolean;
-  message: string;
-}
-
-export interface ProjectMedia {
-  id: number;
-  projectId: number;
-  mediaType: ProjectMediaType;
-  mediaUrl: string;
-  caption?: string | null;
-  altText?: string | null;
-  sortOrder: number;
-}
-
-export async function fetchCafe24IntegrationStatus() {
-  const response = await fetch(`${API_BASE_URL}/integrations/cafe24/status`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Cafe24 연동 상태를 확인하지 못했습니다.");
-  return (await response.json()) as Cafe24IntegrationStatus;
 }
 
 export async function fetchProjectMedia(projectId: number) {
@@ -460,6 +439,30 @@ export async function deleteProjectMedia(
   }
 }
 
+// =========================
+// Cafe24 API
+// =========================
+
+export interface Cafe24IntegrationStatus {
+  configured: boolean;
+  mallId: string | null;
+  apiBaseUrl: string | null;
+  redirectUri: string | null;
+  oauthReady: boolean;
+  message: string;
+}
+
+export async function fetchCafe24IntegrationStatus() {
+  const response = await fetch(`${API_BASE_URL}/integrations/cafe24/status`, { cache: "no-store" });
+  if (!response.ok) throw new Error("Cafe24 연동 상태를 확인하지 못했습니다.");
+  return (await response.json()) as Cafe24IntegrationStatus;
+}
+
+
+// =========================
+// Utilities
+// =========================
+
 export function resolveAssetUrl(path?: string | null) {
   if (!path) return null;
 
@@ -475,20 +478,91 @@ export function resolveAssetUrl(path?: string | null) {
   return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
-export async function fetchProject(id: number | string) {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${id}`,
-    {
-      cache: "no-store",
-    }
-  );
 
-  if (!response.ok) {
-    throw new Error("프로젝트 정보를 불러오지 못했습니다.");
-  }
+// =========================
+// Shop & Product API
+// =========================
 
-  return (await response.json()) as PortfolioProject;
+export type ProductStatus = "SALE" | "SOLD_OUT" | "HIDDEN";
+export type ProductImageType = "MAIN" | "DETAIL";
+
+export interface AdminProduct {
+  id: number;
+  name: string;
+  subtitle?: string | null;
+  description?: string | null;
+  category?: string | null;
+  price: number;
+  originalPrice?: number | null;
+  thumbnail?: string | null;
+  isNew: boolean;
+  isBest: boolean;
+  stock: number;
+  status: ProductStatus;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
+
+export type ProductRequest = Omit<AdminProduct, "id" | "createdAt" | "updatedAt">;
+
+// 1. 상품 목록 조회용 DTO (ProductController의 getProducts 반환 타입)
+export interface ProductListResponse {
+  id: number;
+  name: string;
+  subtitle?: string | null;
+  price: number;
+  originalPrice?: number | null;
+  thumbnail?: string | null;
+  isNew: boolean;
+  isBest: boolean;
+}
+
+// 2. 상품 상세 정보 내부 객체 타입 정의
+export interface ProductDetailInfo {
+  shortDescription?: string | null;
+  description?: string | null;
+  ingredients?: string | null;
+  usageInfo?: string | null;
+  productInfo?: string | null;
+}
+
+export interface ProductImage {
+  id: number;
+  productId?: number;
+  imageUrl: string;
+  caption?: string | null;
+  altText?: string | null;
+  imageType?: ProductImageType | string | null;
+  sortOrder: number;
+}
+
+export interface ProductColor {
+  id: number;
+  colorName: string;
+  colorCode: string;
+  imageUrl?: string | null;
+  stock: number;
+  sortOrder: number;
+}
+
+// 3. 상품 상세 조회용 DTO (ProductDetailResponse.java와 1:1 매핑)
+export interface ProductDetailResponse {
+  id: number;
+  name: string;
+  category?: string | null;
+  price: number;
+  originalPrice?: number | null;
+  thumbnail?: string | null;
+  isNew: boolean;
+  isBest: boolean;
+  stock: number;
+  status: ProductStatus | string;
+  detail: ProductDetailInfo | null;
+  images: ProductImage[];
+  colors: ProductColor[];
+}
+
+// --- Admin API Fetch Functions ---
 
 export async function fetchAdminProducts() {
   const response = await fetch(
@@ -507,26 +581,15 @@ export async function fetchAdminProducts() {
   return (await response.json()) as AdminProduct[];
 }
 
-export async function createProduct(
-  data: ProductRequest
-) {
+export async function createProduct(data: ProductRequest) {
   return requestProduct("", "POST", data);
 }
 
-export async function updateProduct(
-  id: number,
-  data: ProductRequest
-) {
-  return requestProduct(
-    `/${id}`,
-    "PUT",
-    data
-  );
+export async function updateProduct(id: number, data: ProductRequest) {
+  return requestProduct(`/${id}`, "PUT", data);
 }
 
-export async function deleteProduct(
-  id: number
-) {
+export async function deleteProduct(id: number) {
   const response = await fetch(
     `${API_BASE_URL}/products/${id}`,
     {
@@ -535,9 +598,7 @@ export async function deleteProduct(
   );
 
   if (!response.ok) {
-    throw new Error(
-      "상품 삭제에 실패했습니다."
-    );
+    throw new Error("상품 삭제에 실패했습니다.");
   }
 }
 
@@ -558,8 +619,7 @@ async function requestProduct(
   );
 
   if (!response.ok) {
-    const body =
-      await response.json().catch(() => null);
+    const body = await response.json().catch(() => null);
 
     throw new Error(
       body?.message ??
@@ -571,17 +631,34 @@ async function requestProduct(
   return (await response.json()) as AdminProduct;
 }
 
-export type ProductImageType = "MAIN" | "DETAIL";
+// --- Public API Fetch Functions ---
 
-export interface ProductImage {
-  id: number;
-  productId: number;
-  imageUrl: string;
-  caption?: string | null;
-  altText?: string | null;
-  imageType: ProductImageType;
-  sortOrder: number;
+export async function fetchProducts(category?: string): Promise<ProductListResponse[]> {
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+  const response = await fetch(`${API_BASE_URL}/products${query}`, { 
+    cache: "no-store", 
+  });
+  
+  if (!response.ok) {
+    throw new Error("상품 목록을 불러오지 못했습니다.");
+  }
+  
+  return (await response.json()) as ProductListResponse[];
 }
+
+export async function fetchProduct(id: string | number): Promise<ProductDetailResponse> {
+  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    cache: "no-store",
+  });
+  
+  if (!response.ok) {
+    throw new Error("상품 상세 정보를 불러오지 못했습니다.");
+  }
+  
+  return (await response.json()) as ProductDetailResponse;
+}
+
+// --- Image API Fetch Functions ---
 
 export async function fetchProductImages(productId: number) {
   const response = await fetch(
@@ -628,8 +705,7 @@ export async function uploadProductImage(
   );
 
   if (!response.ok) {
-    const body =
-      await response.json().catch(() => null);
+    const body = await response.json().catch(() => null);
 
     throw new Error(
       body?.message ??
@@ -674,8 +750,7 @@ export async function updateProductImage(
   );
 
   if (!response.ok) {
-    const body =
-      await response.json().catch(() => null);
+    const body = await response.json().catch(() => null);
 
     throw new Error(
       body?.message ??

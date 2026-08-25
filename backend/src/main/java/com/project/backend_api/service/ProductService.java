@@ -14,10 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import org.springframework.beans.factory.annotation.Value;
+
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,7 +37,13 @@ public class ProductService {
     private final ProductDetailRepository productDetailRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductColorRepository productColorRepository;
+    
+    // S3 클라이언트 주입
+    private final AmazonS3 amazonS3;
 
+    // S3 버킷 이름 주입
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucket;
 
     // =========================================================
     // PUBLIC PRODUCT
@@ -304,7 +314,7 @@ public class ProductService {
 
 
         // -----------------------------------------------------
-        // 실제 이미지 파일 저장
+        // 실제 이미지 파일 저장 (S3)
         // -----------------------------------------------------
 
         String imageUrl =
@@ -479,7 +489,7 @@ public class ProductService {
 
 
         // -----------------------------------------------------
-        // 실제 이미지 파일 삭제
+        // 실제 이미지 파일 삭제 (S3)
         // -----------------------------------------------------
 
         deleteProductImageFile(
@@ -496,19 +506,11 @@ public class ProductService {
 
 
     // =========================================================
-    // PRODUCT IMAGE FILE SYSTEM
+    // PRODUCT IMAGE FILE SYSTEM (AWS S3)
     // =========================================================
 
     /**
-     * 상품 이미지 파일 저장
-     *
-     * 저장 위치:
-     *
-     * backend/
-     *   uploads/
-     *     products/
-     *       {productId}/
-     *          UUID.jpg
+     * 상품 이미지 파일 저장 (S3)
      */
     private String saveProductImage(
             Integer productId,
@@ -516,127 +518,65 @@ public class ProductService {
     ) {
 
         try {
-
-            Path uploadDir =
-                    Paths.get(
-                            System.getProperty("user.dir"),
-                            "uploads",
-                            "products",
-                            String.valueOf(productId)
-                    );
-
-
-            // 폴더 없으면 생성
-            Files.createDirectories(
-                    uploadDir
-            );
-
-
             // -------------------------------------------------
             // 확장자 추출
             // -------------------------------------------------
-
-            String originalFilename =
-                    file.getOriginalFilename();
-
+            String originalFilename = file.getOriginalFilename();
             String extension = "";
 
-            if (
-                    originalFilename != null &&
-                    originalFilename.contains(".")
-            ) {
-
-                extension =
-                        originalFilename.substring(
-                                originalFilename.lastIndexOf(".")
-                        );
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
 
+            // -------------------------------------------------
+            // UUID 파일명 및 S3 경로 설정
+            // -------------------------------------------------
+            String filename = UUID.randomUUID() + extension;
+            String objectName = "products/" + productId + "/" + filename;
 
             // -------------------------------------------------
-            // UUID 파일명
+            // S3 메타데이터 설정 및 업로드
             // -------------------------------------------------
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(file.getContentType());
+            metadata.setContentLength(file.getSize());
 
-            String filename =
-                    UUID.randomUUID()
-                            + extension;
+            // 퍼블릭 읽기 권한(CannedAccessControlList.PublicRead) 부여
+            amazonS3.putObject(new PutObjectRequest(bucket, objectName, file.getInputStream(), metadata));
+                    
 
-
-            Path targetPath =
-                    uploadDir
-                            .resolve(filename)
-                            .normalize();
-
-
-            // -------------------------------------------------
-            // 파일 저장
-            // -------------------------------------------------
-
-            Files.copy(
-                    file.getInputStream(),
-                    targetPath
-            );
-
-
-            // DB에는 URL만 저장
-            return "/uploads/products/"
-                    + productId
-                    + "/"
-                    + filename;
-
+            // 업로드된 파일의 S3 URL 반환
+            return amazonS3.getUrl(bucket, objectName).toString();
 
         } catch (IOException e) {
-
-            throw new RuntimeException(
-                    "상품 이미지 저장에 실패했습니다.",
-                    e
-            );
+            throw new RuntimeException("상품 이미지(S3) 저장에 실패했습니다.", e);
         }
     }
 
 
     /**
-     * 실제 상품 이미지 파일 삭제
+     * 실제 상품 이미지 파일 삭제 (S3)
      */
     private void deleteProductImageFile(
             String imageUrl
     ) {
 
-        if (
-                imageUrl == null ||
-                imageUrl.isBlank()
-        ) {
+        if (imageUrl == null || imageUrl.isBlank()) {
             return;
         }
 
-
         try {
+            // S3 URL에서 객체 키(objectName)만 추출
+            // 예: https://your-bucket.s3.ap-northeast-2.amazonaws.com/products/1/uuid.jpg
+            // -> products/1/uuid.jpg
+            String splitStr = ".com/";
+            if (imageUrl.contains(splitStr)) {
+                String objectName = imageUrl.substring(imageUrl.indexOf(splitStr) + splitStr.length());
+                amazonS3.deleteObject(new DeleteObjectRequest(bucket, objectName));
+            }
 
-            String relativePath =
-                    imageUrl.startsWith("/")
-                            ? imageUrl.substring(1)
-                            : imageUrl;
-
-
-            Path targetPath =
-                    Paths.get(
-                            System.getProperty("user.dir"),
-                            relativePath
-                    )
-                    .normalize();
-
-
-            Files.deleteIfExists(
-                    targetPath
-            );
-
-
-        } catch (IOException e) {
-
-            throw new RuntimeException(
-                    "상품 이미지 삭제에 실패했습니다.",
-                    e
-            );
+        } catch (Exception e) {
+            throw new RuntimeException("상품 이미지(S3) 삭제에 실패했습니다.", e);
         }
     }
 }
