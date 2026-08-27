@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProductDetailResponse, resolveAssetUrl } from "../../lib/api"; // 경로를 맞춰주세요
+import { addToCart, getAccessToken } from "../../lib/api";
 
 function formatPrice(price: number) {
   return `${price.toLocaleString("ko-KR")}원`;
@@ -10,12 +12,50 @@ function formatPrice(price: number) {
 export default function ProductDetail({ product }: { product: ProductDetailResponse }) {
   const [selectedColor, setSelectedColor] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
   
   // 가격이 숫자 타입으로 내려오므로 계산이 훨씬 간단해졌습니다.
   const totalPrice = useMemo(() => product.price * quantity, [product.price, quantity]);
 
   // S3 썸네일 URL 매핑
   const mainImage = resolveAssetUrl(product.thumbnail) || "/images/no-image.png";
+
+  const handleAddToCart = async () => {
+    // 1. 로그인 체크 (토큰이 없으면 로그인 페이지로)
+    if (!getAccessToken()) {
+      alert("로그인이 필요한 서비스입니다.");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      // 2. 방금 만든 API 호출
+      await addToCart(product.id, quantity);
+      
+      // 3. 확인 후 장바구니로 이동할지 묻기
+      if (confirm("장바구니에 상품을 담았습니다. 장바구니로 이동하시겠습니까?")) {
+        router.push("/cart");
+      }
+    } catch (error: any) {
+      alert(error.message || "장바구니 담기에 실패했습니다.");
+    }
+  };
+
+  // 💡 차후 구현하실 '바로 구매' 핸들러 (참고용)
+  const handleBuyNow = async () => {
+    if (!getAccessToken()) {
+      alert("로그인이 필요한 서비스입니다.");
+      router.push("/login");
+      return;
+    }
+    try {
+      await addToCart(product.id, quantity);
+      // TODO: 차후 결제(Order) 페이지로 즉시 이동
+      router.push("/checkout"); 
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
   
   // 뱃지 처리 (isNew, isBest 기준)
   let badge = "";
@@ -23,7 +63,7 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
   else if (product.isBest) badge = "BEST";
 
   // 백엔드에서 받아온 이미지 목록 중 DETAIL 타입만 상세 이미지로 필터링
-  const detailImages = product.images
+  const detailImages = (product.images || [])
     .filter((img) => img.imageType === "DETAIL" || !img.imageType)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((img) => resolveAssetUrl(img.imageUrl))
@@ -99,9 +139,25 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
               <strong className="text-[16px] font-medium">{formatPrice(totalPrice)}</strong>
             </div>
 
-            <div className="mt-7 grid grid-cols-2 gap-2.5">
-              <button type="button" className="h-12 border border-black bg-white text-[11px] tracking-[0.08em] transition hover:bg-[#f5f5f5]">ADD TO BAG</button>
-              <button type="button" className="h-12 bg-black text-[11px] tracking-[0.08em] text-white transition hover:bg-[#333]">BUY NOW</button>
+            <div className="flex items-center ...">
+              <button onClick={() => setQuantity(prev => Math.max(1, prev - 1))}>-</button>
+              <span>{quantity}</span>
+              <button onClick={() => setQuantity(prev => prev + 1)}>+</button>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button 
+                onClick={handleAddToCart} 
+                className="flex-1 border border-black px-6 py-4 text-[10px] tracking-[0.1em] hover:bg-black hover:text-white transition"
+              >
+                ADD TO CART
+              </button>
+              <button 
+                onClick={handleBuyNow} 
+                className="flex-1 bg-black px-6 py-4 text-[10px] tracking-[0.1em] text-white hover:bg-[#333] transition"
+              >
+                BUY NOW
+              </button>
             </div>
 
             {product.detail?.description && (

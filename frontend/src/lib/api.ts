@@ -1,260 +1,103 @@
 // src/lib/api.ts
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
-export const BACKEND_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+/* =========================================================================
+ * 0. 메모리 토큰 저장소 및 헬퍼 함수
+ * ========================================================================= */
+let inMemoryAccessToken: string | null = null;
 
-// =========================
-// Community API
-// =========================
+// 💡 1. 토큰을 바깥에서 읽을 수 있게 해주는 함수 추가
+export const getAccessToken = () => inMemoryAccessToken;
 
-export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
-
-export interface CommunityPostListItem {
-  id: number;
-  category: CommunityCategory;
-  title: string;
-  author: string;
-  viewCount: number;
-  isPinned: boolean;
-  createdAt: string;
-}
-
-export interface CommunityPostDetail extends CommunityPostListItem {
-  content: string;
-  updatedAt: string;
-}
-
-export interface CommunityPostCreateRequest {
-  category: CommunityCategory;
-  title: string;
-  content: string;
-  author: string;
-  isPinned: boolean;
-}
-
-export async function fetchCommunityPosts(category?: string) {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const response = await fetch(`${API_BASE_URL}/community/posts${query}`, {
-    cache: "no-store",
-  });
-
-  if (!response.ok) throw new Error("게시글 목록을 불러오지 못했습니다.");
-  return (await response.json()) as CommunityPostListItem[];
-}
-
-export async function fetchCommunityPost(id: string | number) {
-  const response = await fetch(`${API_BASE_URL}/community/posts/${id}`, {
-    cache: "no-store",
-  });
-
-  if (!response.ok) throw new Error("게시글을 불러오지 못했습니다.");
-  return (await response.json()) as CommunityPostDetail;
-}
-
-export async function createCommunityPost(data: CommunityPostCreateRequest) {
-  const response = await fetch(`${API_BASE_URL}/community/posts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? "게시글 등록에 실패했습니다.");
+export const setAccessToken = (token: string | null) => {
+  inMemoryAccessToken = token;
+  
+  // 💡 2. 토큰이 바뀔 때마다 브라우저에 커스텀 이벤트를 방송합니다.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("authStateChanged"));
   }
-
-  return (await response.json()) as CommunityPostDetail;
-}
-
-
-// =========================
-// Resume API
-// =========================
-
-export type ResumeProfile = {
-  name?: string | null;
-  jobTitle?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  githubUrl?: string | null;
-  profileImage?: string | null;
-  shortIntro?: string | null;
 };
 
-export type UpdateResumeProfileRequest = {
-  name?: string | null;
-  jobTitle?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  githubUrl?: string | null;
-  profileImage?: File | null;
-  shortIntro?: string | null;
+const getAuthHeaders = (isJson: boolean = true): HeadersInit => {
+  const headers: Record<string, string> = {};
+  if (isJson) headers["Content-Type"] = "application/json";
+  
+  if (inMemoryAccessToken) {
+    headers["Authorization"] = `Bearer ${inMemoryAccessToken}`;
+  }
+  return headers;
 };
 
-export interface ResumeSkill {
-  id: number;
-  name: string;
-  category?: string | null;
-  level?: string | null;
-  sortOrder?: number | null;
+async function handleResponseError(response: Response): Promise<never> {
+  if (response.status === 401) throw new Error("인증이 필요하거나 세션이 만료되었습니다.");
+  if (response.status === 403) throw new Error("해당 작업을 수행할 권한이 없습니다.");
+
+  let errorMessage = "요청 처리 중 오류가 발생했습니다.";
+  try {
+    const errorData = await response.json();
+    errorMessage = errorData.message || errorMessage;
+  } catch {
+    const textError = await response.text();
+    if (textError) errorMessage = textError;
+  }
+  throw new Error(errorMessage);
 }
 
-export interface ResumeExperience {
-  id: number;
-  companyName: string;
-  position?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  description?: string | null;
-  sortOrder?: number | null;
+export function resolveAssetUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${API_BASE_URL}${path}`;
 }
 
-export interface ResumeEducation {
-  id: number;
-  schoolName: string;
-  major?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  description?: string | null;
-  sortOrder?: number | null;
+/* =========================================================================
+ * 1. 이력서 (Resume) 관련 타입
+ * ========================================================================= */
+export interface ResumeProfile { 
+  id?: number; 
+  name: string; 
+  jobTitle?: string; 
+  githubUrl?: string; 
+  shortIntro?: string; 
+  email?: string; 
+  phone?: string; // 💡 컴포넌트 요구사항 추가
+  profileImage?: string; 
 }
-
-export interface ResumeIntroduction {
-  id: number;
-  title?: string | null;
-  content: string;
-  sortOrder?: number | null;
-}
+export interface ResumeSkill { id: number; name: string; category?: string; level?: string; sortOrder: number; }
+export interface ResumeExperience { id: number; companyName: string; position: string; startDate?: string | null; endDate?: string | null; description?: string; sortOrder: number; }
+export interface ResumeEducation { id: number; schoolName: string; major?: string; startDate?: string | null; endDate?: string | null; description?: string; sortOrder: number; }
+export interface ResumeIntroduction { id: number; title?: string; content: string; sortOrder: number; }
 
 export interface ResumeData {
-  profile: ResumeProfile | null;
+  profile: ResumeProfile;
   skills: ResumeSkill[];
   experiences: ResumeExperience[];
   educations: ResumeEducation[];
   introductions: ResumeIntroduction[];
 }
 
-export async function fetchResume(): Promise<ResumeData> {
-  const response = await fetch(`${API_BASE_URL}/resume`, { cache: "no-store" });
-  if (!response.ok) throw new Error("이력서 정보를 불러오지 못했습니다.");
-  return response.json();
-}
-
-async function resumeRequest<T>(
-  path: string,
-  method: "POST" | "PUT" | "DELETE",
-  body?: unknown
-): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/resume${path}`, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? "요청 처리에 실패했습니다.");
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json();
-}
-
-export async function updateResumeProfile(
-  payload: UpdateResumeProfileRequest
-) {
-  const formData = new FormData();
-
-  formData.append("name", payload.name ?? "");
-  formData.append("jobTitle", payload.jobTitle ?? "");
-  formData.append("email", payload.email ?? "");
-  formData.append("phone", payload.phone ?? "");
-  formData.append("githubUrl", payload.githubUrl ?? "");
-  formData.append("shortIntro", payload.shortIntro ?? "");
-
-  if (payload.profileImage) {
-    formData.append("profileImage", payload.profileImage);
-  }
-
-  const response = await fetch(
-    `${API_BASE_URL}/resume/profile`,
-    {
-      method: "PUT",
-      body: formData,
-    }
-  );
-
-  const contentType = response.headers.get("content-type");
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `프로필 저장에 실패했습니다. (${response.status})`
-    );
-  }
-
-  if (
-    contentType?.includes("application/json") &&
-    text.trim()
-  ) {
-    return JSON.parse(text);
-  }
-
-  return null;
-}
-
-export function createResumeSkill(data: Omit<ResumeSkill, "id">) {
-  return resumeRequest<ResumeSkill>("/skills", "POST", data);
-}
-export function updateResumeSkill(id: number, data: Omit<ResumeSkill, "id">) {
-  return resumeRequest<ResumeSkill>(`/skills/${id}`, "PUT", data);
-}
-export function deleteResumeSkill(id: number) {
-  return resumeRequest<void>(`/skills/${id}`, "DELETE");
-}
-
-export function createResumeExperience(data: Omit<ResumeExperience, "id">) {
-  return resumeRequest<ResumeExperience>("/experiences", "POST", data);
-}
-export function updateResumeExperience(id: number, data: Omit<ResumeExperience, "id">) {
-  return resumeRequest<ResumeExperience>(`/experiences/${id}`, "PUT", data);
-}
-export function deleteResumeExperience(id: number) {
-  return resumeRequest<void>(`/experiences/${id}`, "DELETE");
-}
-
-export function createResumeEducation(data: Omit<ResumeEducation, "id">) {
-  return resumeRequest<ResumeEducation>("/educations", "POST", data);
-}
-export function updateResumeEducation(id: number, data: Omit<ResumeEducation, "id">) {
-  return resumeRequest<ResumeEducation>(`/educations/${id}`, "PUT", data);
-}
-export function deleteResumeEducation(id: number) {
-  return resumeRequest<void>(`/educations/${id}`, "DELETE");
-}
-
-export function createResumeIntroduction(data: Omit<ResumeIntroduction, "id">) {
-  return resumeRequest<ResumeIntroduction>("/introductions", "POST", data);
-}
-export function updateResumeIntroduction(id: number, data: Omit<ResumeIntroduction, "id">) {
-  return resumeRequest<ResumeIntroduction>(`/introductions/${id}`, "PUT", data);
-}
-export function deleteResumeIntroduction(id: number) {
-  return resumeRequest<void>(`/introductions/${id}`, "DELETE");
-}
-
-
-// =========================
-// Project API
-// =========================
-
-export type ProjectStatus = "PLANNING" | "IN_PROGRESS" | "COMPLETED";
+/* =========================================================================
+ * 2. 프로젝트 (Project & Media) 관련 타입
+ * ========================================================================= */
+export type ProjectStatus = "IN_PROGRESS" | "COMPLETED" | "PLANNING" | string;
 
 export interface PortfolioProject {
   id: number;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  techStack?: string | null;
+  projectUrl?: string | null;
+  githubUrl?: string | null;
+  thumbnail?: string | null; // 💡 thumbnailUrl -> thumbnail로 통일
+  status: ProjectStatus;
+  isFeatured: boolean;
+  sortOrder: number;
+  startDate?: string | null; // 💡 DB 반영
+  endDate?: string | null;   // 💡 DB 반영
+}
+
+export interface ProjectRequest {
   title: string;
   subtitle?: string | null;
   description?: string | null;
@@ -267,550 +110,388 @@ export interface PortfolioProject {
   sortOrder: number;
   startDate?: string | null;
   endDate?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
 }
-
-export type ProjectRequest = Omit<PortfolioProject, "id" | "createdAt" | "updatedAt">;
-export type ProjectMediaType = "IMAGE" | "VIDEO";
 
 export interface ProjectMedia {
   id: number;
-  projectId: number;
-  mediaType: ProjectMediaType;
   mediaUrl: string;
+  mediaType: string;
   caption?: string | null;
   altText?: string | null;
   sortOrder: number;
 }
 
-export async function fetchProjects(featured?: boolean) {
-  const query = featured ? "?featured=true" : "";
-  const response = await fetch(`${API_BASE_URL}/projects${query}`, { cache: "no-store" });
-  if (!response.ok) throw new Error("프로젝트 목록을 불러오지 못했습니다.");
-  return (await response.json()) as PortfolioProject[];
-}
-
-export async function fetchProject(id: number | string) {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${id}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("프로젝트 정보를 불러오지 못했습니다.");
-  }
-
-  return (await response.json()) as PortfolioProject;
-}
-
-export async function createProject(data: ProjectRequest) {
-  return requestProject("", "POST", data);
-}
-export async function updateProject(id: number, data: ProjectRequest) {
-  return requestProject(`/${id}`, "PUT", data);
-}
-export async function deleteProject(id: number) {
-  const response = await fetch(`${API_BASE_URL}/projects/${id}`, { method: "DELETE" });
-  if (!response.ok) throw new Error("프로젝트 삭제에 실패했습니다.");
-}
-async function requestProject(path: string, method: "POST" | "PUT", data: ProjectRequest) {
-  const response = await fetch(`${API_BASE_URL}/projects${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? "프로젝트 저장에 실패했습니다.");
-  }
-  return (await response.json()) as PortfolioProject;
-}
-
-export async function fetchProjectMedia(projectId: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/media`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("프로젝트 미디어를 불러오지 못했습니다.");
-  }
-
-  return (await response.json()) as ProjectMedia[];
-}
-
-export async function createProjectMedia(
-  projectId: number,
-  data: {
-    file: File;
-    caption?: string;
-    altText?: string;
-    sortOrder?: number;
-  }
-) {
-  const formData = new FormData();
-
-  formData.append("file", data.file);
-  formData.append("caption", data.caption ?? "");
-  formData.append("altText", data.altText ?? "");
-  formData.append("sortOrder", String(data.sortOrder ?? 0));
-
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/media`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-      body?.error ??
-      "프로젝트 미디어 등록에 실패했습니다."
-    );
-  }
-
-  return (await response.json()) as ProjectMedia;
-}
-
-export async function updateProjectMedia(
-  projectId: number,
-  mediaId: number,
-  data: {
-    caption?: string;
-    altText?: string;
-    sortOrder?: number;
-  }
-) {
-  const formData = new FormData();
-
-  formData.append("caption", data.caption ?? "");
-  formData.append("altText", data.altText ?? "");
-  formData.append("sortOrder", String(data.sortOrder ?? 0));
-
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/media/${mediaId}`,
-    {
-      method: "PUT",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-      body?.error ??
-      "프로젝트 미디어 수정에 실패했습니다."
-    );
-  }
-
-  return (await response.json()) as ProjectMedia;
-}
-
-export async function deleteProjectMedia(
-  projectId: number,
-  mediaId: number
-) {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/media/${mediaId}`,
-    {
-      method: "DELETE",
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-      body?.error ??
-      "프로젝트 미디어 삭제에 실패했습니다."
-    );
-  }
-}
-
-// =========================
-// Cafe24 API
-// =========================
-
-export interface Cafe24IntegrationStatus {
-  configured: boolean;
-  mallId: string | null;
-  apiBaseUrl: string | null;
-  redirectUri: string | null;
-  oauthReady: boolean;
-  message: string;
-}
-
-export async function fetchCafe24IntegrationStatus() {
-  const response = await fetch(`${API_BASE_URL}/integrations/cafe24/status`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Cafe24 연동 상태를 확인하지 못했습니다.");
-  return (await response.json()) as Cafe24IntegrationStatus;
-}
-
-
-// =========================
-// Utilities
-// =========================
-
-export function resolveAssetUrl(path?: string | null) {
-  if (!path) return null;
-
-  if (
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("blob:") ||
-    path.startsWith("data:")
-  ) {
-    return path;
-  }
-
-  return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-}
-
-
-// =========================
-// Shop & Product API
-// =========================
-
-export type ProductStatus = "SALE" | "SOLD_OUT" | "HIDDEN";
-export type ProductImageType = "MAIN" | "DETAIL";
-
-export interface AdminProduct {
-  id: number;
-  name: string;
-  subtitle?: string | null;
-  description?: string | null;
-  category?: string | null;
-  price: number;
-  originalPrice?: number | null;
-  thumbnail?: string | null;
-  isNew: boolean;
-  isBest: boolean;
-  stock: number;
-  status: ProductStatus;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-}
-
-export type ProductRequest = Omit<AdminProduct, "id" | "createdAt" | "updatedAt">;
-
-// 1. 상품 목록 조회용 DTO (ProductController의 getProducts 반환 타입)
+/* =========================================================================
+ * 3. 상품 (Product) 관련 타입
+ * ========================================================================= */
 export interface ProductListResponse {
   id: number;
   name: string;
-  subtitle?: string | null;
   price: number;
   originalPrice?: number | null;
   thumbnail?: string | null;
-  isNew: boolean;
-  isBest: boolean;
-}
-
-// 2. 상품 상세 정보 내부 객체 타입 정의
-export interface ProductDetailInfo {
-  shortDescription?: string | null;
-  description?: string | null;
-  ingredients?: string | null;
-  usageInfo?: string | null;
-  productInfo?: string | null;
+  isNew?: boolean;
+  isBest?: boolean;
+  category?: string | null;
 }
 
 export interface ProductImage {
   id: number;
-  productId?: number;
-  imageUrl: string;
-  caption?: string | null;
-  altText?: string | null;
-  imageType?: ProductImageType | string | null;
+  imageUrl?: string;
+  imageType?: "MAIN" | "THUMBNAIL" | "DETAIL" | string;
+  altText?: string | null; // 💡 컴포넌트 요구사항
   sortOrder: number;
+}
+
+export interface ProductDetailInfo {
+  description?: string;
+  shortDescription?: string;
+  usageInfo?: string;
+  ingredients?: string;
+  productInfo?: string;
 }
 
 export interface ProductColor {
   id: number;
   colorName: string;
   colorCode: string;
-  imageUrl?: string | null;
-  stock: number;
-  sortOrder: number;
 }
 
-// 3. 상품 상세 조회용 DTO (ProductDetailResponse.java와 1:1 매핑)
-export interface ProductDetailResponse {
-  id: number;
+export interface ProductDetailResponse extends ProductListResponse {
+  stockQuantity?: number;
+  detail?: ProductDetailInfo;
+  images?: ProductImage[];
+  colors?: ProductColor[];
+}
+
+export interface AdminProduct extends ProductListResponse {
+  subtitle?: string | null;
+  stock?: number;
+  status?: string;
+  description: string;
+}
+
+export interface ProductRequest {
   name: string;
+  subtitle?: string | null;
+  description?: string | null;
   category?: string | null;
   price: number;
   originalPrice?: number | null;
   thumbnail?: string | null;
-  isNew: boolean;
-  isBest: boolean;
-  stock: number;
-  status: ProductStatus | string;
-  detail: ProductDetailInfo | null;
-  images: ProductImage[];
-  colors: ProductColor[];
+  isNew?: boolean;
+  isBest?: boolean;
+  stock?: number;
+  status?: string;
 }
 
-// --- Admin API Fetch Functions ---
-
-export async function fetchAdminProducts() {
-  const response = await fetch(
-    `${API_BASE_URL}/products/admin`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "상품 목록을 불러오지 못했습니다."
-    );
-  }
-
-  return (await response.json()) as AdminProduct[];
-}
-
-export async function createProduct(data: ProductRequest) {
-  return requestProduct("", "POST", data);
-}
-
-export async function updateProduct(id: number, data: ProductRequest) {
-  return requestProduct(`/${id}`, "PUT", data);
-}
-
-export async function deleteProduct(id: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/products/${id}`,
-    {
-      method: "DELETE",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("상품 삭제에 실패했습니다.");
-  }
-}
-
-async function requestProduct(
-  path: string,
-  method: "POST" | "PUT",
-  data: ProductRequest
-) {
-  const response = await fetch(
-    `${API_BASE_URL}/products${path}`,
-    {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-      body?.error ??
-      "상품 저장에 실패했습니다."
-    );
-  }
-
-  return (await response.json()) as AdminProduct;
-}
-
-// --- Public API Fetch Functions ---
-
-export async function fetchProducts(category?: string): Promise<ProductListResponse[]> {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const response = await fetch(`${API_BASE_URL}/products${query}`, { 
-    cache: "no-store", 
-  });
-  
-  if (!response.ok) {
-    throw new Error("상품 목록을 불러오지 못했습니다.");
-  }
-  
-  return (await response.json()) as ProductListResponse[];
-}
-
-export async function fetchProduct(id: string | number): Promise<ProductDetailResponse> {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    cache: "no-store",
-  });
-  
-  if (!response.ok) {
-    throw new Error("상품 상세 정보를 불러오지 못했습니다.");
-  }
-  
-  return (await response.json()) as ProductDetailResponse;
-}
-
-// --- Image API Fetch Functions ---
-
-export async function fetchProductImages(productId: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/products/${productId}/images`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("상품 이미지를 불러오지 못했습니다.");
-  }
-
-  return (await response.json()) as ProductImage[];
-}
-
-export async function uploadProductImage(
-  productId: number,
-  data: {
-    file: File;
-    caption?: string;
-    altText?: string;
-    imageType: ProductImageType;
-    sortOrder?: number;
-  }
-) {
-  const formData = new FormData();
-
-  formData.append("file", data.file);
-  formData.append("caption", data.caption ?? "");
-  formData.append("altText", data.altText ?? "");
-  formData.append("imageType", data.imageType);
-  formData.append(
-    "sortOrder",
-    String(data.sortOrder ?? 0)
-  );
-
-  const response = await fetch(
-    `${API_BASE_URL}/products/${productId}/images`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-        body?.error ??
-        "상품 이미지 등록에 실패했습니다."
-    );
-  }
-
-  return (await response.json()) as ProductImage;
-}
-
-export async function updateProductImage(
-  productId: number,
-  imageId: number,
-  data: {
-    caption?: string;
-    altText?: string;
-    imageType?: ProductImageType;
-    sortOrder?: number;
-  }
-) {
-  const formData = new FormData();
-
-  formData.append("caption", data.caption ?? "");
-  formData.append("altText", data.altText ?? "");
-
-  if (data.imageType) {
-    formData.append("imageType", data.imageType);
-  }
-
-  formData.append(
-    "sortOrder",
-    String(data.sortOrder ?? 0)
-  );
-
-  const response = await fetch(
-    `${API_BASE_URL}/products/${productId}/images/${imageId}`,
-    {
-      method: "PUT",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-
-    throw new Error(
-      body?.message ??
-        body?.error ??
-        "상품 이미지 수정에 실패했습니다."
-    );
-  }
-
-  return (await response.json()) as ProductImage;
-}
-
-export async function deleteProductImage(
-  productId: number,
-  imageId: number
-) {
-  const response = await fetch(
-    `${API_BASE_URL}/products/${productId}/images/${imageId}`,
-    {
-      method: "DELETE",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("상품 이미지 삭제에 실패했습니다.");
-  }
-}
-
-// 회원가입 API 호출
-export async function signupUser(userData: any) {
-  const response = await fetch("http://localhost:8080/api/users/signup", {
+/* =========================================================================
+ * 4. 인증(Auth) API
+ * ========================================================================= */
+export async function signupUser(userData: { email: string; password: string; name?: string }) {
+  const response = await fetch(`${API_BASE_URL}/api/users/signup`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userData),
   });
-
-  if (!response.ok) {
-    // 400 Bad Request 등의 에러 시 백엔드에서 보낸 에러 메시지를 던짐
-    const errorText = await response.text();
-    throw new Error(errorText);
-  }
-
-  return response.text(); // 성공 메시지 반환
+  if (!response.ok) await handleResponseError(response);
+  return response.text();
 }
 
-// 로그인 API 호출
-export async function loginUser(loginData: any) {
-  const response = await fetch("http://localhost:8080/api/users/login", {
+export async function loginUser(credentials: { email: string; password: string }) {
+  const response = await fetch(`${API_BASE_URL}/api/users/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(loginData),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+    credentials: "include", 
   });
+  if (!response.ok) await handleResponseError(response);
+  const data = await response.json();
+  setAccessToken(data.accessToken); 
+  return data;
+}
 
+export async function silentRefresh() {
+  const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
+    method: "POST",
+    credentials: "include", 
+  });
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
+    setAccessToken(null);
+    throw new Error("세션이 만료되었습니다.");
+  }
+  const data = await response.json();
+  setAccessToken(data.accessToken);
+  return data.accessToken;
+}
+
+export async function logoutUser() {
+  try {
+    await fetch(`${API_BASE_URL}/api/users/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (e) {} finally { setAccessToken(null); }
+}
+
+/* =========================================================================
+ * 5. 이력서 (Resume) API
+ * ========================================================================= */
+export async function fetchResume(): Promise<ResumeData> {
+  const response = await fetch(`${API_BASE_URL}/api/resume`);
+  if (!response.ok) throw new Error("이력서 데이터를 불러오는데 실패했습니다.");
+  return response.json();
+}
+
+export async function updateResumeProfile(profileData: any) {
+  const isFormData = typeof FormData !== "undefined" && profileData instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/profile`, {
+    method: "PUT",
+    headers: getAuthHeaders(!isFormData),
+    body: isFormData ? profileData : JSON.stringify(profileData),
+    credentials: "include",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.ok;
+}
+
+// [Education]
+export async function createResumeEducation(data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function updateResumeEducation(id: number, data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function deleteResumeEducation(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+// [Experience]
+export async function createResumeExperience(data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function updateResumeExperience(id: number, data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function deleteResumeExperience(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+// [Skill]
+export async function createResumeSkill(data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function updateResumeSkill(id: number, data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function deleteResumeSkill(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+// [Introduction]
+export async function createResumeIntroduction(data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function updateResumeIntroduction(id: number, data: any) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function deleteResumeIntroduction(id: number) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+/* =========================================================================
+ * 6. 프로젝트 (Project & Media) API
+ * ========================================================================= */
+export async function fetchProjects(isFeatured?: boolean): Promise<PortfolioProject[]> {
+  const url = isFeatured ? `${API_BASE_URL}/api/projects?featured=true` : `${API_BASE_URL}/api/projects`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("프로젝트 데이터를 불러오는데 실패했습니다.");
+  return response.json();
+}
+
+export async function fetchProject(projectId: number | string): Promise<PortfolioProject> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`);
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+export async function createProject(projectData: any) {
+  const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.json();
+}
+
+export async function updateProject(projectId: number | string, projectData: any) {
+  const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+export async function deleteProject(projectId: number | string) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
+}
+
+// [Project Media]
+export async function fetchProjectMedia(projectId: number | string): Promise<ProjectMedia[]> {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`);
+  if (!response.ok) await handleResponseError(response); return response.json();
+}
+export async function createProjectMedia(projectId: number | string, data: any) {
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? data : JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function updateProjectMedia(projectId: number | string, mediaId: number | string, data: any) {
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? data : JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+export async function deleteProjectMedia(projectId: number | string, mediaId: number | string) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+/* =========================================================================
+ * 7. 상품 (Product & Image) API
+ * ========================================================================= */
+export async function fetchProducts(category?: string): Promise<ProductListResponse[]> {
+  const url = category 
+    ? `${API_BASE_URL}/api/products?category=${encodeURIComponent(category)}`
+    : `${API_BASE_URL}/api/products`;
+    
+  const response = await fetch(url);
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
+}
+
+export async function getProductById(productId: number | string): Promise<ProductDetailResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/products/${productId}`);
+  if (!response.ok) await handleResponseError(response); return response.json();
+}
+
+// [Shop Admin]
+export async function fetchAdminProducts(): Promise<AdminProduct[]> {
+  const response = await fetch(`${API_BASE_URL}/api/admin/products`, { headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.json();
+}
+
+export async function createProduct(productData: any) {
+  const isFormData = typeof FormData !== "undefined" && productData instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/products`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? productData : JSON.stringify(productData), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.json(); // 생성 후 객체반환 처리 지원
+}
+
+export async function updateProduct(productId: number | string, productData: any) {
+  const isFormData = typeof FormData !== "undefined" && productData instanceof FormData;
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}`, { method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? productData : JSON.stringify(productData), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+export async function deleteProduct(productId: number | string) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
+}
+
+// [Product Images]
+export async function fetchProductImages(productId: number | string): Promise<ProductImage[]> {
+  const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images`);
+  if (!response.ok) await handleResponseError(response); return response.json();
+}
+export async function uploadProductImage(productId: number | string, data: any) {
+  // formData 인자 지원을 유연하게 처리
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  
+  // 컴포넌트에서 객체 리터럴 형태로 넘길경우 FormData로 변환하는 방어로직 추가
+  let finalBody = data;
+  if (!isFormData && data.file) {
+    const formData = new FormData();
+    formData.append("file", data.file);
+    if(data.imageType) formData.append("imageType", data.imageType);
+    if(data.altText) formData.append("altText", data.altText);
+    if(data.sortOrder !== undefined) formData.append("sortOrder", String(data.sortOrder));
+    finalBody = formData;
   }
 
-  return response.json(); // 성공 시 { accessToken: "eyJhbG..." } 형태의 JSON 반환
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/images`, { 
+    method: "POST", 
+    headers: getAuthHeaders(false), 
+    body: finalBody, 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.ok;
+}
+export async function deleteProductImage(productId: number | string, imageId: number | string) {
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/images/${imageId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
+}
+
+/* =========================================================================
+ * 8. 장바구니 (Cart) API
+ * ========================================================================= */
+export interface CartItemResponse {
+  cartItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  thumbnailUrl?: string | null;
+  quantity: number;
+}
+
+// 1. 내 장바구니 조회
+export async function fetchCartItems(): Promise<CartItemResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/cart`, {
+    method: "GET",
+    headers: getAuthHeaders(true),
+    credentials: "include",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+// 2. 장바구니에 담기
+export async function addToCart(productId: number, quantity: number = 1) {
+  const response = await fetch(`${API_BASE_URL}/api/cart`, {
+    method: "POST",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify({ productId, quantity }),
+    credentials: "include",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.text();
+}
+
+// 3. 수량 변경
+export async function updateCartItemQuantity(cartItemId: number, quantity: number) {
+  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`, {
+    method: "PUT",
+    headers: getAuthHeaders(true),
+    credentials: "include",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.text();
+}
+
+// 4. 상품 삭제
+export async function removeCartItem(cartItemId: number) {
+  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(true),
+    credentials: "include",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.text();
 }

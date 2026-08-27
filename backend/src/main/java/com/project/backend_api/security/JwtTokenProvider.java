@@ -1,6 +1,5 @@
 package com.project.backend_api.security;
 
-import com.project.backend_api.domain.user.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -9,14 +8,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -24,67 +26,91 @@ public class JwtTokenProvider {
     @Value("${jwt.secret}")
     private String secretKeyString;
 
-    @Value("${jwt.expiration}")
-    private long tokenValidTime;
+    private final long accessTokenValidityInMilliseconds = 1000L * 60 * 30;
+    private final long refreshTokenValidityInMilliseconds = 1000L * 60 * 60 * 24 * 14;
 
+    // 💡 Key 대신 SecretKey 타입 사용 (최신 권장 사항)
     private SecretKey secretKey;
 
     @PostConstruct
     protected void init() {
-        // 비밀키를 암호화 알고리즘에 맞게 세팅
-        this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes(StandardCharsets.UTF_8));
+        this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes());
     }
 
-    // JWT 토큰 생성
-    public String createToken(String email, UserRole role) {
+    public String createAccessToken(String email, String role) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + tokenValidTime);
+        Date validity = new Date(now.getTime() + accessTokenValidityInMilliseconds);
 
+        // 💡 set 접두사가 모두 사라지고, claim()으로 직관적인 데이터 주입
         return Jwts.builder()
-                .subject(email) // 토큰 주인을 이메일로 설정
-                .claim("role", role.name()) // 권한 정보 저장
+                .subject(email)
+                .claim("role", role)
                 .issuedAt(now)
                 .expiration(validity)
-                .signWith(secretKey) // 비밀키로 서명
+                .signWith(secretKey) // 알고리즘 생략 가능 (키 길이에 맞춰 자동 선택됨)
                 .compact();
     }
 
-    // 토큰에서 인증 정보 꺼내기
-    public Authentication getAuthentication(String token) {
-        Claims claims = parseClaims(token);
-        String email = claims.getSubject();
-        String role = claims.get("role", String.class);
+    public String createRefreshToken(String email) {
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + refreshTokenValidityInMilliseconds);
 
-        // Spring Security가 알아들을 수 있는 인증 객체 생성
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
-        return new UsernamePasswordAuthenticationToken(email, "", Collections.singletonList(authority));
+        return Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(validity)
+                .signWith(secretKey)
+                .compact();
     }
 
-    // HTTP 요청 헤더에서 토큰 꺼내기
-    public String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        // "Bearer eyJhbGci..." 형태로 넘어오므로 앞의 "Bearer "를 잘라냄
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+    public String getEmailFromToken(String token) {
+        // 💡 parserBuilder() 대신 parser() 사용, getBody() 대신 getPayload() 사용
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
     }
 
-    // 토큰의 유효성 검증
     public boolean validateToken(String token) {
         try {
-            parseClaims(token);
+            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
 
-    private Claims parseClaims(String token) {
-        return Jwts.parser()
+    // 💡 1. HTTP 헤더에서 토큰을 추출하는 메서드
+    public String resolveToken(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        // "Bearer "로 시작하는지 확인 후, 실제 토큰 문자열만 잘라서 반환
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    // 💡 2. 토큰을 복호화하여 Spring Security용 인증(Authentication) 객체를 만드는 메서드
+    public Authentication getAuthentication(String token) {
+        // 토큰의 알맹이(Payload) 복호화
+        Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+
+        String email = claims.getSubject();
+        String role = claims.get("role", String.class);
+
+        // Spring Security가 인식할 수 있는 권한 객체로 변환
+        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(role));
+
+        // 인증된 사용자 정보(Principal) 생성 (비밀번호는 보안상 빈 문자열로 처리)
+        UserDetails principal = new User(email, "", authorities);
+
+        // SecurityContext에 넣을 최종 Authentication 객체 반환
+        return new UsernamePasswordAuthenticationToken(principal, token, authorities);
     }
 }

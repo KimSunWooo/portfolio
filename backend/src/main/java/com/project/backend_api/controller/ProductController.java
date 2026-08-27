@@ -5,56 +5,63 @@ import com.project.backend_api.dto.product.ProductDetailResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.service.ProductService;
-
 import com.project.backend_api.dto.product.ProductImageResponse;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
-
 import jakarta.validation.Valid;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class ProductController {
 
     private final ProductService productService;
 
     // =========================
-    // Public
+    // Public (일반 유저용 퍼블릭 조회)
     // =========================
 
-    @GetMapping
+    // 👉 GET /api/products
+    @GetMapping("/products")
     public List<ProductListResponse> getProducts(
             @RequestParam(required = false) String category
     ) {
         return productService.getProducts(category);
     }
 
-    @GetMapping("/{id}")
+    // 👉 GET /api/products/{id}
+    @GetMapping("/products/{id}")
     public ProductDetailResponse getProduct(
             @PathVariable Integer id
     ) {
         return productService.getProduct(id);
     }
 
+    // 👉 GET /api/products/{productId}/images
+    @GetMapping("/products/{productId}/images")
+    public List<ProductImageResponse> getProductImages(
+            @PathVariable Integer productId
+    ) {
+        return productService.getProductImages(productId);
+    }
 
     // =========================
-    // Admin
+    // Admin (관리자 전용 CRUD)
     // =========================
 
-    @GetMapping("/admin")
+    // 👉 GET /api/admin/products
+    @GetMapping("/admin/products")
     public List<Product> getAdminProducts() {
         return productService.getAdminProducts();
     }
 
-    @PostMapping
+    // 👉 POST /api/admin/products
+    @PostMapping("/admin/products")
     @ResponseStatus(HttpStatus.CREATED)
     public Product createProduct(
             @Valid @RequestBody ProductRequest request
@@ -62,7 +69,8 @@ public class ProductController {
         return productService.createProduct(request);
     }
 
-    @PutMapping("/{id}")
+    // 👉 PUT /api/admin/products/{id}
+    @PutMapping("/admin/products/{id}")
     public Product updateProduct(
             @PathVariable Integer id,
             @Valid @RequestBody ProductRequest request
@@ -70,7 +78,8 @@ public class ProductController {
         return productService.updateProduct(id, request);
     }
 
-    @DeleteMapping("/{id}")
+    // 👉 DELETE /api/admin/products/{id}
+    @DeleteMapping("/admin/products/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProduct(
             @PathVariable Integer id
@@ -78,15 +87,9 @@ public class ProductController {
         productService.deleteProduct(id);
     }
 
-    @GetMapping("/{productId}/images")
-    public List<ProductImageResponse> getProductImages(
-            @PathVariable Integer productId
-    ) {
-        return productService.getProductImages(productId);
-    }
-
+    // 👉 POST /api/admin/products/{productId}/images
     @PostMapping(
-            value = "/{productId}/images",
+            value = "/admin/products/{productId}/images",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     @ResponseStatus(HttpStatus.CREATED)
@@ -108,7 +111,8 @@ public class ProductController {
         );
     }
 
-    @PutMapping("/{productId}/images/{imageId}")
+    // 👉 PUT /api/admin/products/{productId}/images/{imageId}
+    @PutMapping("/admin/products/{productId}/images/{imageId}")
     public ProductImageResponse updateProductImage(
             @PathVariable Integer productId,
             @PathVariable Integer imageId,
@@ -127,7 +131,8 @@ public class ProductController {
         );
     }
 
-    @DeleteMapping("/{productId}/images/{imageId}")
+    // 👉 DELETE /api/admin/products/{productId}/images/{imageId}
+    @DeleteMapping("/admin/products/{productId}/images/{imageId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProductImage(
             @PathVariable Integer productId,

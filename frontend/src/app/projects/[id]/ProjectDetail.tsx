@@ -1,25 +1,12 @@
 "use client";
 
 import {
-  BACKEND_BASE_URL,
+  resolveAssetUrl, // 💡 BACKEND_BASE_URL 대신 이것을 직접 가져옵니다.
   type PortfolioProject,
   type ProjectMedia,
 } from "../../../lib/api";
 
-function resolveAssetUrl(path?: string | null) {
-  if (!path) return null;
-
-  if (
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("blob:") ||
-    path.startsWith("data:")
-  ) {
-    return path;
-  }
-
-  return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-}
+// 💡 여기에 있던 중복된 resolveAssetUrl 함수는 삭제했습니다.
 
 function formatPeriod(
   start?: string | null,

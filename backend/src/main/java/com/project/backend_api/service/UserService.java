@@ -34,17 +34,37 @@ public class UserService {
         userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new IllegalArgumentException("잘못된 비밀번호입니다.");
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        String token = jwtTokenProvider.createToken(user.getEmail(), user.getRole());
+        // 1. Access Token 발급 (수명 짧음, 권한 정보 포함)
+        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole().name());
+        
+        // 2. Refresh Token 발급 (수명 긺, 일반적으로 권한 없이 식별자만 포함)
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail());
 
-        return new TokenResponse(token);
+        return new TokenResponse(accessToken, refreshToken);
+    }
+
+    public String refreshAccessToken(String refreshToken) {
+        // 1. Refresh Token 자체의 유효성(위조 여부 및 만료일) 검증
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("유효하지 않거나 만료된 Refresh Token입니다.");
+        }
+
+        // 2. 토큰에서 유저 이메일 추출 (JwtTokenProvider에 이메일 추출 메서드 필요)
+        String email = jwtTokenProvider.getEmailFromToken(refreshToken);
+
+        // 3. DB에서 유저 조회 (삭제된 유저이거나 권한이 변경되었을 수 있으므로 항상 최신 정보 조회)
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+
+        // 4. 새로운 Access Token을 발급하여 반환
+        return jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole().name());
     }
 }

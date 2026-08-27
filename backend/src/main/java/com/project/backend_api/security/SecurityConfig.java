@@ -1,5 +1,7 @@
 package com.project.backend_api.security;
 
+import jakarta.servlet.DispatcherType;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,19 +42,26 @@ public class SecurityConfig {
             // 2. 세션 비활성화 (Stateless)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // 3. URL별 접근 제어
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // 회원가입, 로그인은 모두 허용
-                .requestMatchers("/api/users/signup", "/api/users/login").permitAll()
-                // 상품 조회(GET)는 허용 (포트폴리오이므로 누구나 볼 수 있게)
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+            // SecurityConfig.java 내의 filterChain 메서드 일부
 
-                // 💡여기가 핵심입니다! "/error" 경로를 허용해 주어야 진짜 에러 원인(400)을 볼 수 있습니다.
+            .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
+                
+                // 💡 누구나 접근 가능한 공개 API (회원가입, 로그인, 상품 목록/상세 조회)
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/cart/**").permitAll()
+                
+                // 🔒 관리자(ADMIN)만 접근 가능한 API (상품 등록, 수정, 삭제)
+                // 주의: DB와 JWT 토큰에는 "ROLE_ADMIN"이라는 형태로 저장되어 있어야 Spring이 "ADMIN"으로 인식합니다.
+                .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                
                 .requestMatchers("/actuator/**", "/error").permitAll()
-                // AWS 상태 체크 등 필요시 열어둘 경로
-                .requestMatchers("/actuator/**").permitAll()
-                // 그 외의 POST, PUT, DELETE 등 상품 등록/수정/삭제 등은 인증된(로그인한) 사람만 허용
-                // 추후 Admin 권한 세분화 가능
+                
+                // 그 외의 모든 요청은 로그인(인증)된 유저만 접근 가능
                 .anyRequest().authenticated()
             )
             // 4. 커스텀 필터 등록
