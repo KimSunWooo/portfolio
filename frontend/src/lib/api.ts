@@ -329,39 +329,77 @@ export async function fetchProject(projectId: number | string): Promise<Portfoli
 
 export async function createProject(projectData: any) {
   const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.json();
+  const response = await fetch(`${API_BASE_URL}/api/projects`, { 
+    method: "POST", 
+    headers: getAuthHeaders(!isFormData), 
+    body: isFormData ? projectData : JSON.stringify(projectData), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
 }
 
 export async function updateProject(projectId: number | string, projectData: any) {
   const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, { 
+    method: "PUT", 
+    headers: getAuthHeaders(!isFormData), 
+    body: isFormData ? projectData : JSON.stringify(projectData), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.ok;
 }
 
 export async function deleteProject(projectId: number | string) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, { 
+    method: "DELETE", 
+    headers: getAuthHeaders(true), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.text();
 }
 
 // [Project Media]
 export async function fetchProjectMedia(projectId: number | string): Promise<ProjectMedia[]> {
   const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`);
-  if (!response.ok) await handleResponseError(response); return response.json();
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
 }
+
 export async function createProjectMedia(projectId: number | string, data: any) {
   const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? data : JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`, { 
+    method: "POST", 
+    headers: getAuthHeaders(!isFormData), 
+    body: isFormData ? data : JSON.stringify(data), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.ok;
 }
+
 export async function updateProjectMedia(projectId: number | string, mediaId: number | string, data: any) {
   const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? data : JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media/${mediaId}`, { 
+    method: "PUT", 
+    headers: getAuthHeaders(!isFormData), 
+    body: isFormData ? data : JSON.stringify(data), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.ok;
 }
+
 export async function deleteProjectMedia(projectId: number | string, mediaId: number | string) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media/${mediaId}`, { 
+    method: "DELETE", 
+    headers: getAuthHeaders(true), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.ok;
 }
 
 /* =========================================================================
@@ -494,4 +532,61 @@ export async function removeCartItem(cartItemId: number) {
   });
   if (!response.ok) await handleResponseError(response);
   return response.text();
+}
+
+/* =========================================================================
+ * 9. 어드민 고객(Users) 관리 API 및 타입
+ * ========================================================================= */
+export interface AdminUserResponse {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  joinDate: string;
+  orderCount?: number;
+  totalSpent?: number;
+}
+
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  number: number;
+}
+
+export async function fetchAdminUsers(
+  page: number = 0,
+  size: number = 10,
+  searchName: string = "",
+  tier: string = ""
+): Promise<PaginatedResponse<AdminUserResponse>> {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+  });
+  if (searchName) params.append("name", searchName);
+  if (tier) params.append("tier", tier);
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/users?${params.toString()}`, {
+    headers: getAuthHeaders(true),
+    credentials: "include",
+  });
+  
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  number: number; // 현재 페이지 (0부터 시작)
+}
+
+// 💡 고객 등급 계산 헬퍼 함수 (프론트에서 보여줄 때 사용)
+export function getCustomerTier(totalSpent: number) {
+  if (totalSpent >= 1000000) return "VIP";
+  if (totalSpent >= 300000) return "GOLD";
+  if (totalSpent >= 100000) return "SILVER";
+  return "BRONZE";
 }

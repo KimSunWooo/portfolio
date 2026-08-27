@@ -42,7 +42,7 @@ export default function Header() {
       }
       if (token) {
         setIsLoggedIn(true);
-        setIsAdmin(checkAdminStatus(token)); // 💡 토큰에서 관리자 권한 추출 후 세팅
+        setIsAdmin(checkAdminStatus(token)); 
         updateCartCount();
       }
     };
@@ -87,22 +87,21 @@ export default function Header() {
     return null; 
   }
 
-  const checkAdminStatus = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-    );
-    const payload = JSON.parse(jsonPayload);
-    
-    // Spring Security의 권한 클레임(role, auth 등)에서 ADMIN 문자열이 포함되어 있는지 확인 (예: USER_ADMIN, ROLE_ADMIN)
-    const roleString = String(payload.role || payload.auth || payload.roles || "");
-    return roleString.includes("ADMIN");
-  } catch (error) {
-    return false;
+  function checkAdminStatus(token: string) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+      
+      const roleString = String(payload.role || payload.auth || payload.roles || "");
+      return roleString.includes("ADMIN");
+    } catch (error) {
+      return false;
+    }
   }
-};
 
   return (
     <header className="sticky top-0 z-50 flex h-[74px] items-center justify-between border-b border-black/10 bg-white px-7 max-sm:px-5">
@@ -129,7 +128,7 @@ export default function Header() {
           <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
         )}
         {isAdmin && (
-          <Link href="/admin/products" className="font-bold text-black hover:text-gray-500">
+          <Link href="/admin/resume" className="font-bold text-black hover:text-gray-500">
             ADMIN
           </Link>
         )}
