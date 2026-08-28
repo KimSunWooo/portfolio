@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@tosspayments/payment-sdk": "^1.9.3",
     "jwt-decode": "^4.0.0",
     "react-daum-postcode": "^4.0.0"
   }

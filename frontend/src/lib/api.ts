@@ -1,19 +1,17 @@
 // src/lib/api.ts
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 /* =========================================================================
  * 0. 메모리 토큰 저장소 및 헬퍼 함수
  * ========================================================================= */
 let inMemoryAccessToken: string | null = null;
 
-// 💡 1. 토큰을 바깥에서 읽을 수 있게 해주는 함수 추가
 export const getAccessToken = () => inMemoryAccessToken;
 
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
   
-  // 💡 2. 토큰이 바뀔 때마다 브라우저에 커스텀 이벤트를 방송합니다.
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("authStateChanged"));
   }
@@ -60,7 +58,7 @@ export interface ResumeProfile {
   githubUrl?: string; 
   shortIntro?: string; 
   email?: string; 
-  phone?: string; // 💡 컴포넌트 요구사항 추가
+  phone?: string; 
   profileImage?: string; 
 }
 export interface ResumeSkill { id: number; name: string; category?: string; level?: string; sortOrder: number; }
@@ -89,12 +87,12 @@ export interface PortfolioProject {
   techStack?: string | null;
   projectUrl?: string | null;
   githubUrl?: string | null;
-  thumbnail?: string | null; // 💡 thumbnailUrl -> thumbnail로 통일
+  thumbnail?: string | null; 
   status: ProjectStatus;
   isFeatured: boolean;
   sortOrder: number;
-  startDate?: string | null; // 💡 DB 반영
-  endDate?: string | null;   // 💡 DB 반영
+  startDate?: string | null; 
+  endDate?: string | null;   
 }
 
 export interface ProjectRequest {
@@ -140,7 +138,7 @@ export interface ProductImage {
   id: number;
   imageUrl?: string;
   imageType?: "MAIN" | "THUMBNAIL" | "DETAIL" | string;
-  altText?: string | null; // 💡 컴포넌트 요구사항
+  altText?: string | null; 
   sortOrder: number;
 }
 
@@ -258,7 +256,6 @@ export async function updateResumeProfile(profileData: any) {
   return response.ok;
 }
 
-// [Education]
 export async function createResumeEducation(data: any) {
   const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
@@ -272,7 +269,6 @@ export async function deleteResumeEducation(id: number) {
   if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
-// [Experience]
 export async function createResumeExperience(data: any) {
   const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
@@ -286,7 +282,6 @@ export async function deleteResumeExperience(id: number) {
   if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
-// [Skill]
 export async function createResumeSkill(data: any) {
   const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
@@ -300,7 +295,6 @@ export async function deleteResumeSkill(id: number) {
   if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
-// [Introduction]
 export async function createResumeIntroduction(data: any) {
   const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
@@ -432,7 +426,7 @@ export async function fetchAdminProducts(): Promise<AdminProduct[]> {
 export async function createProduct(productData: any) {
   const isFormData = typeof FormData !== "undefined" && productData instanceof FormData;
   const response = await fetch(`${API_BASE_URL}/api/admin/products`, { method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? productData : JSON.stringify(productData), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.json(); // 생성 후 객체반환 처리 지원
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
 export async function updateProduct(productId: number | string, productData: any) {
@@ -452,10 +446,8 @@ export async function fetchProductImages(productId: number | string): Promise<Pr
   if (!response.ok) await handleResponseError(response); return response.json();
 }
 export async function uploadProductImage(productId: number | string, data: any) {
-  // formData 인자 지원을 유연하게 처리
   const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
   
-  // 컴포넌트에서 객체 리터럴 형태로 넘길경우 FormData로 변환하는 방어로직 추가
   let finalBody = data;
   if (!isFormData && data.file) {
     const formData = new FormData();
@@ -492,18 +484,68 @@ export interface CartItemResponse {
   quantity: number;
 }
 
-// 1. 내 장바구니 조회
-export async function fetchCartItems(): Promise<CartItemResponse[]> {
-  const response = await fetch(`${API_BASE_URL}/api/cart`, {
-    method: "GET",
-    headers: getAuthHeaders(true),
-    credentials: "include",
-  });
-  if (!response.ok) await handleResponseError(response);
-  return response.json();
+export interface GuestCartItem {
+  cartItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  thumbnailUrl: string;
+  quantity: number;
 }
 
-// 2. 장바구니에 담기
+export const fetchCartItems = async () => {
+  const token = getAccessToken();
+
+  if (token) {
+    // 💡 백틱 적용 완료
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("장바구니 조회 실패");
+    return response.json();
+  } else {
+    const guestCart = localStorage.getItem("guestCart");
+    return guestCart ? JSON.parse(guestCart) : [];
+  }
+};
+
+export const addCartItem = async (product: any, quantity: number) => {
+  const token = getAccessToken();
+
+  if (token) {
+    // 💡 백틱 적용 완료
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ productId: product.id, quantity }),
+    });
+    if (!response.ok) throw new Error("장바구니 담기에 실패했습니다.");
+  } else {
+    const existingCart = localStorage.getItem("guestCart");
+    let cart: GuestCartItem[] = existingCart ? JSON.parse(existingCart) : [];
+
+    const existingItemIndex = cart.findIndex(item => item.productId === product.id);
+
+    if (existingItemIndex > -1) {
+      cart[existingItemIndex].quantity += quantity;
+    } else {
+      cart.push({
+        cartItemId: Date.now(), 
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        thumbnailUrl: product.thumbnail,
+        quantity: quantity,
+      });
+    }
+
+    localStorage.setItem("guestCart", JSON.stringify(cart));
+  }
+};
+
 export async function addToCart(productId: number, quantity: number = 1) {
   const response = await fetch(`${API_BASE_URL}/api/cart`, {
     method: "POST",
@@ -515,7 +557,6 @@ export async function addToCart(productId: number, quantity: number = 1) {
   return response.text();
 }
 
-// 3. 수량 변경
 export async function updateCartItemQuantity(cartItemId: number, quantity: number) {
   const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`, {
     method: "PUT",
@@ -526,7 +567,6 @@ export async function updateCartItemQuantity(cartItemId: number, quantity: numbe
   return response.text();
 }
 
-// 4. 상품 삭제
 export async function removeCartItem(cartItemId: number) {
   const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}`, {
     method: "DELETE",
@@ -579,17 +619,63 @@ export async function fetchAdminUsers(
   return response.json();
 }
 
-export interface PaginatedResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  number: number; // 현재 페이지 (0부터 시작)
-}
-
-// 💡 고객 등급 계산 헬퍼 함수 (프론트에서 보여줄 때 사용)
 export function getCustomerTier(totalSpent: number) {
   if (totalSpent >= 1000000) return "VIP";
   if (totalSpent >= 300000) return "GOLD";
   if (totalSpent >= 100000) return "SILVER";
   return "BRONZE";
 }
+
+/* =========================================================================
+ * 결제 (Payment) API
+ * ========================================================================= */
+export const confirmPayment = async (paymentData: { paymentKey: string; orderId: string; amount: number }) => {
+  const token = getAccessToken();
+  
+  // 💡 백틱 적용 완료
+  const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`, 
+    },
+    body: JSON.stringify(paymentData),
+  });
+
+  if (!response.ok) {
+    const errorMsg = await response.text();
+    throw new Error(errorMsg);
+  }
+
+  return response.json();
+};
+
+export interface PaymentHistoryResponse {
+  id: number;
+  orderId: string;
+  paymentKey: string;
+  amount: number;
+  status: string;
+  cancelReason: string | null;
+  createdAt: string;
+  canceledAt: string | null;
+}
+
+export const fetchPaymentHistory = async (status: "DONE" | "CANCELED"): Promise<PaymentHistoryResponse[]> => {
+  const token = getAccessToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  // 💡 백틱 적용 완료
+  const response = await fetch(`${API_BASE_URL}/api/payments/history?status=${status}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("결제 내역을 불러오는데 실패했습니다.");
+  }
+
+  return response.json();
+};

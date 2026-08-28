@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # 1. MySQL 컨테이너
+  mysql_db:
+    image: mysql:8.0
+    container_name: my-portfolio-mysql
+    restart: always
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_ROOT_PASSWORD: root  # 원하는 루트 비밀번호로 변경
+      MYSQL_DATABASE: portfolio_db   # 생성할 DB 이름
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql # DB 데이터가 날아가지 않도록 볼륨 마운트
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  # 2. Spring Boot 컨테이너
+  spring_backend:
+    build: .
+    container_name: my-portfolio-backend
+    restart: always
+    depends_on:
+      - mysql_db # DB가 먼저 켜진 후 백엔드가 켜지도록 설정
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Seoul
+      # 💡 중요: 도커 내부에서는 localhost 대신 컨테이너 이름(mysql_db)으로 통신합니다!
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql_db:3306/portfolio_db?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mmtlqkfmm1!
+      
+      # 토스페이먼츠 시크릿 키 등 숨겨야 하는 변수는 여기서 덮어씌울 수 있다.
+      TOSS_SECRET_KEY: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+
+volumes:
+  mysql_data: # DB 데이터를 EC2 하드디스크에 영구 저장하기 위한 볼륨

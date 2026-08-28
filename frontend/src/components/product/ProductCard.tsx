@@ -1,22 +1,36 @@
 "use client";
 
 import Icon from "../common/Icon";
-import { ProductListResponse, resolveAssetUrl } from "../../lib/api";
+// 💡 addCartItem 추가 import
+import { ProductListResponse, resolveAssetUrl, addCartItem } from "../../lib/api";
 
 export default function ProductCard({ 
-  product, 
-  onAddCart 
+  product 
 }: { 
   product: ProductListResponse; 
-  onAddCart?: (product: ProductListResponse) => void 
 }) {
-  // 백엔드 에셋 경로 매핑 (null일 경우 엑스박스를 방지하기 위한 더미 이미지 경로 지정 가능)
   const imageUrl = resolveAssetUrl(product.thumbnail) || "/images/no-image.png";
   
-  // 뱃지 출력 로직 (isNew가 우선이거나 isBest가 우선이도록 설정 가능)
   let badge = "";
   if (product.isNew) badge = "NEW";
   else if (product.isBest) badge = "BEST";
+
+  // 💡 부모에게 의존하지 않고 카드 자체에서 직접 장바구니 담기 처리
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault(); // 카드 클릭 시 상세 페이지로 넘어가는 것 방지
+    
+    try {
+      // lib/api.ts 의 분기 처리 로직 호출 (수량은 기본 1개로)
+      await addCartItem(product, 1);
+      
+      alert("장바구니에 담겼습니다!");
+      
+      // 헤더의 장바구니 숫자 즉시 업데이트
+      window.dispatchEvent(new Event("cartUpdated"));
+    } catch (error: any) {
+      alert(error.message || "장바구니 담기에 실패했습니다.");
+    }
+  };
 
   return (
     <article className="min-w-0">
@@ -32,12 +46,9 @@ export default function ProductCard({
           className="block h-full w-full object-cover transition-transform duration-[550ms] ease-out group-hover:scale-[1.025]" 
         />
         <button 
-          className="absolute bottom-[11px] right-[11px] z-[2] grid h-[35px] w-[35px] place-items-center rounded-full bg-white/95" 
+          className="absolute bottom-[11px] right-[11px] z-[2] grid h-[35px] w-[35px] place-items-center rounded-full bg-white/95 transition hover:bg-black hover:text-white" 
           aria-label={`${product.name} 장바구니 담기`} 
-          onClick={(e) => { 
-            e.preventDefault(); 
-            onAddCart?.(product); 
-          }}
+          onClick={handleAddToCart} // 💡 직접 만든 핸들러 연결
         >
           <Icon name="bag" size={17} />
         </button>
@@ -47,7 +58,6 @@ export default function ProductCard({
           {product.name}
         </a>
         <div className="mt-1.5 flex items-baseline gap-2">
-          {/* 숫자를 원화 형태로 포맷팅 */}
           <strong className="text-[12px] font-medium">
             {product.price.toLocaleString()}원
           </strong>

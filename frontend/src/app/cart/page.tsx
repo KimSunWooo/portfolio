@@ -14,7 +14,7 @@ import {
   silentRefresh,     
   type CartItemResponse 
 } from "../../lib/api";
-import nextConfig from "../../../next.config";
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
@@ -25,20 +25,18 @@ export default function CartPage() {
     try {
       setLoading(true);
       
-      // 💡 1. 메모리에 토큰이 있는지 확인하고, 없으면 복구(silentRefresh)를 먼저 기다립니다.
       let token = getAccessToken();
       if (!token) {
         token = await silentRefresh();
       }
 
-      // 2. 토큰이 완벽히 준비된 상태에서 장바구니 데이터를 불러옵니다.
       const items = await fetchCartItems();
       setCartItems(items);
 
     } catch (error) {
       console.error("장바구니 조회 실패", error);
       alert("로그인이 만료되었거나 권한이 없습니다.");
-      router.replace("/login"); // 복구 실패 시 로그인 페이지로 추방
+      router.replace("/login"); 
     } finally {
       setLoading(false);
     }
@@ -52,7 +50,6 @@ export default function CartPage() {
     if (newQuantity < 1) return;
     try {
       await updateCartItemQuantity(cartItemId, newQuantity);
-      // 로컬 상태 즉시 업데이트 (API 재호출 대기 시간 단축)
       setCartItems(prev => prev.map(item => item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item));
     } catch (error: any) {
       alert(error.message);
@@ -70,6 +67,30 @@ export default function CartPage() {
   };
 
   const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const clientKey = "test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq";
+
+  const handlePayment = async () => {
+    try {
+      const tossPayments = await loadTossPayments(clientKey);
+
+      // 💡 결제 상품명을 동적으로 생성 (예: "반팔티 외 1건")
+      const orderName = cartItems.length > 1 
+        ? `${cartItems[0].productName} 외 ${cartItems.length - 1}건` 
+        : cartItems[0]?.productName || "포트폴리오 테스트 결제";
+
+      await tossPayments.requestPayment("카드", {
+        amount: 100, // 💡 현재 테스트를 위해 100원으로 고정 (나중에 totalPrice 로 변경)
+        orderId: `ORDER_${new Date().getTime()}`,
+        orderName: orderName,
+        customerName: "김선우", 
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`, 
+      });
+    } catch (error) {
+      console.error("결제창 호출 실패:", error);
+    }
+  };
 
   return (
     <>
@@ -94,7 +115,6 @@ export default function CartPage() {
                 {cartItems.map((item) => (
                   <div key={item.cartItemId} className="flex items-center gap-5 border-b border-black/10 py-6 max-sm:flex-col max-sm:items-start">
                     
-                    {/* 이미지 */}
                     <Link href={`/shop/${item.productId}`} className="h-[100px] w-[80px] shrink-0 bg-[#f5f4ef] overflow-hidden">
                       {item.thumbnailUrl ? (
                         <img src={resolveAssetUrl(item.thumbnailUrl) || ""} alt={item.productName} className="h-full w-full object-cover" />
@@ -103,7 +123,6 @@ export default function CartPage() {
                       )}
                     </Link>
 
-                    {/* 상품 정보 */}
                     <div className="flex-1">
                       <Link href={`/shop/${item.productId}`} className="text-[13px] hover:underline">
                         {item.productName}
@@ -111,7 +130,6 @@ export default function CartPage() {
                       <p className="mt-2 text-[11px] text-[#777]">₩{item.price.toLocaleString()}</p>
                     </div>
 
-                    {/* 수량 및 삭제 컨트롤 */}
                     <div className="flex items-center gap-6 max-sm:w-full max-sm:justify-between">
                       <div className="flex h-9 items-center border border-black/20">
                         <button onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)} className="w-8 text-[#777] hover:text-black">-</button>
@@ -140,8 +158,13 @@ export default function CartPage() {
                   <span>TOTAL</span>
                   <span>₩{totalPrice.toLocaleString()}</span>
                 </div>
-                <button className="mt-8 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]">
-                  CHECKOUT
+                
+                {/* 💡 여기에 onClick 추가됨 */}
+                <button 
+                  onClick={handlePayment} 
+                  className="mt-8 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+                >
+                  CHECKOUT (100원 테스트 결제)
                 </button>
               </div>
             </>

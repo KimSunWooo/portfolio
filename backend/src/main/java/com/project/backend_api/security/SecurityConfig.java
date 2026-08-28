@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/cart/**").permitAll()
+                .requestMatchers("/api/payments/**").permitAll()
                 
                 // 🔒 관리자(ADMIN)만 접근 가능한 API (상품 등록, 수정, 삭제)
                 // 주의: DB와 JWT 토큰에는 "ROLE_ADMIN"이라는 형태로 저장되어 있어야 Spring이 "ADMIN"으로 인식합니다.
