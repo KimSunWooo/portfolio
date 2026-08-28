@@ -119,6 +119,7 @@ export interface ProjectMedia {
   caption?: string | null;
   altText?: string | null;
   sortOrder: number;
+  description: string;
 }
 
 /* =========================================================================
@@ -169,6 +170,7 @@ export interface AdminProduct extends ProductListResponse {
   stock?: number;
   status?: string;
   description: string;
+  color?:string[];
 }
 
 export interface ProductRequest {
@@ -183,6 +185,7 @@ export interface ProductRequest {
   isBest?: boolean;
   stock?: number;
   status?: string;
+  color?:string[];
 }
 
 /* =========================================================================

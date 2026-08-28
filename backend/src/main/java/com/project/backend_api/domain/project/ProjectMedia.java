@@ -38,6 +38,9 @@ public class ProjectMedia {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "description")
+    private String description;
+
     public static ProjectMedia create(
             Integer projectId,
             MediaType mediaType,

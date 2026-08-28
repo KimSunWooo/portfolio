@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'hince.co.kr', // 허용할 크롤링 대상 도메인
+      },
+    ],
+  },
+
 };
 // next.config.js
 module.exports = {
