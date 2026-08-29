@@ -83,8 +83,63 @@
 **💡 Issue 1: SSR 렌더링 시 API Connection Refused 에러**
 * **현상:** 관리자 페이지(CSR)에서는 보이나, 메인 페이지(SSR)에서는 추가된 데이터가 보이지 않음.
 * **원인:** SSR 환경(Next.js 도커 컨테이너 내부)에서 `localhost:8080`을 호출하면 브라우저가 아닌 컨테이너 자기 자신을 가리키게 되어 연결이 거부됨.
-* **해결:** 환경(서버/클라이언트)에 따라 API 호출 URL을 동적으로 분기 처리.
-```typescript
-// 서버(SSR)일 때는 도커 내부망 호스트를, 클라이언트(Browser)일 때는 퍼블릭 주소를 맵핑
-const IS_SERVER = typeof window === "undefined";
-const API_BASE_URL = IS_SERVER ? "http://backend-api:8080" : "http://localhost:8080";
+* **해결:** 환경(서버/클라이언트)에 따라 API 호출 URL을 동적으로 분기 처리. (서버일 때는 도커 내부망 호스트, 클라이언트일 때는 퍼블릭 주소 맵핑)
+
+**💡 Issue 2: 이미지 리소스 ERR_NAME_NOT_RESOLVED 에러**
+* **현상:** SSR 통신 해결 후 데이터는 넘어오나 이미지가 엑스박스로 깨짐.
+* **원인:** 서버에서 렌더링 된 이미지 태그(`src="http://backend-api:8080/..."`)를 브라우저가 해석하지 못함.
+* **해결:** 에셋 경로 변환 함수(`resolveAssetUrl`)를 구현하여, 파일 리소스 경로만큼은 **퍼블릭 주소(`localhost:8080`)** 로 강제 고정.
+
+<br>
+
+### 📍 4. 프론트엔드 최적화 (Rendering & Performance)
+
+**💡 Issue 1: Next.js 정적 캐싱 무효화**
+* **현상:** DB에 새 데이터를 추가해도 메인 페이지에 반영되지 않음.
+* **원인:** Next.js App Router의 강력한 캐싱 정책.
+* **해결:** `fetch` 옵션에 `{ cache: "no-store" }`를 추가하고, 컴포넌트 최상단에 `export const dynamic = "force-dynamic"`을 선언하여 SSR 동적 렌더링 강제화.
+
+**💡 Issue 2: 도메인 별 UI 및 백그라운드 API 분리 최적화**
+* **현상:** 포트폴리오 메인 화면에서도 쇼핑몰 장바구니 데이터를 불러오는 불필요한 네트워크 트래픽 발생.
+* **원인:** Header 컴포넌트가 모든 페이지에 마운트되면서 내부의 `useEffect`가 무조건 실행됨.
+* **해결:** 
+  * `usePathname()`을 활용해 현재 경로를 식별(`isShopArea`).
+  * 권한 체크(`restoreAuth`)는 어드민 관리를 위해 **글로벌하게 유지**.
+  * 장바구니 갱신 로직은 `!isShopArea` 방어막을 쳐 **호출 원천 차단**.
+  * 포트폴리오 ➔ 쇼핑몰 진입 시점을 감지하는 별도의 `useEffect`를 추가하여 생명주기 완벽 제어 및 네트워크 리소스 절약.
+
+<br>
+
+---
+
+<br>
+
+## 🚀 How to Run (실행 방법)
+
+본 프로젝트는 Docker 환경으로 구성되어 있어 단일 명령어로 전체 서비스를 실행할 수 있습니다.
+
+**1. 저장소 클론**
+```bash
+$ git clone https://github.com/KimSunWooo/[리포지토리이름].git
+$ cd [리포지토리이름]
+
+**2. 전체 서비스 백그라운드 실행 (DB, Backend, Frontend)**
+`$ docker compose up -d`
+
+**3. (코드 수정 후) 빌드하여 재실행**
+`$ docker compose up -d --build`
+
+* **Frontend 접속:** `http://localhost:3000`
+* **Backend API 접속:** `http://localhost:8080`
+
+<br>
+
+## 📈 Current Progress (진행 현황)
+
+- [x] 프론트/백엔드/DB Docker 인프라 구성 완료
+- [x] Next.js App Router 기반 UI 라우팅 및 SSR 설계 완료
+- [x] Spring Boot Security (JWT) 인증 및 CORS 권한 설정 완료
+- [x] 프로젝트 미디어 다중 파일 업로드(FormData) 구현 및 연동 성공
+- [x] 포트폴리오 / 쇼핑몰 도메인 간 UI 및 API 호출 분리 최적화 완료
+- [ ] 쇼핑몰 상품 결제(PG) 및 주문 내역 고도화 진행 중
+- [ ] 배포 서버(AWS) 세팅 및 CD/CI 파이프라인 구축 예정
