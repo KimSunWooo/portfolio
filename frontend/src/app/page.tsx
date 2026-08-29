@@ -2,6 +2,8 @@ import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
 import { fetchProjects, fetchResume, type PortfolioProject, type ResumeData } from "../lib/api";
 
+export const dynamic = "force-dynamic";
+
 const fallback: ResumeData = {
   profile: {
     name: "김선우",
@@ -100,7 +102,7 @@ export default async function Home() {
     <>
       <Header />
       <main className="pt-[76px] max-sm:pt-[62px]">
-        <section id="about" className="min-h-[calc(100vh-76px)] border-b border-black/10 px-7 py-[86px] max-sm:min-h-0 max-sm:px-4 max-sm:py-14">
+        <section id="about" className="min-h-[calc(10vh-76px)] border-b border-black/10 px-7 py-[86px] max-sm:min-h-0 max-sm:px-4 max-sm:py-14">
           <div className="mx-auto flex min-h-[620px] max-w-[1440px] flex-col justify-between max-sm:min-h-[560px]">
             <div className="flex items-start justify-between gap-8 text-[10px] tracking-[0.14em] text-[#777] max-sm:flex-col max-sm:gap-2">
               <span>PORTFOLIO · 2026</span>

@@ -124,7 +124,7 @@ export default function CartPage() {
                     </Link>
 
                     <div className="flex-1">
-                      <Link href={`/shop/${item.productId}`} className="text-[13px] hover:underline">
+                      <Link href={`/product/${item.productId}`} className="text-[13px] hover:underline">
                         {item.productName}
                       </Link>
                       <p className="mt-2 text-[11px] text-[#777]">₩{item.price.toLocaleString()}</p>

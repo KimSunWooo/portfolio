@@ -79,9 +79,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* 💡 합쳐진 Admin Header 영역 */}
       <header className="fixed top-0 z-50 flex w-full items-center justify-between bg-[#111] px-7 py-4 text-white">
         <div className="flex items-center gap-8">
-          <Link href="/admin" className="text-[14px] font-bold tracking-tighter">
+          <h2 className="text-[14px] font-bold tracking-tighter">
             ADMIN CONSOLE
-          </Link>
+          </h2>
           
           <nav className="flex gap-6 text-[10px] tracking-[0.14em] text-[#888]">
             <Link 

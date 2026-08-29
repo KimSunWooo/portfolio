@@ -1,6 +1,9 @@
 // src/lib/api.ts
+const IS_SERVER = typeof window === "undefined";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL = IS_SERVER
+  ? (process.env.INTERNAL_API_URL || "http://backend-api:8080")
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 /* =========================================================================
  * 0. 메모리 토큰 저장소 및 헬퍼 함수
@@ -45,7 +48,12 @@ async function handleResponseError(response: Response): Promise<never> {
 export function resolveAssetUrl(path?: string | null) {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `${API_BASE_URL}${path}`;
+  
+  // 이미지나 영상 같은 에셋 경로는 서버에서 HTML을 만들 때라도 
+  // 반드시 브라우저가 알아들을 수 있는 공개 주소(localhost)를 강제로 써야 함
+  const PUBLIC_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  
+  return `${PUBLIC_URL}${path}`;
 }
 
 /* =========================================================================
@@ -313,7 +321,8 @@ export async function deleteResumeIntroduction(id: number) {
  * ========================================================================= */
 export async function fetchProjects(isFeatured?: boolean): Promise<PortfolioProject[]> {
   const url = isFeatured ? `${API_BASE_URL}/api/projects?featured=true` : `${API_BASE_URL}/api/projects`;
-  const response = await fetch(url);
+  // 💡 { cache: "no-store" } 옵션을 추가하여 항상 백엔드에서 최신 데이터를 가져오게한다.
+  const response = await fetch(url, { cache: "no-store" }); 
   if (!response.ok) throw new Error("프로젝트 데이터를 불러오는데 실패했습니다.");
   return response.json();
 }
@@ -365,16 +374,36 @@ export async function fetchProjectMedia(projectId: number | string): Promise<Pro
   return response.json();
 }
 
-export async function createProjectMedia(projectId: number | string, data: any) {
-  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`, { 
-    method: "POST", 
-    headers: getAuthHeaders(!isFormData), 
-    body: isFormData ? data : JSON.stringify(data), 
-    credentials: "include" 
+export async function createProjectMedia(projectId: number, data: any) {
+  // 1. FormData 객체를 생성합니다.
+  const formData = new FormData();
+  
+  // 2. 파일과 나머지 데이터를 하나씩 append 해줍니다.
+  formData.append("file", data.file); 
+  formData.append("caption", data.caption || "");
+  formData.append("description", data.description || "");
+  formData.append("altText", data.altText || "");
+  formData.append("sortOrder", String(data.sortOrder));
+
+  // 3. getCookie 로직 삭제! 대신 파일 상단에 정의된 getAccessToken()을 사용합니다.
+  const token = getAccessToken();
+
+  // 4. fetch 요청을 보냅니다.
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      // 💡 여기서 "Bearer undefined"가 되지 않도록 방어 로직 추가
+      ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    },
+    body: formData, 
   });
-  if (!response.ok) await handleResponseError(response); 
-  return response.ok;
+
+  if (!response.ok) {
+    throw new Error("미디어 업로드에 실패했습니다.");
+  }
+  
+  return response.json();
 }
 
 export async function updateProjectMedia(projectId: number | string, mediaId: number | string, data: any) {
@@ -678,4 +707,45 @@ export const fetchPaymentHistory = async (status: "DONE" | "CANCELED"): Promise<
   }
 
   return response.json();
+};
+
+// --- 빌드 에러 방지용 임시 커뮤니티 API 및 타입 (수정됨) ---
+export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
+
+export interface CommunityPostListItem {
+  id: number;
+  title: string;
+  category: CommunityCategory;
+  createdAt: string;
+  author: string;
+  isPinned: boolean;  // 누락되었던 속성 추가
+  viewCount: number;  // 누락되었던 속성 추가
+}
+
+export interface CommunityPostDetail extends CommunityPostListItem {
+  content: string;
+}
+
+// 반환값에 id가 포함되도록 수정 (void 에러 해결)
+export const createCommunityPost = async (data: any) => {
+  console.log("createCommunityPost", data);
+  return { id: 1 }; 
+};
+
+export const fetchCommunityPost = async (id: string | number) => {
+  return {
+    id: Number(id),
+    title: "임시",
+    category: "NOTICE",
+    createdAt: "2026-08-29",
+    author: "작성자",
+    isPinned: false,
+    viewCount: 0,
+    content: "임시 내용"
+  } as CommunityPostDetail;
+};
+
+export const fetchCommunityPosts = async (params?: any) => {
+  console.log("fetch params:", params); // 에러 방지용으로 추가
+  return [] as CommunityPostListItem[];
 };

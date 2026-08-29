@@ -1,5 +1,5 @@
 # 1. 빌드 환경 (Amazon Corretto 17 기준 - 버전에 맞게 수정 가능)
-FROM amazoncorretto:17-alpine-jdk
+FROM amazoncorretto:21-alpine-jdk
 
 # 2. 작업 디렉토리 설정
 WORKDIR /app

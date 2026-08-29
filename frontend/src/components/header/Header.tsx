@@ -15,6 +15,12 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
+  // 💡 메인(포트폴리오)이 아닌 쇼핑몰 관련 페이지인지 확인하는 로직!
+  const isShopArea = pathname.startsWith("/shop") || 
+                     pathname.startsWith("/cart") || 
+                     pathname.startsWith("/mypage") || 
+                     pathname.startsWith("/login");
+
   function checkAdminStatus(token: string) {
     try {
       const base64Url = token.split('.')[1];
@@ -31,12 +37,11 @@ export default function Header() {
     }
   }
 
-  // 💡 장바구니 개수 업데이트 (로그인 검사 로직 제거!)
   const updateCartCount = async () => {
-    if (pathname.startsWith("/admin")) return; 
+    // 💡 관리자 페이지거나, 쇼핑몰 영역이 아니면 아예 장바구니 API를 찌르지 않고 함수 종료!
+    if (pathname.startsWith("/admin") || !isShopArea) return; 
 
     try {
-      // api.ts에서 회원/비회원 여부를 알아서 판단해 배열을 리턴해줌
       const items = await fetchCartItems();
       const totalQuantity = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
       setCartCount(totalQuantity);
@@ -54,11 +59,9 @@ export default function Header() {
         try {
           token = await silentRefresh();
         } catch (error) {
-          // 💡 로그인 안 된 순수 비회원일 때도 장바구니(로컬 스토리지) 내역을 불러오도록 추가
           setIsLoggedIn(false);
           setIsAdmin(false);
           setIsInitialized(true);
-          updateCartCount(); 
           return;
         }
       }
@@ -66,7 +69,7 @@ export default function Header() {
       if (token) {
         setIsLoggedIn(true);
         setIsAdmin(checkAdminStatus(token)); 
-        updateCartCount(); // 로그인 된 회원의 장바구니(DB) 내역 불러오기
+        updateCartCount(); 
       }
       setIsInitialized(true); 
     };
@@ -74,7 +77,12 @@ export default function Header() {
     restoreAuth();
   }, [pathname, isInitialized]); 
 
-  // 커스텀 이벤트 리스너 등록
+  useEffect(() => {
+    if (isInitialized && isShopArea) {
+      updateCartCount();
+    }
+  }, [isShopArea, isInitialized]);
+
   useEffect(() => {
     if (pathname.startsWith("/admin")) return; 
 
@@ -88,9 +96,6 @@ export default function Header() {
     setCartCount(0);
     setIsAdmin(false);
     setIsInitialized(false); 
-    
-    // 💡 로그아웃 시 로컬 스토리지 장바구니도 깔끔하게 비우고 싶다면 아래 주석을 해제하세요.
-    // localStorage.removeItem("guestCart");
     
     alert("로그아웃 되었습니다.");
     router.push("/");
@@ -109,24 +114,33 @@ export default function Header() {
       </div>
 
       <nav className="flex items-center gap-8 text-[11px] tracking-[0.1em]">
+        {/* 💡 포트폴리오(메인)에서도 언제든 쇼핑몰로 진입할 수 있도록 SHOP 링크는 항상 노출 */}
         <Link href="/shop" className="hover:text-gray-500">SHOP</Link>
-        <Link href="/project" className="hover:text-gray-500">PORTFOLIO</Link>
-        <Link href="/cart" className="hover:text-gray-500 flex items-center gap-1">
-          CART 
-          {cartCount > 0 && (
-            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-black px-1 text-[9px] text-white">
-              {cartCount}
-            </span>
-          )}
-        </Link>
-        {isLoggedIn ? (
+
+        {/* 💡 isShopArea가 true일 때(쇼핑몰 관련 페이지일 때)만 아래 메뉴들을 렌더링! */}
+        {isShopArea && (
           <>
-            <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
-            <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
+            <Link href="/cart" className="hover:text-gray-500 flex items-center gap-1">
+              CART 
+              {cartCount > 0 && (
+                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-black px-1 text-[9px] text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            
+            {isLoggedIn ? (
+              <>
+                <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
+                <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
+              </>
+            ) : (
+              <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
+            )}
           </>
-        ) : (
-          <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
         )}
+
+        {/* ADMIN 버튼은 어드민 권한이 있을 때만 항상 표시 (포트폴리오에서도 어드민 관리 필요하므로) */}
         {isAdmin && (
           <Link href="/admin/resume" className="font-bold text-black hover:text-gray-500">
             ADMIN
