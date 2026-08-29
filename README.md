@@ -16,7 +16,7 @@
 - **Framework:** Spring Boot, Spring Security
 - **Language:** Java
 - **Database:** MySQL, Spring Data JPA (Hibernate)
-- **Auth:** JWT (JSON Web Token), OAuth
+- **Auth:** JWT (JSON Web Token), OAuth(예정)
 
 ### Infrastructure & DevOps
 - **Container:** Docker, Docker Compose
