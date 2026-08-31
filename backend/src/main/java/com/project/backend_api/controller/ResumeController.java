@@ -6,36 +6,45 @@ import com.project.backend_api.service.ResumeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/resume")
+@RequestMapping("/api") // 공통 경로
 @RequiredArgsConstructor
 public class ResumeController {
 
     private final ResumeService resumeService;
 
-    @GetMapping
-    public ResumeResponse getResume() {
-        return resumeService.getResume();
-    }
+    // ==========================================
+    // Public (조회)
+    // ==========================================
+    @GetMapping("/resume")
+    public ResumeResponse getResume() { return resumeService.getResume(); }
 
-    @GetMapping("/profile")
-    public Profile getProfile() {
-        return resumeService.getProfile();
-    }
+    @GetMapping("/resume/profile")
+    public Profile getProfile() { return resumeService.getProfile(); }
 
-    @PutMapping(
-    value = "/profile",
-    consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @GetMapping("/resume/skills")
+    public List<Skill> getSkills() { return resumeService.getSkills(); }
+
+    @GetMapping("/resume/experiences")
+    public List<Experience> getExperiences() { return resumeService.getExperiences(); }
+
+    @GetMapping("/resume/educations")
+    public List<Education> getEducations() { return resumeService.getEducations(); }
+
+    @GetMapping("/resume/introductions")
+    public List<Introduction> getIntroductions() { return resumeService.getIntroductions(); }
+
+    // ==========================================
+    // Admin (등록, 수정, 삭제)
+    // ==========================================
+    @PutMapping(value = "/admin/resume/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateProfile(
             @RequestParam String name,
             @RequestParam String jobTitle,
@@ -45,106 +54,52 @@ public class ResumeController {
             @RequestParam String shortIntro,
             @RequestParam(required = false) MultipartFile profileImage
     ) {
-        ProfileUpdateRequest request = new ProfileUpdateRequest(
-            name,
-            jobTitle,
-            email,
-            phone,
-            githubUrl,
-            null,
-            shortIntro
-        );
-
+        ProfileUpdateRequest request = new ProfileUpdateRequest(name, jobTitle, email, phone, githubUrl, null, shortIntro);
         resumeService.updateProfile(request, profileImage);
-
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/skills")
-    public List<Skill> getSkills() {
-        return resumeService.getSkills();
-    }
-
-    @PostMapping("/skills")
+    @PostMapping("/admin/resume/skills")
     @ResponseStatus(HttpStatus.CREATED)
-    public Skill createSkill(@Valid @RequestBody SkillRequest request) {
-        return resumeService.createSkill(request);
-    }
+    public Skill createSkill(@Valid @RequestBody SkillRequest request) { return resumeService.createSkill(request); }
 
-    @PutMapping("/skills/{id}")
-    public Skill updateSkill(@PathVariable Integer id, @Valid @RequestBody SkillRequest request) {
-        return resumeService.updateSkill(id, request);
-    }
+    @PutMapping("/admin/resume/skills/{id}")
+    public Skill updateSkill(@PathVariable Integer id, @Valid @RequestBody SkillRequest request) { return resumeService.updateSkill(id, request); }
 
-    @DeleteMapping("/skills/{id}")
+    @DeleteMapping("/admin/resume/skills/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteSkill(@PathVariable Integer id) {
-        resumeService.deleteSkill(id);
-    }
+    public void deleteSkill(@PathVariable Integer id) { resumeService.deleteSkill(id); }
 
-    @GetMapping("/experiences")
-    public List<Experience> getExperiences() {
-        return resumeService.getExperiences();
-    }
-
-    @PostMapping("/experiences")
+    @PostMapping("/admin/resume/experiences")
     @ResponseStatus(HttpStatus.CREATED)
-    public Experience createExperience(@Valid @RequestBody ExperienceRequest request) {
-        return resumeService.createExperience(request);
-    }
+    public Experience createExperience(@Valid @RequestBody ExperienceRequest request) { return resumeService.createExperience(request); }
 
-    @PutMapping("/experiences/{id}")
-    public Experience updateExperience(@PathVariable Integer id, @Valid @RequestBody ExperienceRequest request) {
-        return resumeService.updateExperience(id, request);
-    }
+    @PutMapping("/admin/resume/experiences/{id}")
+    public Experience updateExperience(@PathVariable Integer id, @Valid @RequestBody ExperienceRequest request) { return resumeService.updateExperience(id, request); }
 
-    @DeleteMapping("/experiences/{id}")
+    @DeleteMapping("/admin/resume/experiences/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteExperience(@PathVariable Integer id) {
-        resumeService.deleteExperience(id);
-    }
+    public void deleteExperience(@PathVariable Integer id) { resumeService.deleteExperience(id); }
 
-    @GetMapping("/educations")
-    public List<Education> getEducations() {
-        return resumeService.getEducations();
-    }
-
-    @PostMapping("/educations")
+    @PostMapping("/admin/resume/educations")
     @ResponseStatus(HttpStatus.CREATED)
-    public Education createEducation(@Valid @RequestBody EducationRequest request) {
-        return resumeService.createEducation(request);
-    }
+    public Education createEducation(@Valid @RequestBody EducationRequest request) { return resumeService.createEducation(request); }
 
-    @PutMapping("/educations/{id}")
-    public Education updateEducation(@PathVariable Integer id, @Valid @RequestBody EducationRequest request) {
-        return resumeService.updateEducation(id, request);
-    }
+    @PutMapping("/admin/resume/educations/{id}")
+    public Education updateEducation(@PathVariable Integer id, @Valid @RequestBody EducationRequest request) { return resumeService.updateEducation(id, request); }
 
-    @DeleteMapping("/educations/{id}")
+    @DeleteMapping("/admin/resume/educations/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteEducation(@PathVariable Integer id) {
-        resumeService.deleteEducation(id);
-    }
+    public void deleteEducation(@PathVariable Integer id) { resumeService.deleteEducation(id); }
 
-    @GetMapping("/introductions")
-    public List<Introduction> getIntroductions() {
-        return resumeService.getIntroductions();
-    }
-
-    @PostMapping("/introductions")
+    @PostMapping("/admin/resume/introductions")
     @ResponseStatus(HttpStatus.CREATED)
-    public Introduction createIntroduction(@Valid @RequestBody IntroductionRequest request) {
-        return resumeService.createIntroduction(request);
-    }
+    public Introduction createIntroduction(@Valid @RequestBody IntroductionRequest request) { return resumeService.createIntroduction(request); }
 
-    @PutMapping("/introductions/{id}")
-    public Introduction updateIntroduction(@PathVariable Integer id, @Valid @RequestBody IntroductionRequest request) {
-        return resumeService.updateIntroduction(id, request);
-    }
+    @PutMapping("/admin/resume/introductions/{id}")
+    public Introduction updateIntroduction(@PathVariable Integer id, @Valid @RequestBody IntroductionRequest request) { return resumeService.updateIntroduction(id, request); }
 
-    @DeleteMapping("/introductions/{id}")
+    @DeleteMapping("/admin/resume/introductions/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteIntroduction(@PathVariable Integer id) {
-        resumeService.deleteIntroduction(id);
-    }
+    public void deleteIntroduction(@PathVariable Integer id) { resumeService.deleteIntroduction(id); }
 }

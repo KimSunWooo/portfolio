@@ -10,12 +10,9 @@ export default function Header() {
   const [cartCount, setCartCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  const [isInitialized, setIsInitialized] = useState(false); 
-  
   const router = useRouter();
   const pathname = usePathname();
 
-  // 💡 메인(포트폴리오)이 아닌 쇼핑몰 관련 페이지인지 확인하는 로직!
   const isShopArea = pathname.startsWith("/shop") || 
                      pathname.startsWith("/cart") || 
                      pathname.startsWith("/mypage") || 
@@ -38,7 +35,6 @@ export default function Header() {
   }
 
   const updateCartCount = async () => {
-    // 💡 관리자 페이지거나, 쇼핑몰 영역이 아니면 아예 장바구니 API를 찌르지 않고 함수 종료!
     if (pathname.startsWith("/admin") || !isShopArea) return; 
 
     try {
@@ -50,38 +46,42 @@ export default function Header() {
     }
   };
 
+  // 💡 [해결 1] 포트폴리오 메인에서는 토큰 갱신(API 호출)을 완벽 차단!
   useEffect(() => {
-    if (pathname.startsWith("/admin") || isInitialized) return; 
+    if (pathname.startsWith("/admin")) return; 
 
     const restoreAuth = async () => {
       let token = getAccessToken();
-      if (!token) {
-        try {
-          token = await silentRefresh();
-        } catch (error) {
-          setIsLoggedIn(false);
-          setIsAdmin(false);
-          setIsInitialized(true);
-          return;
-        }
-      }
       
+      // 이미 메모리에 토큰이 있다면(로그인 상태라면) 불필요한 호출 없이 바로 UI 업데이트
       if (token) {
         setIsLoggedIn(true);
-        setIsAdmin(checkAdminStatus(token)); 
-        updateCartCount(); 
+        setIsAdmin(checkAdminStatus(token));
+        if (isShopArea) updateCartCount();
+        return;
       }
-      setIsInitialized(true); 
+
+      // 🚀 핵심 방어막: 토큰도 없는데 현재 주소가 메인("/")이라면 API 찌르지 않고 함수 종료!
+      if (pathname === "/") {
+        return;
+      }
+
+      // 포트폴리오 메인이 아닌 샵(/shop)이나 로그인(/login) 진입 시에만 권한 갱신 시도
+      try {
+        token = await silentRefresh();
+        if (token) {
+          setIsLoggedIn(true);
+          setIsAdmin(checkAdminStatus(token)); 
+          if (isShopArea) updateCartCount(); 
+        }
+      } catch (error) {
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+      }
     };
     
     restoreAuth();
-  }, [pathname, isInitialized]); 
-
-  useEffect(() => {
-    if (isInitialized && isShopArea) {
-      updateCartCount();
-    }
-  }, [isShopArea, isInitialized]);
+  }, [pathname, isShopArea]); // 페이지(pathname)가 바뀔 때마다 조건 검사
 
   useEffect(() => {
     if (pathname.startsWith("/admin")) return; 
@@ -95,7 +95,6 @@ export default function Header() {
     setIsLoggedIn(false);
     setCartCount(0);
     setIsAdmin(false);
-    setIsInitialized(false); 
     
     alert("로그아웃 되었습니다.");
     router.push("/");
@@ -114,33 +113,31 @@ export default function Header() {
       </div>
 
       <nav className="flex items-center gap-8 text-[11px] tracking-[0.1em]">
-        {/* 💡 포트폴리오(메인)에서도 언제든 쇼핑몰로 진입할 수 있도록 SHOP 링크는 항상 노출 */}
         <Link href="/shop" className="hover:text-gray-500">SHOP</Link>
 
-        {/* 💡 isShopArea가 true일 때(쇼핑몰 관련 페이지일 때)만 아래 메뉴들을 렌더링! */}
+        {/* 장바구니는 쇼핑몰 관련 기능이므로 쇼핑몰 영역 안에서만 노출 */}
         {isShopArea && (
-          <>
-            <Link href="/cart" className="hover:text-gray-500 flex items-center gap-1">
-              CART 
-              {cartCount > 0 && (
-                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-black px-1 text-[9px] text-white">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-            
-            {isLoggedIn ? (
-              <>
-                <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
-                <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
-              </>
-            ) : (
-              <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
+          <Link href="/cart" className="hover:text-gray-500 flex items-center gap-1">
+            CART 
+            {cartCount > 0 && (
+              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-black px-1 text-[9px] text-white">
+                {cartCount}
+              </span>
             )}
-          </>
+          </Link>
         )}
 
-        {/* ADMIN 버튼은 어드민 권한이 있을 때만 항상 표시 (포트폴리오에서도 어드민 관리 필요하므로) */}
+        {/* 💡 [해결 2] LOGIN/LOGOUT과 MYPAGE를 isShopArea 조건문 바깥으로 구출! */}
+        {isLoggedIn ? (
+          <>
+            <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
+            <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
+          </>
+        ) : (
+          <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
+        )}
+
+        {/* ADMIN 버튼은 어드민 권한이 있을 때 어디서든 노출 */}
         {isAdmin && (
           <Link href="/admin/resume" className="font-bold text-black hover:text-gray-500">
             ADMIN

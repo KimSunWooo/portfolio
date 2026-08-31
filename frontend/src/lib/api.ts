@@ -14,7 +14,6 @@ export const getAccessToken = () => inMemoryAccessToken;
 
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
-  
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("authStateChanged"));
   }
@@ -23,10 +22,7 @@ export const setAccessToken = (token: string | null) => {
 const getAuthHeaders = (isJson: boolean = true): HeadersInit => {
   const headers: Record<string, string> = {};
   if (isJson) headers["Content-Type"] = "application/json";
-  
-  if (inMemoryAccessToken) {
-    headers["Authorization"] = `Bearer ${inMemoryAccessToken}`;
-  }
+  if (inMemoryAccessToken) headers["Authorization"] = `Bearer ${inMemoryAccessToken}`;
   return headers;
 };
 
@@ -48,27 +44,14 @@ async function handleResponseError(response: Response): Promise<never> {
 export function resolveAssetUrl(path?: string | null) {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  
-  // 이미지나 영상 같은 에셋 경로는 서버에서 HTML을 만들 때라도 
-  // 반드시 브라우저가 알아들을 수 있는 공개 주소(localhost)를 강제로 써야 함
   const PUBLIC_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-  
   return `${PUBLIC_URL}${path}`;
 }
 
 /* =========================================================================
  * 1. 이력서 (Resume) 관련 타입
  * ========================================================================= */
-export interface ResumeProfile { 
-  id?: number; 
-  name: string; 
-  jobTitle?: string; 
-  githubUrl?: string; 
-  shortIntro?: string; 
-  email?: string; 
-  phone?: string; 
-  profileImage?: string; 
-}
+export interface ResumeProfile { id?: number; name: string; jobTitle?: string; githubUrl?: string; shortIntro?: string; email?: string; phone?: string; profileImage?: string; }
 export interface ResumeSkill { id: number; name: string; category?: string; level?: string; sortOrder: number; }
 export interface ResumeExperience { id: number; companyName: string; position: string; startDate?: string | null; endDate?: string | null; description?: string; sortOrder: number; }
 export interface ResumeEducation { id: number; schoolName: string; major?: string; startDate?: string | null; endDate?: string | null; description?: string; sortOrder: number; }
@@ -131,38 +114,10 @@ export interface ProjectMedia {
 /* =========================================================================
  * 3. 상품 (Product) 관련 타입
  * ========================================================================= */
-export interface ProductListResponse {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number | null;
-  thumbnail?: string | null;
-  isNew?: boolean;
-  isBest?: boolean;
-  category?: string | null;
-}
-
-export interface ProductImage {
-  id: number;
-  imageUrl?: string;
-  imageType?: "MAIN" | "THUMBNAIL" | "DETAIL" | string;
-  altText?: string | null; 
-  sortOrder: number;
-}
-
-export interface ProductDetailInfo {
-  description?: string;
-  shortDescription?: string;
-  usageInfo?: string;
-  ingredients?: string;
-  productInfo?: string;
-}
-
-export interface ProductColor {
-  id: number;
-  colorName: string;
-  colorCode: string;
-}
+export interface ProductListResponse { id: number; name: string; price: number; originalPrice?: number | null; thumbnail?: string | null; isNew?: boolean; isBest?: boolean; category?: string | null; }
+export interface ProductImage { id: number; imageUrl?: string; imageType?: "MAIN" | "THUMBNAIL" | "DETAIL" | string; altText?: string | null; sortOrder: number; }
+export interface ProductDetailInfo { description?: string; shortDescription?: string; usageInfo?: string; ingredients?: string; productInfo?: string; }
+export interface ProductColor { id: number; colorName: string; colorCode: string; }
 
 export interface ProductDetailResponse extends ProductListResponse {
   stockQuantity?: number;
@@ -198,21 +153,15 @@ export interface ProductRequest {
  * 4. 인증(Auth) API
  * ========================================================================= */
 export async function signupUser(userData: { email: string; password: string; name?: string }) {
-  const response = await fetch(`${API_BASE_URL}/api/users/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userData),
+  const response = await fetch(`${API_BASE_URL}/api/users/signUp`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userData),
   });
-  if (!response.ok) await handleResponseError(response);
-  return response.text();
+  if (!response.ok) await handleResponseError(response); return response.text();
 }
 
 export async function loginUser(credentials: { email: string; password: string }) {
   const response = await fetch(`${API_BASE_URL}/api/users/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
-    credentials: "include", 
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(credentials), credentials: "include", 
   });
   if (!response.ok) await handleResponseError(response);
   const data = await response.json();
@@ -221,26 +170,15 @@ export async function loginUser(credentials: { email: string; password: string }
 }
 
 export async function silentRefresh() {
-  const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
-    method: "POST",
-    credentials: "include", 
-  });
-  if (!response.ok) {
-    setAccessToken(null);
-    throw new Error("세션이 만료되었습니다.");
-  }
+  const response = await fetch(`${API_BASE_URL}/api/users/refresh`, { method: "POST", credentials: "include" });
+  if (!response.ok) { setAccessToken(null); throw new Error("세션이 만료되었습니다."); }
   const data = await response.json();
-  setAccessToken(data.accessToken);
-  return data.accessToken;
+  setAccessToken(data.accessToken); return data.accessToken;
 }
 
 export async function logoutUser() {
-  try {
-    await fetch(`${API_BASE_URL}/api/users/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch (e) {} finally { setAccessToken(null); }
+  try { await fetch(`${API_BASE_URL}/api/users/logout`, { method: "POST", credentials: "include" }); } 
+  catch (e) {} finally { setAccessToken(null); }
 }
 
 /* =========================================================================
@@ -255,190 +193,103 @@ export async function fetchResume(): Promise<ResumeData> {
 export async function updateResumeProfile(profileData: any) {
   const isFormData = typeof FormData !== "undefined" && profileData instanceof FormData;
   const response = await fetch(`${API_BASE_URL}/api/admin/resume/profile`, {
-    method: "PUT",
-    headers: getAuthHeaders(!isFormData),
-    body: isFormData ? profileData : JSON.stringify(profileData),
-    credentials: "include",
+    method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? profileData : JSON.stringify(profileData), credentials: "include",
   });
-  if (!response.ok) await handleResponseError(response);
-  return response.ok;
-}
-
-export async function createResumeEducation(data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function updateResumeEducation(id: number, data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function deleteResumeEducation(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
-export async function createResumeExperience(data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function updateResumeExperience(id: number, data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function deleteResumeExperience(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
+export async function createResumeEducation(data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function updateResumeEducation(id: number, data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function deleteResumeEducation(id: number) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/educations/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
 
-export async function createResumeSkill(data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function updateResumeSkill(id: number, data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function deleteResumeSkill(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
+export async function createResumeExperience(data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function updateResumeExperience(id: number, data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function deleteResumeExperience(id: number) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/experiences/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
 
-export async function createResumeIntroduction(data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function updateResumeIntroduction(id: number, data: any) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
-export async function deleteResumeIntroduction(id: number) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.ok;
-}
+export async function createResumeSkill(data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function updateResumeSkill(id: number, data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function deleteResumeSkill(id: number) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/skills/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+
+export async function createResumeIntroduction(data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function updateResumeIntroduction(id: number, data: any) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "PUT", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
+export async function deleteResumeIntroduction(id: number) { const response = await fetch(`${API_BASE_URL}/api/admin/resume/introductions/${id}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" }); if (!response.ok) await handleResponseError(response); return response.ok; }
 
 /* =========================================================================
  * 6. 프로젝트 (Project & Media) API
  * ========================================================================= */
 export async function fetchProjects(isFeatured?: boolean): Promise<PortfolioProject[]> {
   const url = isFeatured ? `${API_BASE_URL}/api/projects?featured=true` : `${API_BASE_URL}/api/projects`;
-  // 💡 { cache: "no-store" } 옵션을 추가하여 항상 백엔드에서 최신 데이터를 가져오게한다.
   const response = await fetch(url, { cache: "no-store" }); 
-  if (!response.ok) throw new Error("프로젝트 데이터를 불러오는데 실패했습니다.");
-  return response.json();
+  if (!response.ok) throw new Error("프로젝트 데이터를 불러오는데 실패했습니다."); return response.json();
 }
 
 export async function fetchProject(projectId: number | string): Promise<PortfolioProject> {
   const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`);
-  if (!response.ok) await handleResponseError(response);
-  return response.json();
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
+// 💡 프로젝트 등록/수정/삭제 모두 /api/admin 경로로 변경
 export async function createProject(projectData: any) {
   const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/projects`, { 
-    method: "POST", 
-    headers: getAuthHeaders(!isFormData), 
-    body: isFormData ? projectData : JSON.stringify(projectData), 
-    credentials: "include" 
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects`, { 
+    method: "POST", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" 
   });
-  if (!response.ok) await handleResponseError(response); 
-  return response.json();
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
 export async function updateProject(projectId: number | string, projectData: any) {
   const isFormData = typeof FormData !== "undefined" && projectData instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, { 
-    method: "PUT", 
-    headers: getAuthHeaders(!isFormData), 
-    body: isFormData ? projectData : JSON.stringify(projectData), 
-    credentials: "include" 
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { 
+    method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? projectData : JSON.stringify(projectData), credentials: "include" 
   });
-  if (!response.ok) await handleResponseError(response); 
-  return response.ok;
+  if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
 export async function deleteProject(projectId: number | string) {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, { 
-    method: "DELETE", 
-    headers: getAuthHeaders(true), 
-    credentials: "include" 
-  });
-  if (!response.ok) await handleResponseError(response); 
-  return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
 }
 
-// [Project Media]
 export async function fetchProjectMedia(projectId: number | string): Promise<ProjectMedia[]> {
   const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`);
-  if (!response.ok) await handleResponseError(response); 
-  return response.json();
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
 export async function createProjectMedia(projectId: number, data: any) {
-  // 1. FormData 객체를 생성합니다.
   const formData = new FormData();
-  
-  // 2. 파일과 나머지 데이터를 하나씩 append 해줍니다.
   formData.append("file", data.file); 
   formData.append("caption", data.caption || "");
   formData.append("description", data.description || "");
   formData.append("altText", data.altText || "");
   formData.append("sortOrder", String(data.sortOrder));
 
-  // 3. getCookie 로직 삭제! 대신 파일 상단에 정의된 getAccessToken()을 사용합니다.
   const token = getAccessToken();
-
-  // 4. fetch 요청을 보냅니다.
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      // 💡 여기서 "Bearer undefined"가 되지 않도록 방어 로직 추가
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    },
-    body: formData, 
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media`, {
+    method: "POST", credentials: "include", headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) }, body: formData, 
   });
-
-  if (!response.ok) {
-    throw new Error("미디어 업로드에 실패했습니다.");
-  }
-  
-  return response.json();
+  if (!response.ok) throw new Error("미디어 업로드에 실패했습니다."); return response.json();
 }
 
 export async function updateProjectMedia(projectId: number | string, mediaId: number | string, data: any) {
   const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media/${mediaId}`, { 
-    method: "PUT", 
-    headers: getAuthHeaders(!isFormData), 
-    body: isFormData ? data : JSON.stringify(data), 
-    credentials: "include" 
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { 
+    method: "PUT", headers: getAuthHeaders(!isFormData), body: isFormData ? data : JSON.stringify(data), credentials: "include" 
   });
-  if (!response.ok) await handleResponseError(response); 
-  return response.ok;
+  if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
 export async function deleteProjectMedia(projectId: number | string, mediaId: number | string) {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/media/${mediaId}`, { 
-    method: "DELETE", 
-    headers: getAuthHeaders(true), 
-    credentials: "include" 
-  });
-  if (!response.ok) await handleResponseError(response); 
-  return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}/media/${mediaId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
 }
 
 /* =========================================================================
  * 7. 상품 (Product & Image) API
  * ========================================================================= */
 export async function fetchProducts(category?: string): Promise<ProductListResponse[]> {
-  const url = category 
-    ? `${API_BASE_URL}/api/products?category=${encodeURIComponent(category)}`
-    : `${API_BASE_URL}/api/products`;
-    
+  const url = category ? `${API_BASE_URL}/api/products?category=${encodeURIComponent(category)}` : `${API_BASE_URL}/api/products`;
   const response = await fetch(url);
-  if (!response.ok) await handleResponseError(response); 
-  return response.json();
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
 export async function getProductById(productId: number | string): Promise<ProductDetailResponse> {
@@ -446,7 +297,7 @@ export async function getProductById(productId: number | string): Promise<Produc
   if (!response.ok) await handleResponseError(response); return response.json();
 }
 
-// [Shop Admin]
+// Admin 영역 (이미 규칙에 맞음)
 export async function fetchAdminProducts(): Promise<AdminProduct[]> {
   const response = await fetch(`${API_BASE_URL}/api/admin/products`, { headers: getAuthHeaders(true), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.json();
@@ -469,14 +320,13 @@ export async function deleteProduct(productId: number | string) {
   if (!response.ok) await handleResponseError(response); return response.text();
 }
 
-// [Product Images]
 export async function fetchProductImages(productId: number | string): Promise<ProductImage[]> {
   const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images`);
   if (!response.ok) await handleResponseError(response); return response.json();
 }
+
 export async function uploadProductImage(productId: number | string, data: any) {
   const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-  
   let finalBody = data;
   if (!isFormData && data.file) {
     const formData = new FormData();
@@ -486,16 +336,10 @@ export async function uploadProductImage(productId: number | string, data: any) 
     if(data.sortOrder !== undefined) formData.append("sortOrder", String(data.sortOrder));
     finalBody = formData;
   }
-
-  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/images`, { 
-    method: "POST", 
-    headers: getAuthHeaders(false), 
-    body: finalBody, 
-    credentials: "include" 
-  });
-  if (!response.ok) await handleResponseError(response); 
-  return response.ok;
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/images`, { method: "POST", headers: getAuthHeaders(false), body: finalBody, credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.ok;
 }
+
 export async function deleteProductImage(productId: number | string, imageId: number | string) {
   const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/images/${imageId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
   if (!response.ok) await handleResponseError(response); return response.ok;
@@ -504,155 +348,64 @@ export async function deleteProductImage(productId: number | string, imageId: nu
 /* =========================================================================
  * 8. 장바구니 (Cart) API
  * ========================================================================= */
-export interface CartItemResponse {
-  cartItemId: number;
-  productId: number;
-  productName: string;
-  price: number;
-  thumbnailUrl?: string | null;
-  quantity: number;
-}
-
-export interface GuestCartItem {
-  cartItemId: number;
-  productId: number;
-  productName: string;
-  price: number;
-  thumbnailUrl: string;
-  quantity: number;
-}
+export interface CartItemResponse { cartItemId: number; productId: number; productName: string; price: number; thumbnailUrl?: string | null; quantity: number; }
+export interface GuestCartItem { cartItemId: number; productId: number; productName: string; price: number; thumbnailUrl: string; quantity: number; }
 
 export const fetchCartItems = async () => {
   const token = getAccessToken();
-
   if (token) {
-    // 💡 백틱 적용 완료
-    const response = await fetch(`${API_BASE_URL}/api/cart`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error("장바구니 조회 실패");
-    return response.json();
+    const response = await fetch(`${API_BASE_URL}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error("장바구니 조회 실패"); return response.json();
   } else {
-    const guestCart = localStorage.getItem("guestCart");
-    return guestCart ? JSON.parse(guestCart) : [];
+    const guestCart = localStorage.getItem("guestCart"); return guestCart ? JSON.parse(guestCart) : [];
   }
 };
 
 export const addCartItem = async (product: any, quantity: number) => {
   const token = getAccessToken();
-
   if (token) {
-    // 💡 백틱 적용 완료
-    const response = await fetch(`${API_BASE_URL}/api/cart`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ productId: product.id, quantity }),
-    });
+    const response = await fetch(`${API_BASE_URL}/api/cart`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ productId: product.id, quantity }) });
     if (!response.ok) throw new Error("장바구니 담기에 실패했습니다.");
   } else {
-    const existingCart = localStorage.getItem("guestCart");
-    let cart: GuestCartItem[] = existingCart ? JSON.parse(existingCart) : [];
-
+    const existingCart = localStorage.getItem("guestCart"); let cart: GuestCartItem[] = existingCart ? JSON.parse(existingCart) : [];
     const existingItemIndex = cart.findIndex(item => item.productId === product.id);
-
-    if (existingItemIndex > -1) {
-      cart[existingItemIndex].quantity += quantity;
-    } else {
-      cart.push({
-        cartItemId: Date.now(), 
-        productId: product.id,
-        productName: product.name,
-        price: product.price,
-        thumbnailUrl: product.thumbnail,
-        quantity: quantity,
-      });
-    }
-
+    if (existingItemIndex > -1) { cart[existingItemIndex].quantity += quantity; } 
+    else { cart.push({ cartItemId: Date.now(), productId: product.id, productName: product.name, price: product.price, thumbnailUrl: product.thumbnail, quantity: quantity }); }
     localStorage.setItem("guestCart", JSON.stringify(cart));
   }
 };
 
 export async function addToCart(productId: number, quantity: number = 1) {
-  const response = await fetch(`${API_BASE_URL}/api/cart`, {
-    method: "POST",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify({ productId, quantity }),
-    credentials: "include",
-  });
-  if (!response.ok) await handleResponseError(response);
-  return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/cart`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify({ productId, quantity }), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
 }
 
 export async function updateCartItemQuantity(cartItemId: number, quantity: number) {
-  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`, {
-    method: "PUT",
-    headers: getAuthHeaders(true),
-    credentials: "include",
-  });
-  if (!response.ok) await handleResponseError(response);
-  return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`, { method: "PUT", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
 }
 
 export async function removeCartItem(cartItemId: number) {
-  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(true),
-    credentials: "include",
-  });
-  if (!response.ok) await handleResponseError(response);
-  return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.text();
 }
 
 /* =========================================================================
- * 9. 어드민 고객(Users) 관리 API 및 타입
+ * 9. 어드민 고객(Users) 관리 API
  * ========================================================================= */
-export interface AdminUserResponse {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-  joinDate: string;
-  orderCount?: number;
-  totalSpent?: number;
-}
+export interface AdminUserResponse { id: number; email: string; name: string; role: string; joinDate: string; orderCount?: number; totalSpent?: number; }
+export interface PaginatedResponse<T> { content: T[]; totalPages: number; totalElements: number; number: number; }
 
-export interface PaginatedResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-}
-
-export async function fetchAdminUsers(
-  page: number = 0,
-  size: number = 10,
-  searchName: string = "",
-  tier: string = ""
-): Promise<PaginatedResponse<AdminUserResponse>> {
-  const params = new URLSearchParams({
-    page: String(page),
-    size: String(size),
-  });
+export async function fetchAdminUsers(page: number = 0, size: number = 10, searchName: string = "", tier: string = ""): Promise<PaginatedResponse<AdminUserResponse>> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (searchName) params.append("name", searchName);
   if (tier) params.append("tier", tier);
-
-  const response = await fetch(`${API_BASE_URL}/api/admin/users?${params.toString()}`, {
-    headers: getAuthHeaders(true),
-    credentials: "include",
-  });
-  
-  if (!response.ok) await handleResponseError(response);
-  return response.json();
+  const response = await fetch(`${API_BASE_URL}/api/admin/users?${params.toString()}`, { headers: getAuthHeaders(true), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.json();
 }
 
 export function getCustomerTier(totalSpent: number) {
-  if (totalSpent >= 1000000) return "VIP";
-  if (totalSpent >= 300000) return "GOLD";
-  if (totalSpent >= 100000) return "SILVER";
-  return "BRONZE";
+  if (totalSpent >= 1000000) return "VIP"; if (totalSpent >= 300000) return "GOLD"; if (totalSpent >= 100000) return "SILVER"; return "BRONZE";
 }
 
 /* =========================================================================
@@ -660,92 +413,39 @@ export function getCustomerTier(totalSpent: number) {
  * ========================================================================= */
 export const confirmPayment = async (paymentData: { paymentKey: string; orderId: string; amount: number }) => {
   const token = getAccessToken();
-  
-  // 💡 백틱 적용 완료
-  const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, 
-    },
-    body: JSON.stringify(paymentData),
-  });
-
-  if (!response.ok) {
-    const errorMsg = await response.text();
-    throw new Error(errorMsg);
-  }
-
-  return response.json();
+  const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(paymentData) });
+  if (!response.ok) throw new Error(await response.text()); return response.json();
 };
 
-export interface PaymentHistoryResponse {
-  id: number;
-  orderId: string;
-  paymentKey: string;
-  amount: number;
-  status: string;
-  cancelReason: string | null;
-  createdAt: string;
-  canceledAt: string | null;
-}
+export interface PaymentHistoryResponse { id: number; orderId: string; paymentKey: string; amount: number; status: string; cancelReason: string | null; createdAt: string; canceledAt: string | null; }
 
 export const fetchPaymentHistory = async (status: "DONE" | "CANCELED"): Promise<PaymentHistoryResponse[]> => {
   const token = getAccessToken();
   if (!token) throw new Error("로그인이 필요합니다.");
-
-  // 💡 백틱 적용 완료
-  const response = await fetch(`${API_BASE_URL}/api/payments/history?status=${status}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("결제 내역을 불러오는데 실패했습니다.");
-  }
-
-  return response.json();
+  const response = await fetch(`${API_BASE_URL}/api/payments/history?status=${status}`, { method: "GET", headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new Error("결제 내역을 불러오는데 실패했습니다."); return response.json();
 };
 
-// --- 빌드 에러 방지용 임시 커뮤니티 API 및 타입 (수정됨) ---
+/* =========================================================================
+ * 10. 커뮤니티 (Community) 임시 API
+ * ========================================================================= */
 export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
+export interface CommunityPostListItem { id: number; title: string; category: CommunityCategory; createdAt: string; author: string; isPinned: boolean; viewCount: number; }
+export interface CommunityPostDetail extends CommunityPostListItem { content: string; }
 
-export interface CommunityPostListItem {
-  id: number;
-  title: string;
-  category: CommunityCategory;
-  createdAt: string;
-  author: string;
-  isPinned: boolean;  // 누락되었던 속성 추가
-  viewCount: number;  // 누락되었던 속성 추가
-}
-
-export interface CommunityPostDetail extends CommunityPostListItem {
-  content: string;
-}
-
-// 반환값에 id가 포함되도록 수정 (void 에러 해결)
+// 💡 작성 API의 경우 관리자 권한으로 변경 (/admin/community/posts)
 export const createCommunityPost = async (data: any) => {
-  console.log("createCommunityPost", data);
-  return { id: 1 }; 
+  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
+  if (!response.ok) await handleResponseError(response); return response.json();
 };
 
 export const fetchCommunityPost = async (id: string | number) => {
-  return {
-    id: Number(id),
-    title: "임시",
-    category: "NOTICE",
-    createdAt: "2026-08-29",
-    author: "작성자",
-    isPinned: false,
-    viewCount: 0,
-    content: "임시 내용"
-  } as CommunityPostDetail;
+  const response = await fetch(`${API_BASE_URL}/api/community/posts/${id}`);
+  if (!response.ok) await handleResponseError(response); return response.json();
 };
 
-export const fetchCommunityPosts = async (params?: any) => {
-  console.log("fetch params:", params); // 에러 방지용으로 추가
-  return [] as CommunityPostListItem[];
+export const fetchCommunityPosts = async (category?: string) => {
+  const url = category ? `${API_BASE_URL}/api/community/posts?category=${encodeURIComponent(category)}` : `${API_BASE_URL}/api/community/posts`;
+  const response = await fetch(url);
+  if (!response.ok) await handleResponseError(response); return response.json();
 };

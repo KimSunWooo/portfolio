@@ -78,43 +78,6 @@ function Field({
   );
 }
 
-function ProfileImage({
-  image,
-  onChange,
-}: {
-  image: File | null;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <div className="block">
-      <span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">
-        PROFILE IMAGE
-      </span>
-
-      <label className="flex h-11 cursor-pointer items-center justify-between border border-black/20 bg-white px-3 transition hover:border-black">
-        <span className="truncate text-[10px] text-[#555]">
-          {image ? image.name : "SELECT IMAGE"}
-        </span>
-
-        <span className="shrink-0 text-[8px] tracking-[0.12em] text-[#777]">
-          BROWSE ↗
-        </span>
-
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            onChange(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
 function TextArea({
   label,
   value,
@@ -214,7 +177,6 @@ export default function ResumeAdmin() {
       const loaded = await reload();
       if (loaded || cancelled) return;
 
-      // 개발 서버가 동시에 기동될 때를 고려해 최초 진입에서는 한 번만 조용히 재시도합니다.
       await new Promise((resolve) => window.setTimeout(resolve, 600));
       if (!cancelled) await reload();
     }
@@ -249,15 +211,22 @@ export default function ResumeAdmin() {
 
   async function saveProfile() {
     try {
-      await updateResumeProfile({
-        name: profile.name,
-        jobTitle: profile.jobTitle,
-        email: profile.email,
-        phone: profile.phone,
-        githubUrl: profile.githubUrl,
-        profileImage,
-        shortIntro: profile.shortIntro,
-      });
+      // 💡 JSON이 아닌 FormData 규격으로 데이터를 포장합니다.
+      const formData = new FormData();
+      formData.append("name", profile.name ?? "");
+      formData.append("jobTitle", profile.jobTitle ?? "");
+      formData.append("email", profile.email ?? "");
+      formData.append("phone", profile.phone ?? "");
+      formData.append("githubUrl", profile.githubUrl ?? "");
+      formData.append("shortIntro", profile.shortIntro ?? "");
+      
+      // 이미지가 첨부되었을 때만 폼 데이터에 추가
+      if (profileImage) {
+        formData.append("profileImage", profileImage);
+      }
+
+      // 💡 api.ts의 updateResumeProfile로 FormData 객체를 전달
+      await updateResumeProfile(formData);
 
       setProfileImage(null);
 
@@ -326,22 +295,43 @@ export default function ResumeAdmin() {
               PROFILE
             </h2>
             
-          <div className="flex min-h-[320px] items-center justify-center border-b border-black/10 bg-[#f5f4f2]">
+          {/* ✅ 클릭 가능한 이미지 업로드 영역으로 변경된 부분 */}
+          <label className="group relative mt-4 flex min-h-[320px] cursor-pointer items-center justify-center overflow-hidden border-b border-black/10 bg-[#f5f4f2] transition-colors hover:bg-[#ebeae8]">
             {profileImagePreview || savedProfileImageUrl ? (
               <img
                 src={profileImagePreview || savedProfileImageUrl || ""}
                 alt={profile.name ?? "Profile"}
-                className="h-[260px] w-[200px] object-cover"
+                className="h-[260px] w-[200px] object-cover transition duration-300 group-hover:opacity-40"
               />
             ) : (
               <div className="flex h-[260px] w-[200px] items-center justify-center border border-black/10 text-[9px] tracking-[0.14em] text-[#aaa]">
                 PROFILE IMAGE
               </div>
             )}
-          </div>
+            
+            {/* Hover 시 나타나는 문구 */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <span className="border border-black bg-white px-3 py-2 text-[9px] tracking-[0.14em] text-black">
+                CHANGE IMAGE
+              </span>
+            </div>
 
-            <p className="mt-3 max-w-[150px] text-[9px] leading-5 text-[#999]">
-              Basic information displayed on the portfolio.
+            {/* 숨겨진 파일 인풋 */}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setProfileImage(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+
+            <p className="mt-3 text-[9px] leading-5 text-[#999]">
+              클릭하여 이미지를 변경할 수 있습니다.<br/>
+              저장 버튼을 눌러야 반영됩니다.
             </p>  
           </div>
 
@@ -387,11 +377,7 @@ export default function ResumeAdmin() {
                   setProfile({ ...profile, githubUrl: v })
                 }
               />
-
-              <ProfileImage
-                image={profileImage}
-                onChange={setProfileImage}
-              />
+              {/* ✅ 우측의 ProfileImage 컴포넌트 제거 (좌측 이미지 영역과 통합됨) */}
             </div>
 
             <div className="mt-4">

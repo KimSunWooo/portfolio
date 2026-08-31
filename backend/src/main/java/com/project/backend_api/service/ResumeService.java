@@ -1,5 +1,8 @@
 package com.project.backend_api.service;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.project.backend_api.domain.resume.*;
 import com.project.backend_api.dto.resume.*;
 import com.project.backend_api.repository.*;
@@ -8,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +32,13 @@ public class ResumeService {
     private final ExperienceRepository experienceRepository;
     private final EducationRepository educationRepository;
     private final IntroductionRepository introductionRepository;
+
+    // S3 클라이언트 주입
+    private final AmazonS3 amazonS3;
+
+    // S3 버킷 이름 주입
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucket;
 
     @Transactional(readOnly = true)
     public ResumeResponse getResume() {
@@ -66,42 +77,36 @@ public class ResumeService {
 
     private String saveProfileImage(MultipartFile file) {
         try {
-            Path uploadDir = Paths.get(
-                    System.getProperty("user.dir"),
-                    "uploads",
-                    "profile"
-            );
-
-            Files.createDirectories(uploadDir);
-
+            // 1. 확장자 추출
             String originalFilename = file.getOriginalFilename();
             String extension = "";
 
             if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(
-                        originalFilename.lastIndexOf(".")
-                );
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
 
-            String filename =
-                    UUID.randomUUID() + extension;
+            // 2. UUID 파일명 및 S3 경로 설정 ("profile/" 폴더에 저장)
+            String filename = UUID.randomUUID() + extension;
+            String objectName = "profile/" + filename;
 
-            Path targetPath = uploadDir
-                    .resolve(filename)
-                    .normalize();
+            // 3. S3 메타데이터 설정
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(file.getContentType());
+            metadata.setContentLength(file.getSize());
 
-            Files.copy(
-                    file.getInputStream(),
-                    targetPath
-            );
+            // 4. S3에 파일 업로드
+            amazonS3.putObject(new PutObjectRequest(
+                    bucket, 
+                    objectName, 
+                    file.getInputStream(), 
+                    metadata
+            ));
 
-            return "/uploads/profile/" + filename;
+            // 5. 업로드된 파일의 S3 URL 반환
+            return amazonS3.getUrl(bucket, objectName).toString();
 
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "프로필 이미지 저장에 실패했습니다.",
-                    e
-            );
+            throw new RuntimeException("프로필 이미지(S3) 저장에 실패했습니다.", e);
         }
     }
 
