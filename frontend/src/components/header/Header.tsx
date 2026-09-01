@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { silentRefresh, logoutUser, getAccessToken, fetchCartItems } from "../../lib/api";
+import { silentRefresh, logoutUser, getAccessToken, fetchCartItems, fetchCartCount } from "../../lib/api";
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,8 +38,8 @@ export default function Header() {
     if (pathname.startsWith("/admin") || !isShopArea) return; 
 
     try {
-      const items = await fetchCartItems();
-      const totalQuantity = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+      // 💡 무거운 fetchCartItems() 대신 가벼운 fetchCartCount() 호출
+      const totalQuantity = await fetchCartCount();
       setCartCount(totalQuantity);
     } catch (error) {
       console.error("장바구니 뱃지 로드 실패");

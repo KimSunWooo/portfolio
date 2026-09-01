@@ -390,6 +390,26 @@ export async function removeCartItem(cartItemId: number) {
   if (!response.ok) await handleResponseError(response); return response.text();
 }
 
+export const fetchCartCount = async () => {
+  const token = getAccessToken();
+  
+  if (token) {
+    // 로그인 유저: 수량 전용 API 호출
+    const response = await fetch(`${API_BASE_URL}/api/cart/count`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    if (!response.ok) return 0;
+    return response.json(); // 숫자만 반환됨
+  } else {
+    // 비로그인 유저: 로컬 스토리지에서 즉시 계산
+    const guestCart = localStorage.getItem("guestCart"); 
+    if (!guestCart) return 0;
+    
+    const cart: GuestCartItem[] = JSON.parse(guestCart);
+    return cart.reduce((sum, item) => sum + item.quantity, 0);
+  }
+};
+
 /* =========================================================================
  * 9. 어드민 고객(Users) 관리 API
  * ========================================================================= */
