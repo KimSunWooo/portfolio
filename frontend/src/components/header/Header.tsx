@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { silentRefresh, logoutUser, getAccessToken, fetchCartItems, fetchCartCount } from "../../lib/api";
+import { silentRefresh, logoutUser, getAccessToken, fetchCartCount } from "../../lib/api";
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  
+  // 💡 [추가됨] 새로고침 직후 찰나의 순간 'Login' 메뉴가 깜빡이는 것을 막는 방어막
+  const [isInitializing, setIsInitializing] = useState(true); 
   
   const router = useRouter();
   const pathname = usePathname();
@@ -18,6 +21,7 @@ export default function Header() {
                      pathname.startsWith("/mypage") || 
                      pathname.startsWith("/login");
 
+  // JWT 디코딩 및 어드민 체크 함수 (기존 코드 완벽 유지)
   function checkAdminStatus(token: string) {
     try {
       const base64Url = token.split('.')[1];
@@ -34,11 +38,10 @@ export default function Header() {
     }
   }
 
+  // 장바구니 갯수 업데이트 함수 (기존 코드 완벽 유지)
   const updateCartCount = async () => {
     if (pathname.startsWith("/admin") || !isShopArea) return; 
-
     try {
-      // 💡 무거운 fetchCartItems() 대신 가벼운 fetchCartCount() 호출
       const totalQuantity = await fetchCartCount();
       setCartCount(totalQuantity);
     } catch (error) {
@@ -46,60 +49,65 @@ export default function Header() {
     }
   };
 
-  // 💡 [해결 1] 포트폴리오 메인에서는 토큰 갱신(API 호출)을 완벽 차단!
+  // 💡 [수정됨] 2개로 나뉘어 충돌하던 useEffect를 하나로 깔끔하게 통합
   useEffect(() => {
     if (pathname.startsWith("/admin")) return; 
 
-    const restoreAuth = async () => {
+    const initAuth = async () => {
       let token = getAccessToken();
       
-      // 이미 메모리에 토큰이 있다면(로그인 상태라면) 불필요한 호출 없이 바로 UI 업데이트
+      // 메모리에 토큰이 없다면 백그라운드에서 조용히 쿠키를 찔러 재발급 시도
+      if (!token) {
+        token = await silentRefresh();
+      }
+
       if (token) {
         setIsLoggedIn(true);
         setIsAdmin(checkAdminStatus(token));
         if (isShopArea) updateCartCount();
-        return;
+      } else {
+        setIsLoggedIn(false);
+        setIsAdmin(false);
       }
+      
+      // 토큰 확인이 완전히 끝났으므로 헤더 메뉴 렌더링 허락
+      setIsInitializing(false); 
+    };
+    
+    initAuth();
 
-      // 🚀 핵심 방어막: 토큰도 없는데 현재 주소가 메인("/")이라면 API 찌르지 않고 함수 종료!
-      if (pathname === "/") {
-        return;
-      }
-
-      // 포트폴리오 메인이 아닌 샵(/shop)이나 로그인(/login) 진입 시에만 권한 갱신 시도
-      try {
-        token = await silentRefresh();
-        if (token) {
-          setIsLoggedIn(true);
-          setIsAdmin(checkAdminStatus(token)); 
-          if (isShopArea) updateCartCount(); 
-        }
-      } catch (error) {
+    // 로그인/로그아웃 이벤트 및 장바구니 업데이트 감지
+    const handleAuthChange = () => {
+      const currentToken = getAccessToken();
+      if (currentToken) {
+        setIsLoggedIn(true);
+        setIsAdmin(checkAdminStatus(currentToken));
+        if (isShopArea) updateCartCount();
+      } else {
         setIsLoggedIn(false);
         setIsAdmin(false);
       }
     };
-    
-    restoreAuth();
-  }, [pathname, isShopArea]); // 페이지(pathname)가 바뀔 때마다 조건 검사
 
-  useEffect(() => {
-    if (pathname.startsWith("/admin")) return; 
-
+    window.addEventListener("authStateChanged", handleAuthChange);
     window.addEventListener("cartUpdated", updateCartCount);
-    return () => window.removeEventListener("cartUpdated", updateCartCount);
-  }, [pathname]);
+
+    return () => {
+      window.removeEventListener("authStateChanged", handleAuthChange);
+      window.removeEventListener("cartUpdated", updateCartCount);
+    };
+  }, [pathname, isShopArea]); 
 
   const handleLogout = async () => {
     await logoutUser();
     setIsLoggedIn(false);
-    setCartCount(0);
     setIsAdmin(false);
-    
+    setCartCount(0);
     alert("로그아웃 되었습니다.");
     router.push("/");
   };
 
+  // 어드민 페이지에서는 기존 헤더 숨김 처리
   if (pathname.startsWith("/admin")) {
     return null; 
   }
@@ -115,7 +123,6 @@ export default function Header() {
       <nav className="flex items-center gap-8 text-[11px] tracking-[0.1em]">
         <Link href="/shop" className="hover:text-gray-500">SHOP</Link>
 
-        {/* 장바구니는 쇼핑몰 관련 기능이므로 쇼핑몰 영역 안에서만 노출 */}
         {isShopArea && (
           <Link href="/cart" className="hover:text-gray-500 flex items-center gap-1">
             CART 
@@ -127,21 +134,24 @@ export default function Header() {
           </Link>
         )}
 
-        {/* 💡 [해결 2] LOGIN/LOGOUT과 MYPAGE를 isShopArea 조건문 바깥으로 구출! */}
-        {isLoggedIn ? (
+        {/* 💡 [핵심] isInitializing이 끝날 때까지 우측 메뉴들은 투명하게 대기시켜 깜빡임을 막습니다 */}
+        {!isInitializing && (
           <>
-            <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
-            <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
-          </>
-        ) : (
-          <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
-        )}
+            {isLoggedIn ? (
+              <>
+                <Link href="/mypage" className="hover:text-gray-500">MYPAGE</Link>
+                <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
+              </>
+            ) : (
+              <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
+            )}
 
-        {/* ADMIN 버튼은 어드민 권한이 있을 때 어디서든 노출 */}
-        {isAdmin && (
-          <Link href="/admin/resume" className="font-bold text-black hover:text-gray-500">
-            ADMIN
-          </Link>
+            {isAdmin && (
+              <Link href="/admin/resume" className="font-bold text-black hover:text-gray-500">
+                ADMIN
+              </Link>
+            )}
+          </>
         )}
       </nav>
     </header>

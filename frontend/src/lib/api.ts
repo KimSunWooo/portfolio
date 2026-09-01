@@ -170,10 +170,26 @@ export async function loginUser(credentials: { email: string; password: string }
 }
 
 export async function silentRefresh() {
-  const response = await fetch(`${API_BASE_URL}/api/users/refresh`, { method: "POST", credentials: "include" });
-  if (!response.ok) { setAccessToken(null); throw new Error("세션이 만료되었습니다."); }
-  const data = await response.json();
-  setAccessToken(data.accessToken); return data.accessToken;
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/users/refresh`, { 
+      method: "POST", 
+      credentials: "include" 
+    });
+    
+    // 401 에러(비로그인)가 뜨면 에러를 던지지(throw) 않고 조용히 null을 반환
+    if (!response.ok) { 
+      setAccessToken(null); 
+      return null; 
+    }
+    
+    const data = await response.json();
+    setAccessToken(data.accessToken); 
+    return data.accessToken;
+  } catch (error) {
+    // 서버가 꺼져있거나 네트워크 에러 시에도 조용히 처리
+    setAccessToken(null);
+    return null;
+  }
 }
 
 export async function logoutUser() {

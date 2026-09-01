@@ -3,6 +3,8 @@ package com.project.backend_api.security;
 import jakarta.servlet.DispatcherType;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,6 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -75,21 +78,25 @@ public class SecurityConfig {
     }
 
     // 💡 2. CORS 허용 규칙 상세 설정 (새로 추가된 메서드)
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 프론트엔드(Next.js) 주소 명시적 허용
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-        // 허용할 HTTP 메서드
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // 허용할 헤더 (Authorization 등)
-        configuration.setAllowedHeaders(List.of("*"));
-        // 자격 증명(쿠키, 인증 헤더) 허용
+        // 2. 하드코딩된 주소를 지우고, 주입받은 변수를 리스트로 변환해 넣습니다.
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        
+        // 허용할 HTTP 메서드 (api.ts에 있던 PATCH도 안전하게 추가)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // 허용할 헤더
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        // 자격 증명 허용
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // 모든 API 경로에 위 규칙 적용
+        source.registerCorsConfiguration("/**", configuration); 
         return source;
     }
 }
