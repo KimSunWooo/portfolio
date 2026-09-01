@@ -25,97 +25,39 @@ import {
 } from "../../lib/api";
 
 const emptyProfile: ResumeProfile = {
-  name: "",
-  jobTitle: "",
-  email: "",
-  phone: "",
-  githubUrl: "",
-  profileImage: "",
-  shortIntro: "",
+  name: "", jobTitle: "", email: "", phone: "", githubUrl: "", profileImage: "", shortIntro: "",
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 function resolveBackendAssetUrl(path?: string | null) {
   if (!path) return null;
-
-  if (
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("blob:") ||
-    path.startsWith("data:")
-  ) {
-    return path;
-  }
-
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) return path;
   return `${BACKEND_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
+function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string; }) {
   return (
     <label className="block">
       <span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
-      />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="h-11 w-full border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black" />
     </label>
   );
 }
 
-function TextArea({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void; }) {
   return (
     <label className="block">
       <span className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">{label}</span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-[130px] w-full resize-y border border-black/20 bg-white p-3 text-[12px] leading-6 outline-none focus:border-black"
-      />
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} className="min-h-[130px] w-full resize-y border border-black/20 bg-white p-3 text-[12px] leading-6 outline-none focus:border-black" />
     </label>
   );
 }
 
-function ActionButton({
-  children,
-  onClick,
-  danger = false,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  danger?: boolean;
-}) {
+function ActionButton({ children, onClick, danger = false }: { children: React.ReactNode; onClick: () => void; danger?: boolean; }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`h-9 border px-4 text-[9px] tracking-[0.12em] transition ${
-        danger ? "border-red-300 text-red-600 hover:bg-red-50" : "border-black hover:bg-black hover:text-white"
-      }`}
-    >
+    <button type="button" onClick={onClick} className={`h-9 border px-4 text-[9px] tracking-[0.12em] transition ${danger ? "border-red-300 text-red-600 hover:bg-red-50" : "border-black hover:bg-black hover:text-white"}`}>
       {children}
     </button>
   );
@@ -128,8 +70,7 @@ export default function ResumeAdmin() {
   const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profileImagePreview, setProfileImagePreview] =
-    useState<string | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
 
   const savedProfileImageUrl = resolveBackendAssetUrl(profile.profileImage);
 
@@ -143,57 +84,34 @@ export default function ResumeAdmin() {
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "데이터를 불러오지 못했습니다.";
-
-      if (options?.showErrorModal) {
-        setNotification({ type: "error", message });
-      } else {
-        setInitialLoadError(message);
-      }
+      if (options?.showErrorModal) setNotification({ type: "error", message });
+      else setInitialLoadError(message);
       return false;
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
-    if (!profileImage) {
-      setProfileImagePreview(null);
-      return;
-    }
-
+    if (!profileImage) return setProfileImagePreview(null);
     const url = URL.createObjectURL(profileImage);
-
     setProfileImagePreview(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [profileImage]);
 
   useEffect(() => {
     let cancelled = false;
-
     async function initialLoad() {
       const loaded = await reload();
       if (loaded || cancelled) return;
-
       await new Promise((resolve) => window.setTimeout(resolve, 600));
       if (!cancelled) await reload();
     }
-
     initialLoad();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!notification) return;
-
-    const timer = window.setTimeout(() => {
-      setNotification(null);
-    }, 2200);
-
+    const timer = window.setTimeout(() => setNotification(null), 2200);
     return () => window.clearTimeout(timer);
   }, [notification]);
 
@@ -201,9 +119,7 @@ export default function ResumeAdmin() {
     try {
       await action();
       const reloaded = await reload({ showErrorModal: true });
-      if (reloaded) {
-        setNotification({ type: "success", message: success });
-      }
+      if (reloaded) setNotification({ type: "success", message: success });
     } catch (error) {
       setNotification({ type: "error", message: error instanceof Error ? error.message : "요청에 실패했습니다." });
     }
@@ -211,7 +127,6 @@ export default function ResumeAdmin() {
 
   async function saveProfile() {
     try {
-      // 💡 JSON이 아닌 FormData 규격으로 데이터를 포장합니다.
       const formData = new FormData();
       formData.append("name", profile.name ?? "");
       formData.append("jobTitle", profile.jobTitle ?? "");
@@ -219,247 +134,102 @@ export default function ResumeAdmin() {
       formData.append("phone", profile.phone ?? "");
       formData.append("githubUrl", profile.githubUrl ?? "");
       formData.append("shortIntro", profile.shortIntro ?? "");
-      
-      // 이미지가 첨부되었을 때만 폼 데이터에 추가
-      if (profileImage) {
-        formData.append("profileImage", profileImage);
-      }
+      if (profileImage) formData.append("profileImage", profileImage);
 
-      // 💡 api.ts의 updateResumeProfile로 FormData 객체를 전달
       await updateResumeProfile(formData);
-
       setProfileImage(null);
-
       const reloaded = await reload({ showErrorModal: true });
-
-      if (reloaded) {
-        setNotification({
-          type: "success",
-          message: "프로필을 저장했습니다.",
-        });
-      }
+      if (reloaded) setNotification({ type: "success", message: "프로필을 저장했습니다." });
     } catch (error) {
-      setNotification({
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "요청에 실패했습니다.",
-      });
+      setNotification({ type: "error", message: error instanceof Error ? error.message : "요청에 실패했습니다." });
     }
   }
 
-  if (loading && !data) {
-    return <div className="mx-auto max-w-[1440px] px-7 py-24 text-[12px]">LOADING...</div>;
-  }
+  if (loading && !data) return <div className="mx-auto max-w-[1440px] px-7 py-24 text-[12px]">LOADING...</div>;
 
   return (
     <>
-      {notification && (
-        <NotificationModal
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification(null)}
-        />
-      )}
-
-      <div className="mx-auto max-w-[1440px] px-7 py-20 max-sm:px-4">
-      <div className="mb-16 flex items-end justify-between border-b border-black pb-6">
-        <div>
-          <p className="text-[10px] tracking-[0.16em] text-[#777]">ADMIN · RESUME CMS</p>
-          <h1 className="mt-3 text-[clamp(44px,7vw,92px)] font-normal tracking-[-0.06em]">Edit Resume</h1>
-        </div>
-        <a href="/" className="text-[10px] tracking-[0.12em] text-black no-underline">VIEW SITE ↗</a>
-      </div>
-
-      {initialLoadError && !loading && (
-        <div className="mb-10 flex items-center justify-between gap-5 border border-black/15 bg-[#f5f4f2] px-4 py-3">
+      {notification && <NotificationModal type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
+      <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-7 sm:py-20">
+        <div className="mb-10 flex flex-col items-start gap-4 border-b border-black pb-6 sm:mb-16 sm:flex-row sm:items-end sm:justify-between sm:gap-0">
           <div>
-            <p className="text-[9px] tracking-[0.14em] text-[#777]">API CONNECTION</p>
-            <p className="mt-1 text-[11px] text-[#555]">백엔드 데이터를 불러오지 못했습니다. 서버 상태를 확인한 뒤 다시 시도해주세요.</p>
+            <p className="text-[9px] tracking-[0.16em] text-[#777] sm:text-[10px]">ADMIN · RESUME CMS</p>
+            <h1 className="mt-2 text-[clamp(36px,7vw,92px)] font-normal tracking-[-0.06em] sm:mt-3">Edit Resume</h1>
           </div>
-          <button
-            type="button"
-            onClick={() => reload()}
-            className="h-9 shrink-0 border border-black px-4 text-[9px] tracking-[0.12em] transition hover:bg-black hover:text-white"
-          >
-            RETRY
-          </button>
+          <a href="/" className="text-[9px] tracking-[0.12em] text-black no-underline sm:text-[10px]">VIEW SITE ↗</a>
         </div>
-      )}
 
-      <section className="border-t border-black py-10">
-        <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1">
-          <div>
-            <h2 className="text-[11px] tracking-[0.14em]">
-              PROFILE
-            </h2>
-            
-          {/* ✅ 클릭 가능한 이미지 업로드 영역으로 변경된 부분 */}
-          <label className="group relative mt-4 flex min-h-[320px] cursor-pointer items-center justify-center overflow-hidden border-b border-black/10 bg-[#f5f4f2] transition-colors hover:bg-[#ebeae8]">
-            {profileImagePreview || savedProfileImageUrl ? (
-              <img
-                src={profileImagePreview || savedProfileImageUrl || ""}
-                alt={profile.name ?? "Profile"}
-                className="h-[260px] w-[200px] object-cover transition duration-300 group-hover:opacity-40"
-              />
-            ) : (
-              <div className="flex h-[260px] w-[200px] items-center justify-center border border-black/10 text-[9px] tracking-[0.14em] text-[#aaa]">
-                PROFILE IMAGE
+        {initialLoadError && !loading && (
+          <div className="mb-8 flex flex-col items-start gap-4 border border-black/15 bg-[#f5f4f2] px-4 py-4 sm:mb-10 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+            <div>
+              <p className="text-[9px] tracking-[0.14em] text-[#777]">API CONNECTION</p>
+              <p className="mt-1 text-[10px] text-[#555] sm:text-[11px]">백엔드 데이터를 불러오지 못했습니다. 서버 상태를 확인한 뒤 다시 시도해주세요.</p>
+            </div>
+            <button type="button" onClick={() => reload()} className="h-9 w-full shrink-0 border border-black px-4 text-[9px] tracking-[0.12em] transition hover:bg-black hover:text-white sm:w-auto">RETRY</button>
+          </div>
+        )}
+
+        <section className="border-t border-black py-8 sm:py-10">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[220px_1fr] md:gap-10">
+            <div className="flex flex-col items-center md:block">
+              <h2 className="w-full text-[11px] tracking-[0.14em]">PROFILE</h2>
+              
+              <label className="group relative mx-auto mt-4 flex min-h-[260px] w-full max-w-[200px] cursor-pointer items-center justify-center overflow-hidden border-b border-black/10 bg-[#f5f4f2] transition-colors hover:bg-[#ebeae8] md:mx-0 md:min-h-[320px]">
+                {profileImagePreview || savedProfileImageUrl ? (
+                  <img src={profileImagePreview || savedProfileImageUrl || ""} alt={profile.name ?? "Profile"} className="h-[260px] w-full object-cover transition duration-300 group-hover:opacity-40" />
+                ) : (
+                  <div className="flex h-[260px] w-full items-center justify-center border border-black/10 text-[9px] tracking-[0.14em] text-[#aaa]">PROFILE IMAGE</div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <span className="border border-black bg-white px-3 py-2 text-[9px] tracking-[0.14em] text-black">CHANGE IMAGE</span>
+                </div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { setProfileImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+              </label>
+              <p className="mt-3 w-full max-w-[200px] text-center text-[9px] leading-5 text-[#999] md:text-left">클릭하여 이미지를 변경할 수 있습니다.<br/>저장 버튼을 눌러야 반영됩니다.</p>  
+            </div>
+
+            <div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="NAME" value={profile.name ?? ""} onChange={(v) => setProfile({ ...profile, name: v })} />
+                <Field label="JOB TITLE" value={profile.jobTitle ?? ""} onChange={(v) => setProfile({ ...profile, jobTitle: v })} />
+                <Field label="EMAIL" value={profile.email ?? ""} onChange={(v) => setProfile({ ...profile, email: v })} />
+                <Field label="PHONE" value={profile.phone ?? ""} onChange={(v) => setProfile({ ...profile, phone: v })} />
+                <Field label="GITHUB URL" value={profile.githubUrl ?? ""} onChange={(v) => setProfile({ ...profile, githubUrl: v })} />
               </div>
-            )}
-            
-            {/* Hover 시 나타나는 문구 */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <span className="border border-black bg-white px-3 py-2 text-[9px] tracking-[0.14em] text-black">
-                CHANGE IMAGE
-              </span>
-            </div>
-
-            {/* 숨겨진 파일 인풋 */}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                setProfileImage(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
-
-            <p className="mt-3 text-[9px] leading-5 text-[#999]">
-              클릭하여 이미지를 변경할 수 있습니다.<br/>
-              저장 버튼을 눌러야 반영됩니다.
-            </p>  
-          </div>
-
-
-          <div>
-            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-              <Field
-                label="NAME"
-                value={profile.name ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, name: v })
-                }
-              />
-
-              <Field
-                label="JOB TITLE"
-                value={profile.jobTitle ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, jobTitle: v })
-                }
-              />
-
-              <Field
-                label="EMAIL"
-                value={profile.email ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, email: v })
-                }
-              />
-
-              <Field
-                label="PHONE"
-                value={profile.phone ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, phone: v })
-                }
-              />
-
-              <Field
-                label="GITHUB URL"
-                value={profile.githubUrl ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, githubUrl: v })
-                }
-              />
-              {/* ✅ 우측의 ProfileImage 컴포넌트 제거 (좌측 이미지 영역과 통합됨) */}
-            </div>
-
-            <div className="mt-4">
-              <TextArea
-                label="SHORT INTRO"
-                value={profile.shortIntro ?? ""}
-                onChange={(v) =>
-                  setProfile({ ...profile, shortIntro: v })
-                }
-              />
-            </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-4">
-              <p className="text-[8px] tracking-[0.1em] text-[#999]">
-                CHANGES ARE APPLIED AFTER SAVING
-              </p>
-
-              <ActionButton onClick={saveProfile}>
-                SAVE PROFILE
-              </ActionButton>
+              <div className="mt-4">
+                <TextArea label="SHORT INTRO" value={profile.shortIntro ?? ""} onChange={(v) => setProfile({ ...profile, shortIntro: v })} />
+              </div>
+              <div className="mt-4 flex flex-col items-start justify-between gap-4 border-t border-black/10 pt-4 sm:flex-row sm:items-center sm:gap-0">
+                <p className="text-[8px] tracking-[0.1em] text-[#999]">CHANGES ARE APPLIED AFTER SAVING</p>
+                <div className="w-full sm:w-auto"><ActionButton onClick={saveProfile}>SAVE PROFILE</ActionButton></div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <SkillSection items={data?.skills ?? []} run={run} />
-      <ExperienceSection items={data?.experiences ?? []} run={run} />
-      <EducationSection items={data?.educations ?? []} run={run} />
-      <IntroductionSection items={data?.introductions ?? []} run={run} />
+        <SkillSection items={data?.skills ?? []} run={run} />
+        <ExperienceSection items={data?.experiences ?? []} run={run} />
+        <EducationSection items={data?.educations ?? []} run={run} />
+        <IntroductionSection items={data?.introductions ?? []} run={run} />
       </div>
     </>
   );
 }
 
-function NotificationModal({
-  type,
-  message,
-  onClose,
-}: {
-  type: "success" | "error";
-  message: string;
-  onClose: () => void;
-}) {
+function NotificationModal({ type, message, onClose }: { type: "success" | "error"; message: string; onClose: () => void; }) {
   const isSuccess = type === "success";
-
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 px-4 backdrop-blur-[1px]"
-      role="alertdialog"
-      aria-modal="true"
-      aria-label={isSuccess ? "처리 완료" : "오류 알림"}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-[420px] border border-black bg-white p-7 shadow-[0_20px_70px_rgba(0,0,0,0.18)]"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20 px-4 backdrop-blur-[1px]" role="alertdialog" aria-modal="true" aria-label={isSuccess ? "처리 완료" : "오류 알림"} onClick={onClose}>
+      <div className="w-full max-w-[420px] border border-black bg-white p-6 shadow-[0_20px_70px_rgba(0,0,0,0.18)] sm:p-7" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-5">
           <div>
-            <p className={`text-[9px] tracking-[0.18em] ${isSuccess ? "text-[#777]" : "text-red-600"}`}>
-              {isSuccess ? "SUCCESS" : "ERROR"}
-            </p>
-            <h2 className="mt-3 text-[22px] font-normal tracking-[-0.04em]">
-              {isSuccess ? "저장되었습니다." : "처리하지 못했습니다."}
-            </h2>
+            <p className={`text-[9px] tracking-[0.18em] ${isSuccess ? "text-[#777]" : "text-red-600"}`}>{isSuccess ? "SUCCESS" : "ERROR"}</p>
+            <h2 className="mt-2 text-[20px] font-normal tracking-[-0.04em] sm:mt-3 sm:text-[22px]">{isSuccess ? "저장되었습니다." : "처리하지 못했습니다."}</h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center border border-black/20 text-[15px] transition hover:bg-black hover:text-white"
-            aria-label="알림 닫기"
-          >
-            ×
-          </button>
+          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center border border-black/20 text-[15px] transition hover:bg-black hover:text-white" aria-label="알림 닫기">×</button>
         </div>
-
-        <p className="mt-5 border-t border-black/10 pt-5 text-[12px] leading-6 text-[#555]">
-          {message}
-        </p>
-
-        <div className="mt-6 h-[2px] overflow-hidden bg-black/10">
+        <p className="mt-4 border-t border-black/10 pt-4 text-[11px] leading-6 text-[#555] sm:mt-5 sm:pt-5 sm:text-[12px]">{message}</p>
+        <div className="mt-5 h-[2px] overflow-hidden bg-black/10 sm:mt-6">
           <div className={`h-full w-full origin-left animate-[adminNotice_2.2s_linear_forwards] ${isSuccess ? "bg-black" : "bg-red-500"}`} />
         </div>
       </div>
@@ -472,12 +242,14 @@ function SkillSection({ items, run }: { items: ResumeSkill[]; run: (action: () =
   return (
     <AdminSection title="SKILLS">
       {items.map((item) => <SkillRow key={item.id} item={item} run={run} />)}
-      <div className="grid grid-cols-[1fr_1fr_1fr_90px_auto] gap-3 border-b border-black/10 py-4 max-lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 border-b border-black/10 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_90px_auto]">
         <Field label="NAME" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} />
         <Field label="CATEGORY" value={draft.category ?? ""} onChange={(v) => setDraft({ ...draft, category: v })} />
         <Field label="LEVEL" value={draft.level ?? ""} onChange={(v) => setDraft({ ...draft, level: v })} />
         <Field label="ORDER" type="number" value={String(draft.sortOrder ?? 0)} onChange={(v) => setDraft({ ...draft, sortOrder: Number(v) })} />
-        <div className="self-end"><ActionButton onClick={() => run(() => createResumeSkill(draft), "기술을 추가했습니다.")}>+ ADD</ActionButton></div>
+        <div className="flex flex-col justify-end sm:col-span-2 lg:col-span-1 lg:self-end">
+          <ActionButton onClick={() => run(() => createResumeSkill(draft), "기술을 추가했습니다.")}>+ ADD</ActionButton>
+        </div>
       </div>
     </AdminSection>
   );
@@ -486,12 +258,12 @@ function SkillSection({ items, run }: { items: ResumeSkill[]; run: (action: () =
 function SkillRow({ item, run }: { item: ResumeSkill; run: (action: () => Promise<unknown>, success: string) => Promise<void> }) {
   const [value, setValue] = useState<Omit<ResumeSkill, "id">>(item);
   return (
-    <div className="grid grid-cols-[1fr_1fr_1fr_90px_auto] gap-3 border-b border-black/10 py-4 max-lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 border-b border-black/10 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_90px_auto]">
       <Field label="NAME" value={value.name} onChange={(v) => setValue({ ...value, name: v })} />
       <Field label="CATEGORY" value={value.category ?? ""} onChange={(v) => setValue({ ...value, category: v })} />
       <Field label="LEVEL" value={value.level ?? ""} onChange={(v) => setValue({ ...value, level: v })} />
       <Field label="ORDER" type="number" value={String(value.sortOrder ?? 0)} onChange={(v) => setValue({ ...value, sortOrder: Number(v) })} />
-      <div className="flex items-end gap-2">
+      <div className="flex items-end justify-end gap-2 sm:col-span-2 lg:col-span-1">
         <ActionButton onClick={() => run(() => updateResumeSkill(item.id, value), "기술을 수정했습니다.")}>SAVE</ActionButton>
         <ActionButton danger onClick={() => confirm("삭제할까요?") && run(() => deleteResumeSkill(item.id), "기술을 삭제했습니다.")}>DELETE</ActionButton>
       </div>
@@ -512,14 +284,14 @@ function ExperienceRow({ item, run, create = false }: { item: ResumeExperience; 
   const [value, setValue] = useState<Omit<ResumeExperience, "id">>(item);
   return (
     <div className="border-b border-black/10 py-5">
-      <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="COMPANY" value={value.companyName} onChange={(v) => setValue({ ...value, companyName: v })} />
         <Field label="POSITION" value={value.position ?? ""} onChange={(v) => setValue({ ...value, position: v })} />
         <Field label="START DATE" type="date" value={value.startDate ?? ""} onChange={(v) => setValue({ ...value, startDate: v || null })} />
         <Field label="END DATE" type="date" value={value.endDate ?? ""} onChange={(v) => setValue({ ...value, endDate: v || null })} />
       </div>
       <div className="mt-3"><TextArea label="DESCRIPTION" value={value.description ?? ""} onChange={(v) => setValue({ ...value, description: v })} /></div>
-      <div className="mt-3 flex justify-end gap-2">
+      <div className="mt-4 flex justify-end gap-2">
         <ActionButton onClick={() => run(() => create ? createResumeExperience(value) : updateResumeExperience(item.id, value), create ? "경력을 추가했습니다." : "경력을 수정했습니다.")}>{create ? "+ ADD" : "SAVE"}</ActionButton>
         {!create && <ActionButton danger onClick={() => confirm("삭제할까요?") && run(() => deleteResumeExperience(item.id), "경력을 삭제했습니다.")}>DELETE</ActionButton>}
       </div>
@@ -539,13 +311,15 @@ function EducationSection({ items, run }: { items: ResumeEducation[]; run: (acti
 function EducationRow({ item, run, create = false }: { item: ResumeEducation; run: (action: () => Promise<unknown>, success: string) => Promise<void>; create?: boolean }) {
   const [value, setValue] = useState<Omit<ResumeEducation, "id">>(item);
   return (
-    <div className="grid grid-cols-2 gap-3 border-b border-black/10 py-5 max-sm:grid-cols-1">
-      <Field label="SCHOOL" value={value.schoolName} onChange={(v) => setValue({ ...value, schoolName: v })} />
-      <Field label="MAJOR" value={value.major ?? ""} onChange={(v) => setValue({ ...value, major: v })} />
-      <Field label="START DATE" type="date" value={value.startDate ?? ""} onChange={(v) => setValue({ ...value, startDate: v || null })} />
-      <Field label="END DATE" type="date" value={value.endDate ?? ""} onChange={(v) => setValue({ ...value, endDate: v || null })} />
-      <Field label="DESCRIPTION" value={value.description ?? ""} onChange={(v) => setValue({ ...value, description: v })} />
-      <div className="flex items-end gap-2">
+    <div className="border-b border-black/10 py-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="SCHOOL" value={value.schoolName} onChange={(v) => setValue({ ...value, schoolName: v })} />
+        <Field label="MAJOR" value={value.major ?? ""} onChange={(v) => setValue({ ...value, major: v })} />
+        <Field label="START DATE" type="date" value={value.startDate ?? ""} onChange={(v) => setValue({ ...value, startDate: v || null })} />
+        <Field label="END DATE" type="date" value={value.endDate ?? ""} onChange={(v) => setValue({ ...value, endDate: v || null })} />
+      </div>
+      <div className="mt-3"><Field label="DESCRIPTION" value={value.description ?? ""} onChange={(v) => setValue({ ...value, description: v })} /></div>
+      <div className="mt-4 flex justify-end gap-2">
         <ActionButton onClick={() => run(() => create ? createResumeEducation(value) : updateResumeEducation(item.id, value), create ? "학력을 추가했습니다." : "학력을 수정했습니다.")}>{create ? "+ ADD" : "SAVE"}</ActionButton>
         {!create && <ActionButton danger onClick={() => confirm("삭제할까요?") && run(() => deleteResumeEducation(item.id), "학력을 삭제했습니다.")}>DELETE</ActionButton>}
       </div>
@@ -568,7 +342,7 @@ function IntroductionRow({ item, run, create = false }: { item: ResumeIntroducti
     <div className="border-b border-black/10 py-5">
       <Field label="TITLE" value={value.title ?? ""} onChange={(v) => setValue({ ...value, title: v })} />
       <div className="mt-3"><TextArea label="CONTENT" value={value.content} onChange={(v) => setValue({ ...value, content: v })} /></div>
-      <div className="mt-3 flex justify-end gap-2">
+      <div className="mt-4 flex justify-end gap-2">
         <ActionButton onClick={() => run(() => create ? createResumeIntroduction(value) : updateResumeIntroduction(item.id, value), create ? "소개글을 추가했습니다." : "소개글을 수정했습니다.")}>{create ? "+ ADD" : "SAVE"}</ActionButton>
         {!create && <ActionButton danger onClick={() => confirm("삭제할까요?") && run(() => deleteResumeIntroduction(item.id), "소개글을 삭제했습니다.")}>DELETE</ActionButton>}
       </div>
@@ -578,9 +352,9 @@ function IntroductionRow({ item, run, create = false }: { item: ResumeIntroducti
 
 function AdminSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-black py-10">
-      <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1">
-        <h2 className="text-[11px] tracking-[0.14em]">{title}</h2>
+    <section className="border-t border-black py-8 sm:py-10">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_1fr] md:gap-10">
+        <h2 className="text-[11px] font-bold tracking-[0.14em]">{title}</h2>
         <div>{children}</div>
       </div>
     </section>

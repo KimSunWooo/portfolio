@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import type { ShopMenu } from "@/app/admin/shop/page";
 
 import {
@@ -24,11 +23,9 @@ interface ShopEditorProps {
   selectedMenu: ShopMenu;
 }
 
-export default function ShopEditor({
-  selectedMenu,
-}: ShopEditorProps) {
+export default function ShopEditor({ selectedMenu }: ShopEditorProps) {
   return (
-    <section className="min-h-full px-8 py-8">
+    <section className="min-h-full px-4 py-6 md:px-8 md:py-8">
       {selectedMenu === "dashboard" && <DashboardEditor />}
       {selectedMenu === "products" && <ProductsEditor />}
       {selectedMenu === "orders" && <OrdersEditor />}
@@ -41,7 +38,6 @@ export default function ShopEditor({
 function DashboardEditor() {
   const [productCount, setProductCount] = useState(0);
   const [userCount, setUserCount] = useState(0);
-  
 
   useEffect(() => {
     Promise.all([
@@ -61,7 +57,7 @@ function DashboardEditor() {
         description="Shop의 전체 현황을 확인합니다."
       />
 
-      <div className="mt-10 grid grid-cols-4 gap-4 max-xl:grid-cols-2 max-md:grid-cols-1">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:mt-10 xl:grid-cols-4">
         <SummaryCard label="PRODUCTS (Real)" value={productCount.toString()} />
         <SummaryCard label="CUSTOMERS (Real)" value={userCount.toString()} />
         <SummaryCard label="ORDERS (Mock)" value="128" />
@@ -71,7 +67,6 @@ function DashboardEditor() {
   );
 }
 
-// 💡 제품 에디터: 좌/우 분할 레이아웃 적용
 function ProductsEditor() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +74,6 @@ function ProductsEditor() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
-  // const [addProduct, setAddProduct] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -142,115 +136,115 @@ function ProductsEditor() {
             onClick={() => {
               setEditingProduct(null);
               setIsAdding(!isAdding);
-              // setAddProduct(!addProduct)
             }}
-            className="border border-black bg-black px-5 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black"
+            className="border border-black bg-black px-4 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black md:px-5"
           >
             ADD PRODUCT
           </button>
         }
       />
 
-      {/* 💡 Flex 레이아웃으로 좌(목록) 우(폼) 분할 */}
-      <div className="mt-10 flex gap-8 items-start max-xl:flex-col">
+      <div className="mt-8 flex flex-col items-start gap-8 md:mt-10 xl:flex-row">
         
-        {/* 좌측: 상품 목록 */}
-        <div className="flex-1 w-full border-t border-black">
-          <div className="grid grid-cols-[80px_1fr_100px_100px_100px] gap-4 border-b border-black/10 py-4 text-[9px] tracking-[0.14em] text-[#777] max-lg:grid-cols-[60px_1fr_80px_80px_80px]">
-            <span>IMAGE</span>
-            <span>PRODUCT</span>
-            <span>PRICE</span>
-            <span>STATUS</span>
-            <span className="text-right">ACTIONS</span>
-          </div>
-
-          {loading && (
-            <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">
-              상품을 불러오는 중입니다.
+        {/* 좌측: 상품 목록 (모바일 가로 스크롤 적용) */}
+        <div className="w-full flex-1 border-t border-black overflow-x-auto custom-scrollbar">
+          <div className="min-w-[600px]">
+            <div className="grid grid-cols-[80px_1fr_100px_100px_100px] gap-4 border-b border-black/10 py-4 text-[9px] tracking-[0.14em] text-[#777] max-lg:grid-cols-[60px_1fr_80px_80px_80px]">
+              <span>IMAGE</span>
+              <span>PRODUCT</span>
+              <span>PRICE</span>
+              <span>STATUS</span>
+              <span className="text-right">ACTIONS</span>
             </div>
-          )}
 
-          {!loading && error && (
-            <div className="py-16 text-center text-[11px] tracking-[0.08em] text-red-500">
-              {error}
-            </div>
-          )}
-
-          {!loading && !error && products.length === 0 && (
-            <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">
-              등록된 상품이 없습니다.
-            </div>
-          )}
-
-          {!loading &&
-            !error &&
-            products.map((product) => (
-              <div
-                key={product.id}
-                className={`grid grid-cols-[80px_1fr_100px_100px_100px] items-center gap-4 border-b border-black/10 py-4 max-lg:grid-cols-[60px_1fr_80px_80px_80px] transition-colors ${editingProduct?.id === product.id ? 'bg-black/5' : ''}`}
-              >
-                <div className="h-16 w-16 overflow-hidden bg-[#f1efec] max-lg:h-12 max-lg:w-12">
-                  {product.thumbnail ? (
-                    <img
-                      src={resolveAssetUrl(product.thumbnail) ?? ""}
-                      alt={product.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[8px] text-[#aaa]">
-                      NO IMAGE
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-[12px] truncate">{product.name}</p>
-                  {product.subtitle && (
-                    <p className="mt-1 text-[10px] text-[#777] truncate">{product.subtitle}</p>
-                  )}
-                  {product.category && (
-                    <p className="mt-1 text-[9px] tracking-[0.1em] text-[#999] truncate">
-                      {product.category}
-                    </p>
-                  )}
-                </div>
-
-                <div className="text-[11px]">
-                  ₩{product.price.toLocaleString()}
-                </div>
-
-                <div className="text-[9px] tracking-[0.1em]">
-                  {product.status}
-                </div>
-
-                <div className="flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAdding(false);
-                      setEditingProduct(product);
-                    }}
-                    className="text-[9px] tracking-[0.12em] text-[#777] hover:text-black font-bold"
-                  >
-                    EDIT
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={deletingId === product.id}
-                    onClick={() => handleDelete(product)}
-                    className="text-[9px] tracking-[0.12em] text-[#999] transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {deletingId === product.id ? "..." : "DEL"}
-                  </button>
-                </div>
+            {loading && (
+              <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">
+                상품을 불러오는 중입니다.
               </div>
-            ))}
+            )}
+
+            {!loading && error && (
+              <div className="py-16 text-center text-[11px] tracking-[0.08em] text-red-500">
+                {error}
+              </div>
+            )}
+
+            {!loading && !error && products.length === 0 && (
+              <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">
+                등록된 상품이 없습니다.
+              </div>
+            )}
+
+            {!loading &&
+              !error &&
+              products.map((product) => (
+                <div
+                  key={product.id}
+                  className={`grid grid-cols-[80px_1fr_100px_100px_100px] items-center gap-4 border-b border-black/10 py-4 transition-colors max-lg:grid-cols-[60px_1fr_80px_80px_80px] ${editingProduct?.id === product.id ? 'bg-black/5' : ''}`}
+                >
+                  <div className="h-16 w-16 overflow-hidden bg-[#f1efec] max-lg:h-12 max-lg:w-12">
+                    {product.thumbnail ? (
+                      <img
+                        src={resolveAssetUrl(product.thumbnail) ?? ""}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[8px] text-[#aaa]">
+                        NO IMAGE
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="truncate text-[12px]">{product.name}</p>
+                    {product.subtitle && (
+                      <p className="mt-1 truncate text-[10px] text-[#777]">{product.subtitle}</p>
+                    )}
+                    {product.category && (
+                      <p className="mt-1 truncate text-[9px] tracking-[0.1em] text-[#999]">
+                        {product.category}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="text-[11px]">
+                    ₩{product.price.toLocaleString()}
+                  </div>
+
+                  <div className="text-[9px] tracking-[0.1em]">
+                    {product.status}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAdding(false);
+                        setEditingProduct(product);
+                      }}
+                      className="text-[9px] font-bold tracking-[0.12em] text-[#777] hover:text-black"
+                    >
+                      EDIT
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={deletingId === product.id}
+                      onClick={() => handleDelete(product)}
+                      className="text-[9px] tracking-[0.12em] text-[#999] transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {deletingId === product.id ? "..." : "DEL"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
 
         {/* 우측: 상품 등록/수정 폼 (Sticky 고정) */}
         {isFormOpen && (
-          <div className="w-full xl:w-[40vw] shrink-0 xl:sticky xl:top-8 max-h-[calc(100vh-4rem)] overflow-y-auto border border-black bg-white shadow-xl custom-scrollbar">
+          <div className="w-full shrink-0 border border-black bg-white shadow-xl custom-scrollbar xl:sticky xl:top-8 xl:w-[40vw] xl:max-h-[calc(100vh-4rem)] xl:overflow-y-auto">
             <ProductForm
               key={editingProduct?.id ?? "new"}
               product={editingProduct}
@@ -342,7 +336,7 @@ function ProductsEditor() {
   );
 }
 
-function OrdersEditor() { /* 기존과 동일 */
+function OrdersEditor() {
   const mockOrders = [
     { id: "ORD-928374", date: "2026-08-27", customer: "김관리", amount: 45000, status: "배송 준비중" },
     { id: "ORD-128371", date: "2026-08-26", customer: "이지훈", amount: 129000, status: "결제 완료" },
@@ -352,25 +346,28 @@ function OrdersEditor() { /* 기존과 동일 */
   return (
     <div>
       <EditorHeader label="03 · ORDERS" title="Orders" description="고객의 주문 내역과 주문 상태를 관리합니다. (현재 가짜 데이터로 노출됩니다)" />
-      <div className="mt-10 border-t border-black">
-        <div className="grid grid-cols-[120px_120px_1fr_120px_100px] gap-4 border-b border-black/10 py-4 text-[9px] tracking-[0.14em] text-[#777]">
-          <span>ORDER ID</span><span>DATE</span><span>CUSTOMER</span><span>TOTAL</span><span>STATUS</span>
-        </div>
-        {mockOrders.map((order) => (
-          <div key={order.id} className="grid grid-cols-[120px_120px_1fr_120px_100px] items-center gap-4 border-b border-black/10 py-4 text-[11px]">
-            <span className="font-bold">{order.id}</span>
-            <span className="text-[#777]">{order.date}</span>
-            <span>{order.customer}</span>
-            <span>₩{order.amount.toLocaleString()}</span>
-            <span className="inline-block bg-gray-100 px-2 py-1 text-[9px] tracking-wider text-black text-center">{order.status}</span>
+      {/* 💡 주문내역 테이블 모바일 가로 스크롤 */}
+      <div className="mt-8 border-t border-black overflow-x-auto custom-scrollbar md:mt-10">
+        <div className="min-w-[600px]">
+          <div className="grid grid-cols-[120px_120px_1fr_120px_100px] gap-4 border-b border-black/10 py-4 text-[9px] tracking-[0.14em] text-[#777]">
+            <span>ORDER ID</span><span>DATE</span><span>CUSTOMER</span><span>TOTAL</span><span>STATUS</span>
           </div>
-        ))}
+          {mockOrders.map((order) => (
+            <div key={order.id} className="grid grid-cols-[120px_120px_1fr_120px_100px] items-center gap-4 border-b border-black/10 py-4 text-[11px]">
+              <span className="font-bold">{order.id}</span>
+              <span className="text-[#777]">{order.date}</span>
+              <span>{order.customer}</span>
+              <span>₩{order.amount.toLocaleString()}</span>
+              <span className="inline-block bg-gray-100 px-2 py-1 text-center text-[9px] tracking-wider text-black">{order.status}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function UsersEditor() { /* 기존과 동일 (생략 없이 유지) */
+function UsersEditor() {
   const [users, setUsers] = useState<AdminUserResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
@@ -411,8 +408,10 @@ function UsersEditor() { /* 기존과 동일 (생략 없이 유지) */
   return (
     <div>
       <EditorHeader label="04 · CUSTOMERS" title="Customers" description="Shop에 가입한 고객을 검색하고 등급을 관리합니다." />
-      <form onSubmit={handleSearch} className="mt-10 flex gap-4 max-sm:flex-col border-b border-black/10 pb-6">
-        <select value={searchTier} onChange={(e) => setSearchTier(e.target.value)} className="h-11 border border-black/20 px-4 text-[11px] outline-none focus:border-black bg-white">
+      
+      {/* 💡 폼 요소 모바일 유연성 강화 */}
+      <form onSubmit={handleSearch} className="mt-8 flex flex-col gap-3 border-b border-black/10 pb-6 sm:flex-row md:mt-10 md:gap-4">
+        <select value={searchTier} onChange={(e) => setSearchTier(e.target.value)} className="h-11 border border-black/20 bg-white px-4 text-[11px] outline-none focus:border-black">
           <option value="">ALL TIERS (전체 등급)</option>
           <option value="VIP">VIP (100만 이상)</option>
           <option value="GOLD">GOLD (30만 이상)</option>
@@ -420,44 +419,51 @@ function UsersEditor() { /* 기존과 동일 (생략 없이 유지) */
           <option value="BRONZE">BRONZE (10만 미만)</option>
         </select>
         <input type="text" placeholder="고객 이름으로 검색..." value={searchName} onChange={(e) => setSearchName(e.target.value)} className="h-11 flex-1 border border-black/20 px-4 text-[12px] outline-none focus:border-black" />
-        <button type="submit" className="h-11 bg-black px-8 text-[10px] tracking-widest text-white hover:bg-[#333]">SEARCH</button>
+        <button type="submit" className="h-11 w-full bg-black px-8 text-[10px] tracking-widest text-white hover:bg-[#333] sm:w-auto">SEARCH</button>
       </form>
+
       <div className="mt-2">
         <p className="py-4 text-[10px] text-[#777]">총 <strong className="text-black">{totalElements}</strong>명의 고객이 있습니다.</p>
-        <div className="grid grid-cols-[60px_1fr_120px_100px_120px_100px] gap-4 border-b border-black py-4 text-[9px] tracking-[0.14em] text-[#777] max-lg:grid-cols-[60px_1fr_100px_100px]">
-          <span>ID</span><span>NAME / EMAIL</span><span className="max-lg:hidden">JOIN DATE</span><span>ORDERS</span><span className="max-lg:hidden">TOTAL SPENT</span><span>TIER</span>
+        
+        {/* 💡 유저 목록 테이블 모바일 가로 스크롤 */}
+        <div className="overflow-x-auto custom-scrollbar">
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-[60px_1fr_120px_100px_120px_100px] gap-4 border-b border-black py-4 text-[9px] tracking-[0.14em] text-[#777]">
+              <span>ID</span><span>NAME / EMAIL</span><span>JOIN DATE</span><span>ORDERS</span><span>TOTAL SPENT</span><span>TIER</span>
+            </div>
+            {loading ? <div className="py-20 text-center text-[11px] text-[#999]">로딩 중...</div> : users.length === 0 ? <div className="py-20 text-center text-[11px] text-[#999]">검색 결과가 없습니다.</div> : (
+              users.map((user) => {
+                const tier = getCustomerTier(user.totalSpent || 0);
+                return (
+                  <div key={user.id} className="grid grid-cols-[60px_1fr_120px_100px_120px_100px] items-center gap-4 border-b border-black/10 py-4 text-[11px]">
+                    <span className="text-[#999]">{String(user.id).padStart(3, "0")}</span>
+                    <div>
+                      <p className="font-bold">{user.name}</p>
+                      <p className="text-[10px] text-[#777]">{user.email}</p>
+                    </div>
+                    <span className="text-[#777]">{user.joinDate ? user.joinDate.split("T")[0] : "-"}</span>
+                    <span>{user.orderCount || 0}건</span>
+                    <span className="font-bold">₩{(user.totalSpent || 0).toLocaleString()}</span>
+                    <span className={`inline-block px-2 py-1 text-center text-[9px] font-bold tracking-wider ${tier === "VIP" ? "bg-black text-white" : tier === "GOLD" ? "bg-yellow-500 text-white" : tier === "SILVER" ? "bg-gray-300 text-black" : "bg-gray-100 text-[#777]"}`}>{tier}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-        {loading ? <div className="py-20 text-center text-[11px] text-[#999]">로딩 중...</div> : users.length === 0 ? <div className="py-20 text-center text-[11px] text-[#999]">검색 결과가 없습니다.</div> : (
-          users.map((user) => {
-            const tier = getCustomerTier(user.totalSpent || 0);
-            return (
-              <div key={user.id} className="grid grid-cols-[60px_1fr_120px_100px_120px_100px] items-center gap-4 border-b border-black/10 py-4 text-[11px] max-lg:grid-cols-[60px_1fr_100px_100px]">
-                <span className="text-[#999]">{String(user.id).padStart(3, "0")}</span>
-                <div>
-                  <p className="font-bold">{user.name}</p>
-                  <p className="text-[10px] text-[#777]">{user.email}</p>
-                </div>
-                <span className="max-lg:hidden text-[#777]">{user.joinDate ? user.joinDate.split("T")[0] : "-"}</span>
-                <span>{user.orderCount || 0}건</span>
-                <span className="max-lg:hidden font-bold">₩{(user.totalSpent || 0).toLocaleString()}</span>
-                <span className={`inline-block px-2 py-1 text-center text-[9px] tracking-wider font-bold ${tier === "VIP" ? "bg-black text-white" : tier === "GOLD" ? "bg-yellow-500 text-white" : tier === "SILVER" ? "bg-gray-300 text-black" : "bg-gray-100 text-[#777]"}`}>{tier}</span>
-              </div>
-            );
-          })
-        )}
       </div>
       {!loading && totalPages > 0 && (
         <div className="mt-8 flex items-center justify-center gap-4">
-          <button type="button" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)} className="border border-black/20 px-4 py-2 text-[10px] disabled:opacity-30 transition hover:bg-black hover:text-white">PREV</button>
+          <button type="button" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)} className="border border-black/20 px-4 py-2 text-[10px] transition hover:bg-black hover:text-white disabled:opacity-30">PREV</button>
           <span className="text-[11px] tracking-widest text-[#555]">{currentPage + 1} / {totalPages}</span>
-          <button type="button" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)} className="border border-black/20 px-4 py-2 text-[10px] disabled:opacity-30 transition hover:bg-black hover:text-white">NEXT</button>
+          <button type="button" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)} className="border border-black/20 px-4 py-2 text-[10px] transition hover:bg-black hover:text-white disabled:opacity-30">NEXT</button>
         </div>
       )}
     </div>
   );
 }
 
-function SettingsEditor() { /* 기존과 동일 */
+function SettingsEditor() {
   const [shopName, setShopName] = useState("STUDIO.");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -470,13 +476,13 @@ function SettingsEditor() { /* 기존과 동일 */
   return (
     <div>
       <EditorHeader label="05 · SETTINGS" title="Shop Settings" description="Shop의 기본 정보를 설정합니다." />
-      <form onSubmit={handleSave} className="mt-10 max-w-2xl border-t border-black">
+      <form onSubmit={handleSave} className="mt-8 max-w-2xl border-t border-black md:mt-10">
         <div className="border-b border-black/10 py-6">
           <label className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">SHOP NAME</label>
           <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Shop name" className="w-full border border-black/20 bg-transparent px-4 py-3 text-sm outline-none transition focus:border-black" />
         </div>
-        <div className="mt-8 flex justify-end">
-          <button type="submit" disabled={isSaving} className="border border-black bg-black px-8 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black disabled:opacity-50">
+        <div className="mt-6 flex justify-end md:mt-8">
+          <button type="submit" disabled={isSaving} className="w-full border border-black bg-black px-8 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black disabled:opacity-50 sm:w-auto">
             {isSaving ? "SAVING..." : "SAVE SETTINGS"}
           </button>
         </div>
@@ -487,27 +493,26 @@ function SettingsEditor() { /* 기존과 동일 */
 
 function EditorHeader({ label, title, description, action }: { label: string; title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-end justify-between gap-8 border-b border-black pb-6">
+    <div className="flex flex-col items-start gap-4 border-b border-black pb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
       <div>
-        <p className="mb-3 text-[9px] tracking-[0.16em] text-[#777]">{label}</p>
-        <h1 className="text-[clamp(36px,5vw,64px)] font-normal tracking-[-0.05em]">{title}</h1>
-        <p className="mt-3 text-xs text-[#777]">{description}</p>
+        <p className="mb-2 text-[9px] tracking-[0.16em] text-[#777] md:mb-3">{label}</p>
+        <h1 className="text-[clamp(30px,5vw,64px)] font-normal tracking-[-0.05em]">{title}</h1>
+        <p className="mt-2 text-xs text-[#777] md:mt-3">{description}</p>
       </div>
-      {action}
+      {action && <div className="w-full sm:w-auto">{action}</div>}
     </div>
   );
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-black/15 bg-white p-6">
+    <div className="border border-black/15 bg-white p-5 md:p-6">
       <p className="text-[9px] tracking-[0.14em] text-[#777]">{label}</p>
-      <p className="mt-8 text-4xl tracking-[-0.05em]">{value}</p>
+      <p className="mt-4 text-3xl tracking-[-0.05em] md:mt-8 md:text-4xl">{value}</p>
     </div>
   );
 }
 
-// 💡 지정된 기본 컬러 팔레트 (블랙, 화이트, 베이지, 블루, 올리브)
 const DEFAULT_PALETTES = ["#000000", "#FFFFFF", "#F5F5DC", "#0000FF", "#808000"];
 
 function ProductForm({
@@ -520,7 +525,7 @@ function ProductForm({
   saving: boolean;
   onCancel: () => void;
   onSubmit: (
-    data: ProductRequest & { colors?: string[] }, // 타입 확장 (api.ts도 수정 필요)
+    data: ProductRequest & { colors?: string[] },
     image: File | null,
     detailImages: File[],
     removedDetailImageIds: number[]
@@ -537,12 +542,9 @@ function ProductForm({
   const [isNew, setIsNew] = useState(product?.isNew ?? false);
   const [isBest, setIsBest] = useState(product?.isBest ?? false);
 
-  // 💡 컬러 상태 및 입력 폼 추가
   const [colors, setColors] = useState<string[]>(() => {
     if (product?.color) return product.color;
-    if (product) return []; // 기존 상품 수정 시 colors가 없으면 빈 배열
-    
-    // 신규 등록일 경우: 팔레트에서 1~3개의 색상을 랜덤 지정
+    if (product) return []; 
     const shuffled = [...DEFAULT_PALETTES].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, Math.floor(Math.random() * 3) + 1);
   });
@@ -595,41 +597,36 @@ function ProductForm({
       isBest,
       stock: Number(stock || 0),
       status,
-      colors, // 💡 추가된 색상 필드 전송
+      colors, 
     };
 
     await onSubmit(payload, image, detailImages, removedDetailImageIds);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full bg-white">
-      {/* 폼 헤더 */}
-      <div className="flex items-center justify-between border-b border-black px-6 py-5 sticky top-0 bg-white z-10">
+    <form onSubmit={handleSubmit} className="flex h-full flex-col bg-white">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black bg-white px-4 py-4 md:px-6 md:py-5">
         <div>
           <p className="text-[9px] tracking-[0.16em] text-[#777]">
             {product ? "EDIT PRODUCT" : "NEW PRODUCT"}
           </p>
-          <h3 className="mt-1 text-xl tracking-[-0.03em]">
+          <h3 className="mt-1 text-lg tracking-[-0.03em] md:text-xl">
             {product ? "Edit Product" : "Add Product"}
           </h3>
         </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-[9px] tracking-[0.12em] text-[#777] hover:text-black"
-        >
+        <button type="button" onClick={onCancel} className="text-[9px] tracking-[0.12em] text-[#777] hover:text-black">
           CLOSE
         </button>
       </div>
 
-      {/* 💡 하나의 단일 컬럼 레이아웃으로 변경 (사이드 패널용) */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="p-6 flex flex-col gap-2 border-b border-black/10">
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-2 border-b border-black/10 p-4 md:p-6">
           <FormField label="PRODUCT NAME">
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
           </FormField>
           
-          <div className="grid grid-cols-2 gap-4">
+          {/* 💡 폼 필드 모바일 정렬: 모바일 세로 1줄, PC 가로 2줄 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="CATEGORY">
               <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
             </FormField>
@@ -642,11 +639,10 @@ function ProductForm({
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full resize-none border border-black/20 p-3 text-sm outline-none focus:border-black" />
           </FormField>
 
-          {/* 💡 추가된 색상(COLORS) 입력 컴포넌트 */}
           <FormField label="COLORS (OPTIONAL)">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-2">
-                {colors.length === 0 && <span className="text-[10px] text-[#999] py-1">선택된 색상이 없습니다.</span>}
+                {colors.length === 0 && <span className="py-1 text-[10px] text-[#999]">선택된 색상이 없습니다.</span>}
                 {colors.map(c => (
                   <div key={c} className="flex items-center gap-1 border border-black/20 bg-white px-2 py-1 shadow-sm">
                     <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: c }} />
@@ -656,36 +652,31 @@ function ProductForm({
                 ))}
               </div>
 
-              <div className="flex items-center gap-2 mt-1">
-                <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="h-8 w-8 cursor-pointer border border-black/20 p-0 rounded-none bg-white" />
+              <div className="mt-1 flex items-center gap-2">
+                <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="h-8 w-8 cursor-pointer rounded-none border border-black/20 bg-white p-0" />
                 <input type="text" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} placeholder="#000000" className="h-8 w-24 border border-black/20 px-2 text-[10px] uppercase outline-none focus:border-black" />
                 <button type="button" onClick={() => { if (newColorHex && !colors.includes(newColorHex.toUpperCase())) setColors([...colors, newColorHex.toUpperCase()]); }} className="h-8 bg-black px-4 text-[9px] text-white transition hover:bg-[#333]">ADD</button>
               </div>
 
-              <div className="flex items-center gap-3 mt-1 p-2 bg-[#f9f9f9] border border-black/10">
-                <span className="text-[9px] text-[#777] font-bold">PALETTE:</span>
+              <div className="mt-1 flex items-center gap-3 border border-black/10 bg-[#f9f9f9] p-2">
+                <span className="text-[9px] font-bold text-[#777]">PALETTE:</span>
                 {DEFAULT_PALETTES.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => { if (!colors.includes(c)) setColors([...colors, c]); }}
-                    className="h-5 w-5 rounded-full border border-black/20 transition hover:scale-110 shadow-sm"
-                    style={{ backgroundColor: c }}
-                  />
+                  <button key={c} type="button" onClick={() => { if (!colors.includes(c)) setColors([...colors, c]); }} className="h-5 w-5 rounded-full border border-black/20 shadow-sm transition hover:scale-110" style={{ backgroundColor: c }} />
                 ))}
               </div>
             </div>
           </FormField>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <ProductImageInput image={image} currentImage={resolveAssetUrl(product?.thumbnail)} onChange={setImage} />
           <DetailImagesInput images={detailImages} existingImages={existingDetailImages} loading={loadingDetailImages} onChange={setDetailImages} onRemoveExisting={(imageId) => {
             setExistingDetailImages((prev) => prev.filter((item) => item.id !== imageId));
             setRemovedDetailImageIds((prev) => prev.includes(imageId) ? prev : [...prev, imageId]);
           }} />
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
+          {/* 💡 가격 및 옵션 입력부 반응형 */}
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="PRICE">
               <input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
             </FormField>
@@ -694,7 +685,7 @@ function ProductForm({
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="STOCK">
               <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
             </FormField>
@@ -720,21 +711,11 @@ function ProductForm({
         </div>
       </div>
 
-      {/* 액션 버튼 고정 */}
-      <div className="flex justify-end gap-3 border-t border-black px-6 py-5 bg-[#f9f9f9] sticky bottom-0 z-10">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="border border-black/20 px-5 py-3 text-[9px] tracking-[0.14em] bg-white transition hover:border-black"
-        >
+      <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t border-black bg-[#f9f9f9] px-4 py-4 md:px-6 md:py-5">
+        <button type="button" onClick={onCancel} disabled={saving} className="border border-black/20 bg-white px-4 py-3 text-[9px] tracking-[0.14em] transition hover:border-black md:px-5">
           CANCEL
         </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="border border-black bg-black px-6 py-3 text-[9px] tracking-[0.14em] text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <button type="submit" disabled={saving} className="border border-black bg-black px-4 py-3 text-[9px] tracking-[0.14em] text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-50 md:px-6">
           {saving ? "SAVING..." : product ? "SAVE CHANGES" : "CREATE PRODUCT"}
         </button>
       </div>
@@ -806,7 +787,7 @@ function DetailImagesInput({ images, existingImages, loading, onChange, onRemove
         <span className="text-[9px] tracking-[0.14em] text-[#777]">DETAIL IMAGES</span>
         <span className="text-[9px] tracking-[0.1em] text-[#999]">{existingImages.length + images.length} IMAGES</span>
       </div>
-      <div className="grid grid-cols-4 gap-3 max-sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
         {loading && <div className="flex aspect-square items-center justify-center border border-black/20 bg-[#f5f4ef]"><span className="text-[8px] tracking-[0.12em] text-[#999]">LOADING...</span></div>}
         {!loading && existingImages.map((img, i) => (
           <div key={`existing-${img.id}`} className="group relative aspect-square overflow-hidden border border-black/20 bg-[#f5f4ef]">
