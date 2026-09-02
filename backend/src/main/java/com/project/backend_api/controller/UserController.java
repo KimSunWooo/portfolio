@@ -77,7 +77,7 @@ public class UserController {
         // 수명을 0으로 만든 빈 쿠키를 내려보내서 기존 쿠키를 덮어쓰기(삭제) 합니다.
         ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(0)
                 .sameSite("Lax")

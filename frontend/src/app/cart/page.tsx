@@ -90,7 +90,7 @@ export default function CartPage() {
                 {cartItems.map((item) => (
                   <div key={item.cartItemId} className="flex items-center gap-5 border-b border-black/10 py-6 max-sm:flex-col max-sm:items-start">
                     
-                    <Link href={`/shop/${item.productId}`} className="h-[100px] w-[80px] shrink-0 bg-[#f5f4ef] overflow-hidden">
+                    <Link href={`/product/${item.productId}`} prefetch={false} className="h-[100px] w-[80px] shrink-0 bg-[#f5f4ef] overflow-hidden">
                       {item.thumbnailUrl ? (
                         <img src={resolveAssetUrl(item.thumbnailUrl) || ""} alt={item.productName} className="h-full w-full object-cover" />
                       ) : (
@@ -99,7 +99,7 @@ export default function CartPage() {
                     </Link>
 
                     <div className="flex-1">
-                      <Link href={`/product/${item.productId}`} className="text-[13px] hover:underline">
+                      <Link href={`/product/${item.productId}`} prefetch={false} className="text-[13px] hover:underline">
                         {item.productName}
                       </Link>
                       <p className="mt-2 text-[11px] text-[#777]">₩{item.price.toLocaleString()}</p>

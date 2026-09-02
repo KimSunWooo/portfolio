@@ -10,23 +10,30 @@ import { getAccessToken, removeAccessToken, silentRefresh } from "../../lib/api"
 export default function Header() {
   const pathname = usePathname();
   
-  // 💡 사이드바 열림/닫힘 상태 관리
+  // 💡 사이드바 열림/닫힘 상태 관리 및 마운트 상태
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
-  // 기존 상태들 (예시 - 실제 프로젝트 환경에 맞게 수정해서 사용하세요)
+  // Zustand 전역 상태 가져오기
   const { isLoggedIn, isAdmin, setIsLoggedIn, setIsAdmin } = useAuthStore();
   const { cartCount, refreshCartCount } = useCartStore();
+
+  // 클라이언트 마운트 완료 처리 (Hydration 에러 방지)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 메뉴 이동 시 모바일 사이드바 자동 닫기
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
 
+  // 새로고침 시 로그인 상태 복구 (Silent Refresh)
   useEffect(() => {
     const initializeAuth = async () => {
       // 1. 메모리에 토큰이 있는지 확인
       if (!getAccessToken()) {
-        // 2. 토큰이 없다면 (새로고침 된 상태라면) 백엔드 쿠키를 통해 재발급 시도
+        // 2. 토큰이 없다면 백엔드 쿠키를 통해 재발급 시도
         await silentRefresh();
       }
       // 3. 로그인 상태 UI 업데이트
@@ -34,7 +41,7 @@ export default function Header() {
     };
 
     initializeAuth();
-  }, []);
+  }, [setIsLoggedIn]);
 
   // 스크롤 방지 (사이드바 열렸을 때 뒤에 화면이 스크롤 안 되게)
   useEffect(() => {
@@ -42,57 +49,50 @@ export default function Header() {
     else document.body.style.overflow = "unset";
   }, [isMenuOpen]);
 
+  // 장바구니 개수 초기화 및 로그인 상태 변경 시 갱신
   useEffect(() => {
     refreshCartCount();
   }, [isLoggedIn, refreshCartCount]);
 
+  // 라우트 이동 및 커스텀 이벤트 발생 시 로그인 상태 동기화
   useEffect(() => {
-    // 로그인 상태를 체크하는 함수
     const updateLoginState = () => {
       setIsLoggedIn(!!getAccessToken());
     };
 
-    // 1. 페이지가 렌더링되거나 이동(pathname 변경)할 때 1차 체크
     updateLoginState();
-
-    // 2. 커스텀 이벤트(authStateChanged) 리스너 등록
-    // API 통신 중 토큰이 갱신되거나 삭제되면 즉각 updateLoginState가 실행됩니다.
     window.addEventListener("authStateChanged", updateLoginState);
 
-    // 컴포넌트가 언마운트될 때 리스너 청소
     return () => {
       window.removeEventListener("authStateChanged", updateLoginState);
     };
-  }, [pathname]);
+  }, [pathname, setIsLoggedIn]);
 
   const handleLogout = async () => {
     try {
-      // (선택) 백엔드 로그아웃 API가 있다면 호출
       await fetch("/api/users/logout", { method: "POST" });
     } catch (error) {
       console.error("로그아웃 API 호출 실패", error);
     } finally {
-      // 1. 프론트엔드 토큰 삭제 및 전역 상태(Zustand) 확실하게 초기화!
+      // 1. 프론트엔드 토큰 삭제 및 전역 상태 확실하게 초기화
       removeAccessToken(); 
       setIsLoggedIn(false);
-      setIsAdmin(false); // 💡 관리자 상태도 완벽하게 회수
+      setIsAdmin(false);
       
-      // 2. 로그아웃 후 이동할 경로(Target URL) 계산
-      let redirectPath = pathname; // 기본값: 현재 머물고 있는 위치 그대로
+      // 2. 로그아웃 후 이동할 경로 계산
+      let redirectPath = pathname;
 
-      // 로그인이 반드시 필요한 접근 제한 경로들 (필요에 따라 추가하세요)
+      // 로그인이 반드시 필요한 접근 제한 경로들
       const privateRoutes = ["/admin", "/my", "/checkout"]; 
       const isPrivateRoute = privateRoutes.some((route) => pathname.startsWith(route));
 
       if (isPrivateRoute) {
-        // 3-1. 권한이 필요한 페이지(어드민 등)에 있었다면 메인(/)으로 쫓아냄
         redirectPath = "/";
       } else if (pathname.startsWith("/shop/")) {
-        // 3-2. /shop/ 상세페이지 내부에 있었다면 /shop 메인으로 이동
         redirectPath = "/shop";
       }
 
-      // 4. 계산된 경로로 이동하며 강제 새로고침 (잔여 캐시 완벽 제거)
+      // 3. 계산된 경로로 이동하며 강제 새로고침
       window.location.href = redirectPath;
     }
   };
@@ -107,38 +107,43 @@ export default function Header() {
             PORTFOLIO
           </Link>
 
-          {/* 2. 데스크탑 전용 GNB (모바일에서는 숨김: max-md:hidden) */}
+          {/* 2. 데스크탑 전용 GNB */}
           <nav className="flex items-center gap-6 max-md:hidden text-[12px] tracking-[0.1em]">
             <Link href="/shop" className="hover:text-gray-500">SHOP</Link>
-            {/* <Link href="/about" className="hover:text-gray-500">ABOUT</Link> */}
             
-            {/* 어드민 메뉴 */}
-            {isAdmin && (
+            {/* mounted 되기 전에는 투명한 빈 공간으로 깜빡임 방지 */}
+            {!mounted ? (
+              <div className="w-[150px]"></div>
+            ) : (
               <>
-                <Link href="/admin/products" className="font-bold text-blue-600 hover:text-blue-400">PRODUCT_MGT</Link>
-                <Link href="/admin/orders" className="font-bold text-blue-600 hover:text-blue-400">ORDER_MGT</Link>
+                {isAdmin && (
+                  <>
+                    <Link href="/admin/products" className="font-bold text-blue-600 hover:text-blue-400">PRODUCT_MGT</Link>
+                    <Link href="/admin/orders" className="font-bold text-blue-600 hover:text-blue-400">ORDER_MGT</Link>
+                  </>
+                )}
+                {isLoggedIn ? (
+                  <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button>
+                ) : (
+                  <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
+                )}
               </>
             )}
-
-            {isLoggedIn ? (
-              <button onClick={handleLogout} className="hover:text-gray-500">LOGOUT</button> // ⭕ onClick 추가!
-            ) : (
-              <Link href="/login" className="hover:text-gray-500">LOGIN</Link>
-            )}
-            <Link href="/cart" className="hover:text-gray-500">CART ({cartCount})</Link>
+            <Link href="/cart" className="hover:text-gray-500">
+              CART ({mounted ? cartCount : 0})
+            </Link>
           </nav>
 
-          {/* 3. 모바일 전용 햄버거 & 장바구니 버튼 (데스크탑에서는 숨김: md:hidden) */}
+          {/* 3. 모바일 전용 햄버거 & 장바구니 버튼 */}
           <div className="flex items-center gap-4 md:hidden">
             <Link href="/cart" className="text-[12px] tracking-[0.1em]">
-              CART ({cartCount})
+              CART ({mounted ? cartCount : 0})
             </Link>
             <button 
               onClick={() => setIsMenuOpen(true)}
               className="p-1"
               aria-label="Open Menu"
             >
-              {/* 햄버거 아이콘 (SVG) */}
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -148,15 +153,13 @@ export default function Header() {
       </header>
 
       {/* 4. 모바일 사이드바 (Drawers) */}
-      {/* 뒷배경 어둡게 (Overlay) */}
       <div 
         className={`fixed inset-0 z-50 bg-black/50 transition-opacity duration-300 md:hidden ${
           isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
-        onClick={() => setIsMenuOpen(false)} // 배경 클릭 시 닫힘
+        onClick={() => setIsMenuOpen(false)}
       />
 
-      {/* 사이드바 메뉴 패널 */}
       <aside 
         className={`fixed right-0 top-0 z-50 h-full w-[250px] bg-white p-6 shadow-xl transition-transform duration-300 md:hidden flex flex-col ${
           isMenuOpen ? "translate-x-0" : "translate-x-full"
@@ -164,40 +167,47 @@ export default function Header() {
       >
         <div className="flex justify-end mb-8">
           <button onClick={() => setIsMenuOpen(false)} className="p-1">
-            {/* 닫기(X) 아이콘 */}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
-
+        
         <nav className="flex flex-col gap-6 text-[14px] tracking-[0.1em]">
+          {/* 정적 메뉴는 마운트 여부 상관없이 항상 표시 */}
           <Link href="/shop" className="border-b border-gray-100 pb-2">SHOP</Link>
-          {/* <Link href="/about" className="border-b border-gray-100 pb-2">ABOUT</Link> */}
 
-          {/* 모바일 어드민 메뉴 (구분해서 표시) */}
-          {isAdmin && (
-            <div className="bg-gray-50 p-4 rounded-sm flex flex-col gap-4 mt-2">
-              <span className="text-[11px] text-gray-500 font-bold mb-1">ADMIN MENU</span>
-              <Link href="/admin/products" className="text-blue-600">PRODUCT MGT</Link>
-              <Link href="/admin/orders" className="text-blue-600">ORDER MGT</Link>
-            </div>
-          )}
-
-          <div className="mt-auto pt-10 flex flex-col gap-4">
-            {isLoggedIn ? (
-            <button 
-              onClick={handleLogout} 
-              className="border border-black py-3 w-full hover:bg-black hover:text-white transition"
-            >
-              LOGOUT
-            </button>
+          {!mounted ? (
+            // 마운트 전 모바일 동적 영역 스켈레톤 처리
+            <div className="mt-2 h-[150px] w-full animate-pulse bg-gray-50 rounded-sm"></div>
           ) : (
-            <Link href="/login" className="hover:text-gray-500">
-              LOGIN
-            </Link>
+            <>
+              {/* 모바일 어드민 메뉴 */}
+              {isAdmin && (
+                <div className="bg-gray-50 p-4 rounded-sm flex flex-col gap-4 mt-2">
+                  <span className="text-[11px] text-gray-500 font-bold mb-1">ADMIN MENU</span>
+                  <Link href="/admin/products" className="text-blue-600">PRODUCT MGT</Link>
+                  <Link href="/admin/orders" className="text-blue-600">ORDER MGT</Link>
+                </div>
+              )}
+
+              {/* 로그인/로그아웃 버튼 */}
+              <div className="mt-auto pt-10 flex flex-col gap-4">
+                {isLoggedIn ? (
+                  <button 
+                    onClick={handleLogout} 
+                    className="border border-black py-3 w-full hover:bg-black hover:text-white transition"
+                  >
+                    LOGOUT
+                  </button>
+                ) : (
+                  <Link href="/login" className="border border-black py-3 w-full text-center hover:bg-black hover:text-white transition">
+                    LOGIN
+                  </Link>
+                )}
+              </div>
+            </>
           )}
-          </div>
         </nav>
       </aside>
     </>
