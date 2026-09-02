@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
+import { useCartStore } from "@/store/useCartStore";
 import { 
   fetchCartItems, 
   updateCartItemQuantity, 
@@ -16,6 +17,7 @@ import {
 } from "../../lib/api";
 
 export default function CartPage() {
+  const { refreshCartCount } = useCartStore();
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -59,7 +61,13 @@ export default function CartPage() {
     if (!confirm("상품을 삭제하시겠습니까?")) return;
     try {
       await removeCartItem(cartItemId);
+      
+      // 1. 장바구니 목록 화면 즉각 반영 (기존 코드 유지)
       setCartItems(prev => prev.filter(item => item.cartItemId !== cartItemId));
+      
+      // 2. 💡 삭제 완료 후 Zustand에 최신 개수 갱신 요청 (헤더 카운트 동기화)
+      await refreshCartCount(); 
+
     } catch (error: any) {
       alert(error.message);
     }
