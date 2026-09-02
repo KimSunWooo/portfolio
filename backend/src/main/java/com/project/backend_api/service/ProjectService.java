@@ -14,6 +14,12 @@ import com.project.backend_api.dto.project.ProjectMediaResponse;
 import com.project.backend_api.repository.ProjectMediaRepository;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
+import org.springframework.beans.factory.annotation.Value;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +36,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMediaRepository projectMediaRepository;
+
+    private final AmazonS3 amazonS3;
+
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucket;
 
     @Transactional(readOnly = true)
     public List<Project> getProjects(Boolean featured) {
@@ -184,56 +195,31 @@ public class ProjectService {
         projectMediaRepository.delete(media);
     }
 
-    private String saveProjectMedia(
-            Integer projectId,
-            MultipartFile file
-    ) {
+    private String saveProjectMedia(Integer projectId, MultipartFile file) {
         try {
-            Path uploadDir = Paths.get(
-                    System.getProperty("user.dir"),
-                    "uploads",
-                    "projects",
-                    String.valueOf(projectId)
-            );
-
-            Files.createDirectories(uploadDir);
-
-            String originalFilename =
-                    file.getOriginalFilename();
-
+            String originalFilename = file.getOriginalFilename();
             String extension = "";
 
-            if (
-                    originalFilename != null &&
-                    originalFilename.contains(".")
-            ) {
-                extension = originalFilename.substring(
-                        originalFilename.lastIndexOf(".")
-                );
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
 
-            String filename =
-                    UUID.randomUUID() + extension;
+            // S3에 저장될 경로 설정 (projects/프로젝트ID/파일명)
+            String filename = UUID.randomUUID() + extension;
+            String objectName = "projects/" + projectId + "/" + filename;
 
-            Path targetPath = uploadDir
-                    .resolve(filename)
-                    .normalize();
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(file.getContentType());
+            metadata.setContentLength(file.getSize());
 
-            Files.copy(
-                    file.getInputStream(),
-                    targetPath
-            );
+            // S3에 업로드
+            amazonS3.putObject(new PutObjectRequest(bucket, objectName, file.getInputStream(), metadata));
 
-            return "/uploads/projects/"
-                    + projectId
-                    + "/"
-                    + filename;
+            // S3 URL 반환
+            return amazonS3.getUrl(bucket, objectName).toString();
 
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "프로젝트 미디어 저장에 실패했습니다.",
-                    e
-            );
+            throw new RuntimeException("프로젝트 미디어(S3) 저장에 실패했습니다.", e);
         }
     }
 
@@ -263,31 +249,20 @@ public class ProjectService {
         );
     }
 
-    private void deletePhysicalFile(
-            String mediaUrl
-    ) {
+    private void deletePhysicalFile(String mediaUrl) {
         if (mediaUrl == null || mediaUrl.isBlank()) {
             return;
         }
 
         try {
-            String relativePath =
-                    mediaUrl.startsWith("/")
-                            ? mediaUrl.substring(1)
-                            : mediaUrl;
-
-            Path targetPath = Paths.get(
-                    System.getProperty("user.dir"),
-                    relativePath
-            );
-
-            Files.deleteIfExists(targetPath);
-
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    "프로젝트 미디어 파일 삭제에 실패했습니다.",
-                    e
-            );
+            // S3 URL에서 객체 키(objectName)만 추출
+            String splitStr = ".com/";
+            if (mediaUrl.contains(splitStr)) {
+                String objectName = mediaUrl.substring(mediaUrl.indexOf(splitStr) + splitStr.length());
+                amazonS3.deleteObject(new DeleteObjectRequest(bucket, objectName));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("프로젝트 미디어(S3) 파일 삭제에 실패했습니다.", e);
         }
     }
 }
