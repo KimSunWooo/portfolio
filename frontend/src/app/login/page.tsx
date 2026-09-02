@@ -8,72 +8,71 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const router = useRouter(); // 💡 라우터 사용
+  const router = useRouter(); 
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
+    
+    // 💡 2. 로그인 시도 전 기존 에러 메시지 초기화
+    setErrorMessage(""); 
 
     try {
-      // 로그인 성공 시 setAccessToken이 호출되고, Header가 바뀜
-      await loginUser({ email, password }); 
-      alert("로그인되었습니다.");
+      // API 호출
+      await loginUser({ email, password });
       
-      // 💡 화면 새로고침 없이 메인 페이지로 부드럽게 이동 (메모리 토큰 안전 유지)
-      router.push("/"); 
-      
+      // 로그인 성공 시 관리자 페이지로 이동
+      router.push("/admin/projects"); 
     } catch (error: any) {
-      setErrorMsg(error.message || "로그인에 실패했습니다. 다시 시도해주세요.");
+      // 💡 3. API 통신 중 에러가 발생하면 catch로 넘어옴
+      // error.message에 "비밀번호가 일치하지 않습니다."가 들어있습니다.
+      setErrorMessage(error.message);
     }
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-74px)] items-center justify-center bg-[#f9f9f9] px-5 py-20">
-      <div className="w-full max-w-[400px] bg-white p-10 shadow-sm border border-black/10">
-        <h1 className="mb-8 text-center text-[24px] font-normal tracking-[-0.025em]">LOG-IN</h1>
+    <div className="flex min-h-screen items-center justify-center bg-[#f9f9f9] px-4">
+      <div className="w-full max-w-[400px] bg-white p-8 shadow-xl">
+        <h2 className="mb-6 text-center text-[18px] font-bold tracking-tighter">LOGIN</h2>
         
-        <form onSubmit={handleLogin} className="flex flex-col gap-5">
-          <div>
-            <label test-id="email-label" className="mb-2 block text-[11px] tracking-[0.08em] text-[#555]">EMAIL</label>
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold tracking-widest text-[#777]">EMAIL</span>
             <input 
               type="email" 
-              value={email}
+              value={email} 
               onChange={(e) => setEmail(e.target.value)}
-              className="h-12 w-full border border-black/20 px-4 text-[13px] outline-none focus:border-black"
-              required 
+              className="h-11 w-full border border-black/20 px-3 text-sm outline-none transition focus:border-black"
+              required
             />
-          </div>
+          </label>
           
-          <div>
-            <label className="mb-2 block text-[11px] tracking-[0.08em] text-[#555]">PASSWORD</label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold tracking-widest text-[#777]">PASSWORD</span>
             <input 
               type="password" 
-              value={password}
+              value={password} 
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 w-full border border-black/20 px-4 text-[13px] outline-none focus:border-black"
-              required 
+              className="h-11 w-full border border-black/20 px-3 text-sm outline-none transition focus:border-black"
+              required
             />
-          </div>
+          </label>
 
-          {/* 에러 메시지 출력 영역 */}
-          {errorMsg && (
-            <p className="text-[12px] text-red-500">{errorMsg}</p>
+          {/* 💡 4. 에러 메시지가 존재할 경우에만 빨간색 경고 문구 노출 */}
+          {errorMessage && (
+            <p className="text-center text-[11px] font-bold text-red-500">
+              {errorMessage}
+            </p>
           )}
 
           <button 
-            type="submit" 
-            className="mt-4 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+            type="submit"
+            className="mt-4 bg-black py-3 text-[11px] font-bold tracking-widest text-white transition hover:bg-gray-800"
           >
-            SIGN IN
+            LOG IN
           </button>
         </form>
-
-        <div className="mt-8 flex justify-center gap-4 text-[11px] tracking-[0.08em] text-[#777]">
-          <a href="/signup" className="hover:text-black">JOIN US</a>
-          <span className="text-[#ccc]">|</span>
-          <a href="/find-password" className="hover:text-black">FIND PASSWORD</a>
-        </div>
       </div>
-    </main>
+    </div>
   );
 }

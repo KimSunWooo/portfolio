@@ -26,18 +26,19 @@ const getAuthHeaders = (isJson: boolean = true): HeadersInit => {
   return headers;
 };
 
-async function handleResponseError(response: Response): Promise<never> {
-  if (response.status === 401) throw new Error("인증이 필요하거나 세션이 만료되었습니다.");
-  if (response.status === 403) throw new Error("해당 작업을 수행할 권한이 없습니다.");
+export async function handleResponseError(response: Response) {
+  // 1. 스트림을 딱 한 번만 텍스트로 읽음
+  const errorText = await response.clone().text();
+  let errorMessage = "요청 처리에 실패했습니다.";
 
-  let errorMessage = "요청 처리 중 오류가 발생했습니다.";
   try {
-    const errorData = await response.json();
-    errorMessage = errorData.message || errorMessage;
+    const errorJson = JSON.parse(errorText);
+    errorMessage = errorJson.message || errorMessage;
   } catch {
-    const textError = await response.text();
-    if (textError) errorMessage = textError;
+    errorMessage = errorText;
   }
+
+  // 4. 반드시 Error를 throw하여 loginUser 함수의 남은 로직이 실행되지 않도록 차단
   throw new Error(errorMessage);
 }
 
@@ -161,9 +162,21 @@ export async function signupUser(userData: { email: string; password: string; na
 
 export async function loginUser(credentials: { email: string; password: string }) {
   const response = await fetch(`${API_BASE_URL}/api/users/login`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(credentials), credentials: "include", 
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+    credentials: "include", 
   });
-  if (!response.ok) await handleResponseError(response);
+
+  // 1. 상태가 200번대(성공)가 아니면 에러 처리
+  if (!response.ok) {
+    // 백엔드가 JSON이 아닌 텍스트로 보냈으므로 text()로 읽음
+    const errorText = await response.text(); 
+    // 그 텍스트 그대로 에러를 발생시켜 로그인 컴포넌트의 catch로 던짐
+    throw new Error(errorText); 
+  }
+
+  // 2. 성공했을 때만 JSON으로 파싱
   const data = await response.json();
   setAccessToken(data.accessToken); 
   return data;

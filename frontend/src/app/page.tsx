@@ -109,15 +109,15 @@ export default async function Home() {
               <span>{profile.jobTitle?.toUpperCase() ?? "BACKEND / FULL-STACK DEVELOPER"}</span>
             </div>
 
-            <div className="py-16 max-sm:py-20">
-              <p className="mb-5 text-[30px] tracking-[0.18em] text-[#777]">
+            <div className="py-16 max-sm:py-14">
+              <p className="mb-5 text-[30px] max-sm:text-[20px] tracking-[0.18em] text-[#777]">
                 DEVELOPER
               </p>
 
               <div className="grid grid-cols-[1fr_360px] items-end gap-16 max-lg:grid-cols-[1fr_280px] max-md:grid-cols-1 max-md:gap-10">
 
-                {/* NAME */}
-                <h1 className="text-[clamp(64px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
+                {/* NAME - 모바일 최소 크기 42px로 축소 */}
+                <h1 className="text-[clamp(42px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
                   {englishName[0]}
 
                   {englishName[1] && (
@@ -131,7 +131,7 @@ export default async function Home() {
                 {/* PROFILE IMAGE */}
                 {profileImageUrl && (
                   <div className="flex justify-end max-md:justify-start">
-                    <div className="relative w-full max-w-[320px] overflow-hidden">
+                    <div className="relative w-full max-w-[320px] overflow-hidden max-md:max-w-[240px]">
                       <img
                         src={profileImageUrl}
                         alt={profile.name ?? "Profile"}
@@ -143,7 +143,7 @@ export default async function Home() {
               </div>
 
               <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
-                <p className="max-w-[680px] text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[15px]">
+                <p className="max-w-[680px] text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
                   {profile.shortIntro}
                 </p>
 
@@ -163,27 +163,28 @@ export default async function Home() {
                 ["DATABASE", "MySQL"],
                 ["LOCATION", "Korea"],
               ].map(([label, value]) => (
-                <div key={label} className="min-h-[102px] border-r border-black/15 px-5 py-5 last:border-r-0 max-md:border-b max-md:odd:border-r max-md:even:border-r-0">
+                <div key={label} className="min-h-[102px] border-r border-black/15 px-5 py-5 last:border-r-0 max-md:border-b max-md:odd:border-r max-md:even:border-r-0 max-sm:p-4">
                   <div className="text-[9px] tracking-[0.14em] text-[#888]">{label}</div>
-                  <div className="mt-8 text-[15px] tracking-[-0.02em]">{value}</div>
+                  <div className="mt-8 text-[15px] max-sm:text-[13px] tracking-[-0.02em]">{value}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="skills" className="px-7 py-[120px] max-sm:px-4 max-sm:py-20">
+        <section id="skills" className="px-7 py-[120px] max-sm:px-4 max-sm:py-16">
           <div className="mx-auto max-w-[1440px]">
-            <div className="mb-16 grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              <p className="text-[25px] tracking-[0.16em] text-[#777]">01 · SKILLS</p>
-              <h2 className="max-w-[900px] text-[clamp(36px,5.2vw,78px)] font-normal leading-[1.04] tracking-[-0.055em]">
+            <div className="mb-16 grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5 max-sm:mb-10">
+              <p className="text-[25px] max-sm:text-[18px] tracking-[0.16em] text-[#777]">01 · SKILLS</p>
+              {/* 모바일 최소 크기 28px로 축소 */}
+              <h2 className="max-w-[900px] text-[clamp(28px,5.2vw,78px)] font-normal leading-[1.1] tracking-[-0.055em]">
                 기술은 목적이 아니라,<br />문제를 해결하기 위한 도구라고 생각합니다.
               </h2>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-y border-black/15 py-7">
+            <div className="flex flex-wrap gap-2 border-y border-black/15 py-7 max-sm:py-5">
               {resume.skills.map((skill) => (
-                <span key={skill.id} className="rounded-full border border-[#bbb] px-4 py-2 text-[11px] tracking-[0.05em]">
+                <span key={skill.id} className="rounded-full border border-[#bbb] px-4 py-2 text-[11px] max-sm:text-[10px] tracking-[0.05em]">
                   {skill.name}{skill.category ? ` · ${skill.category}` : ""}
                 </span>
               ))}
@@ -191,20 +192,21 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="experience" className="bg-[#f4f3f1] px-7 py-[120px] max-sm:px-4 max-sm:py-20">
+        <section id="experience" className="bg-[#f4f3f1] px-7 py-[120px] max-sm:px-4 max-sm:py-16">
           <div className="mx-auto max-w-[1440px]">
             <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              <p className="text-[25px] tracking-[0.16em] text-[#777]">02 · EXPERIENCE</p>
+              <p className="text-[25px] max-sm:text-[18px] tracking-[0.16em] text-[#777]">02 · EXPERIENCE</p>
               <div>
-                <h2 className="text-[clamp(44px,6vw,88px)] font-normal tracking-[-0.06em]">Career</h2>
-                <div className="mt-14 border-t border-black">
+                {/* 모바일 최소 크기 32px로 축소 */}
+                <h2 className="text-[clamp(32px,6vw,88px)] font-normal tracking-[-0.06em]">Career</h2>
+                <div className="mt-14 max-sm:mt-8 border-t border-black">
                   {resume.experiences.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[180px_1fr] gap-8 border-b border-black/15 py-8 max-md:grid-cols-1 max-md:gap-3">
+                    <div key={item.id} className="grid grid-cols-[180px_1fr] gap-8 border-b border-black/15 py-8 max-md:grid-cols-1 max-md:gap-3 max-sm:py-6">
                       <div className="text-[11px] tracking-[0.06em] text-[#666]">{formatPeriod(item.startDate, item.endDate)}</div>
                       <div>
-                        <p className="mb-2 text-[15px] tracking-[0.12em] text-[#777]">{item.companyName}</p>
-                        <h3 className="text-[20px] tracking-[-0.03em]">{item.position}</h3>
-                        {item.description && <p className="mt-4 max-w-[720px] whitespace-pre-line text-[13px] leading-[1.8] text-[#555]">{item.description}</p>}
+                        <p className="mb-2 text-[15px] max-sm:text-[13px] tracking-[0.12em] text-[#777]">{item.companyName}</p>
+                        <h3 className="text-[20px] max-sm:text-[18px] tracking-[-0.03em]">{item.position}</h3>
+                        {item.description && <p className="mt-4 max-w-[720px] whitespace-pre-line text-[13px] max-sm:text-[12px] leading-[1.8] text-[#555]">{item.description}</p>}
                       </div>
                     </div>
                   ))}
@@ -214,16 +216,16 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="education" className="px-7 py-[120px] max-sm:px-4 max-sm:py-20">
+        <section id="education" className="px-7 py-[120px] max-sm:px-4 max-sm:py-16">
           <div className="mx-auto max-w-[1440px]">
             <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              <p className="text-[25px] tracking-[0.16em] text-[#777]">03 · EDUCATION</p>
+              <p className="text-[25px] max-sm:text-[18px] tracking-[0.16em] text-[#777]">03 · EDUCATION</p>
               <div className="border-t border-black">
                 {resume.educations.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1fr_auto] gap-8 border-b border-black/15 py-8 max-sm:grid-cols-1">
+                  <div key={item.id} className="grid grid-cols-[1fr_auto] gap-8 border-b border-black/15 py-8 max-sm:grid-cols-1 max-sm:gap-4 max-sm:py-6">
                     <div>
-                      <h2 className="text-[28px] tracking-[-0.04em]">{item.schoolName}</h2>
-                      <p className="mt-3 text-[12px] text-[#666]">
+                      <h2 className="text-[28px] max-sm:text-[20px] tracking-[-0.04em]">{item.schoolName}</h2>
+                      <p className="mt-3 text-[12px] max-sm:text-[11px] text-[#666]">
                         {[item.major, item.description, formatPeriod(item.startDate, item.endDate)].filter(Boolean).join(" · ")}
                       </p>
                     </div>
@@ -235,31 +237,32 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="introduction" className="border-y border-black/10 bg-[#151515] px-7 py-[120px] text-white max-sm:px-4 max-sm:py-20">
+        <section id="introduction" className="border-y border-black/10 bg-[#151515] px-7 py-[120px] text-white max-sm:px-4 max-sm:py-16">
           <div className="mx-auto max-w-[1440px]">
-            <p className="text-[25px] tracking-[0.16em] text-white/50">04 · INTRODUCTION</p>
-            <div className="mt-14 space-y-20">
+            <p className="text-[25px] max-sm:text-[18px] tracking-[0.16em] text-white/50">04 · INTRODUCTION</p>
+            <div className="mt-14 max-sm:mt-8 space-y-20 max-sm:space-y-12">
               {resume.introductions.map((item) => (
-                <div key={item.id} className="grid grid-cols-[1.2fr_0.8fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8">
-                  <h2 className="text-[clamp(42px,6vw,86px)] font-normal leading-[1.06] tracking-[-0.06em]">
+                <div key={item.id} className="grid grid-cols-[1.2fr_0.8fr] gap-20 max-lg:grid-cols-1 max-lg:gap-6">
+                  {/* 모바일 최소 크기 28px로 축소 */}
+                  <h2 className="text-[clamp(28px,6vw,86px)] font-normal leading-[1.1] tracking-[-0.06em]">
                     {item.title ?? "Introduction"}
                   </h2>
-                  <p className="whitespace-pre-line text-[14px] leading-[1.95] text-white/72">{item.content}</p>
+                  <p className="whitespace-pre-line text-[14px] max-sm:text-[13px] leading-[1.8] text-white/72">{item.content}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="projects" className="px-7 py-[120px] max-sm:px-4 max-sm:py-20">
+        <section id="projects" className="px-7 py-[120px] max-sm:px-4 max-sm:py-16">
           <div className="mx-auto max-w-[1440px]">
-            <div className="flex items-end justify-between gap-8 border-b border-black pb-6">
+            <div className="flex items-end justify-between gap-8 border-b border-black pb-6 max-sm:pb-4">
               <div>
-                <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777]">
+                <p className="mb-4 text-[25px] max-sm:text-[18px] tracking-[0.16em] text-[#777]">
                   05 · PORTFOLIO DEMO
                 </p>
-
-                <h2 className="text-[clamp(42px,6vw,84px)] font-normal tracking-[-0.06em]">
+                {/* 모바일 최소 크기 32px로 축소 */}
+                <h2 className="text-[clamp(32px,6vw,84px)] font-normal tracking-[-0.06em]">
                   Selected Work
                 </h2>
               </div>
@@ -275,7 +278,6 @@ export default async function Home() {
             <div className="grid grid-cols-2 max-md:grid-cols-1">
               {(
                 [
-                  // 항상 표시되는 Shop
                   {
                     id: -1,
                     title: "Product Archive",
@@ -288,8 +290,6 @@ export default async function Home() {
                     isFeatured: true,
                     sortOrder: -2,
                   },
-
-                  // 항상 표시되는 Community
                   {
                     id: -2,
                     title: "Community Board",
@@ -302,8 +302,6 @@ export default async function Home() {
                     isFeatured: true,
                     sortOrder: -1,
                   },
-
-                  // 관리자 페이지에서 등록한 프로젝트
                   ...projects,
                 ] as PortfolioProject[]
               ).map((project, index) => {
@@ -320,7 +318,7 @@ export default async function Home() {
                     href={href}
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noreferrer" : undefined}
-                    className="group min-h-[310px] border-b border-r border-black/15 p-7 text-[#111] no-underline max-md:border-r-0"
+                    className="group min-h-[310px] max-sm:min-h-[220px] border-b border-r border-black/15 p-7 max-sm:p-5 text-[#111] no-underline max-md:border-r-0"
                   >
                     <div className="flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] text-[#777]">
                       <span>
@@ -333,15 +331,15 @@ export default async function Home() {
                       </span>
                     </div>
 
-                    <h3 className="mt-24 text-[30px] tracking-[-0.04em]">
+                    <h3 className="mt-24 max-sm:mt-12 text-[30px] max-sm:text-[22px] tracking-[-0.04em]">
                       {project.title}
                     </h3>
 
-                    <p className="mt-4 text-[12px] leading-6 text-[#666]">
+                    <p className="mt-4 text-[12px] max-sm:text-[11px] leading-6 max-sm:leading-5 text-[#666]">
                       {project.techStack || project.description}
                     </p>
 
-                    <div className="mt-8 text-[11px] transition-transform group-hover:translate-x-2">
+                    <div className="mt-8 max-sm:mt-6 text-[11px] max-sm:text-[10px] transition-transform group-hover:translate-x-2">
                       OPEN PROJECT →
                     </div>
                   </a>
@@ -351,12 +349,13 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="contact" className="px-7 pb-[80px] pt-[40px] max-sm:px-4">
-          <div className="mx-auto max-w-[1440px] border-t border-black pt-7">
-            <p className="text-[25px] tracking-[0.16em] text-[#777]">CONTACT</p>
-            <div className="mt-10 flex items-end justify-between gap-10 max-md:flex-col max-md:items-start">
-              <h2 className="text-[clamp(46px,8vw,120px)] font-medium leading-[0.9] tracking-[-0.07em]">LET&apos;S<br />WORK TOGETHER.</h2>
-              <div className="flex flex-col items-end gap-3 text-[12px] max-md:items-start">
+        <section id="contact" className="px-7 pb-[80px] pt-[40px] max-sm:px-4 max-sm:pb-[60px] max-sm:pt-[20px]">
+          <div className="mx-auto max-w-[1440px] border-t border-black pt-7 max-sm:pt-5">
+            <p className="text-[25px] max-sm:text-[18px] tracking-[0.16em] text-[#777]">CONTACT</p>
+            <div className="mt-10 max-sm:mt-6 flex items-end justify-between gap-10 max-md:flex-col max-md:items-start max-md:gap-6">
+              {/* 모바일 최소 크기 36px로 축소 */}
+              <h2 className="text-[clamp(36px,8vw,120px)] font-medium leading-[1] tracking-[-0.07em]">LET&apos;S<br />WORK TOGETHER.</h2>
+              <div className="flex flex-col items-end gap-3 text-[12px] max-sm:text-[11px] max-md:items-start">
                 {profile.email && <a href={`mailto:${profile.email}`} className="border-b border-black pb-1 text-[#111] no-underline">{profile.email}</a>}
                 {profile.githubUrl && <a href={profile.githubUrl} target="_blank" rel="noreferrer" className="border-b border-black pb-1 tracking-[0.08em] text-[#111] no-underline">GITHUB ↗</a>}
               </div>

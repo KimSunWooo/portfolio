@@ -1,17 +1,32 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
 @import "tailwindcss";
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body {
-  margin: 0;
-  background: #fff;
-  color: #151515;
-  font-family: Arial, "Noto Sans KR", sans-serif;
-  -webkit-font-smoothing: antialiased;
+/* Tailwind의 기본 스타일 레이어 안에 공통 스타일을 묶어줍니다 */
+@layer base {
+  * { box-sizing: border-box; }
+  
+  html { 
+    scroll-behavior: smooth; 
+    /* 여기서 기본 폰트를 한 번만 선언합니다 */
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  }
+  
+  body {
+    margin: 0;
+    background: #fff;
+    color: #151515;
+    /* font-family 제거 (위의 html 설정을 상속받도록 함) */
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  button, input, select, textarea { font: inherit; }
 }
-button, input, select, textarea { font: inherit; }
-::selection { background: #151515; color: #fff; }
 
+/* 선택자 및 애니메이션 등 일반 유틸리티나 커스텀 CSS는 레이어 밖에 두어도 무방합니다 */
+::selection { 
+  background: #151515; 
+  color: #fff; 
+}
 
 @keyframes adminNotice {
   from {

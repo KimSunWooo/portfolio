@@ -42,7 +42,7 @@ function PaymentSuccessContent() {
         </div>
 
         <button 
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/shop")}
           className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition font-medium"
         >
           홈으로 돌아가기

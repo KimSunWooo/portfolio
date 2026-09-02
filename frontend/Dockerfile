@@ -10,6 +10,9 @@ RUN npm ci
 
 # 소스코드 복사 및 Next.js 빌드
 COPY . .
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 

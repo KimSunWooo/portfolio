@@ -20,7 +20,7 @@ public class CartController {
     private final CartService cartService;
 
     // 1. 내 장바구니 조회
-    @GetMapping
+    @GetMapping("/count")
     public ResponseEntity<?> getMyCart(Authentication authentication) {
         
         if (authentication == null || authentication.getName() == null) {
