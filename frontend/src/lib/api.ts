@@ -419,8 +419,16 @@ export const addCartItem = async (product: any, quantity: number) => {
 };
 
 export async function addToCart(productId: number, quantity: number = 1) {
-  const response = await fetch(`${API_BASE_URL}/api/cart`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify({ productId, quantity }), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.text();
+  const response = await fetch(`${API_BASE_URL}/api/cart`, { 
+    method: "POST", headers: getAuthHeaders(true), body: JSON.stringify({ productId, quantity }), credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  
+  // 💡 물건 담기 성공 시 헤더에게 "장바구니 업데이트해!" 라고 알림
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("cartChanged"));
+  }
+  return response.text();
 }
 
 export async function updateCartItemQuantity(cartItemId: number, quantity: number) {

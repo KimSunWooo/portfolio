@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
-import { getAccessToken, removeAccessToken } from "../../lib/api"; // 기존 사용하시던 API 임포트
+import { useCartStore } from "../../store/useCartStore";
+import { getAccessToken, removeAccessToken } from "../../lib/api"; 
 
 export default function Header() {
   const pathname = usePathname();
@@ -13,9 +14,8 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // 기존 상태들 (예시 - 실제 프로젝트 환경에 맞게 수정해서 사용하세요)
-  const { isLoggedIn, setIsLoggedIn } = useAuthStore();
-  const [isAdmin, setIsAdmin] = useState(false); 
-  const [cartCount, setCartCount] = useState(0);
+  const { isLoggedIn, isAdmin, setIsLoggedIn, setIsAdmin } = useAuthStore();
+  const { cartCount, refreshCartCount } = useCartStore();
 
   // 메뉴 이동 시 모바일 사이드바 자동 닫기
   useEffect(() => {
@@ -27,6 +27,10 @@ export default function Header() {
     if (isMenuOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "unset";
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    refreshCartCount();
+  }, [isLoggedIn, refreshCartCount]);
 
   useEffect(() => {
     // 로그인 상태를 체크하는 함수
@@ -54,9 +58,10 @@ export default function Header() {
     } catch (error) {
       console.error("로그아웃 API 호출 실패", error);
     } finally {
-      // 1. 프론트엔드 토큰 삭제 및 상태 변경
+      // 1. 프론트엔드 토큰 삭제 및 전역 상태(Zustand) 확실하게 초기화!
       removeAccessToken(); 
       setIsLoggedIn(false);
+      setIsAdmin(false); // 💡 관리자 상태도 완벽하게 회수
       
       // 2. 로그아웃 후 이동할 경로(Target URL) 계산
       let redirectPath = pathname; // 기본값: 현재 머물고 있는 위치 그대로
