@@ -58,7 +58,7 @@ export default function ProductCard({
       </Link>
       <div className="pt-[13px]">
         {/* 💡 여기도 Link로 변경 및 경로 통일 */}
-        <Link href={`/shop/${product.id}`} prefetch={false} className="block text-[12px] leading-[1.45] text-[#111] no-underline">
+        <Link href={`/product/${product.id}`} prefetch={false} className="block text-[12px] leading-[1.45] text-[#111] no-underline">
           {product.name}
         </Link>
         <div className="mt-1.5 flex items-baseline gap-2">
