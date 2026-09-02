@@ -37,7 +37,7 @@ export default function ProductCard({
   return (
     <article className="min-w-0">
       {/* 💡 a 태그 -> Link로 변경, 경로를 /shop으로 통일, prefetch 끄기 (404 방지) */}
-      <Link href={`/shop/${product.id}`} prefetch={false} className="group relative block aspect-[1/1.22] overflow-hidden bg-[#f1efec] no-underline">
+      <Link href={`/product/${product.id}`} prefetch={false} className="group relative block aspect-[1/1.22] overflow-hidden bg-[#f1efec] no-underline">
         {badge && (
           <span className="absolute left-[13px] top-[13px] z-[2] bg-white px-2 py-1.5 text-[8px] tracking-[0.06em]">
             {badge}
