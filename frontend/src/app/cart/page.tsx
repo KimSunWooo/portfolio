@@ -14,7 +14,6 @@ import {
   silentRefresh,     
   type CartItemResponse 
 } from "../../lib/api";
-import { loadTossPayments } from '@tosspayments/payment-sdk';
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
@@ -68,30 +67,6 @@ export default function CartPage() {
 
   const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  const clientKey = "test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq";
-
-  const handlePayment = async () => {
-    try {
-      const tossPayments = await loadTossPayments(clientKey);
-
-      // 💡 결제 상품명을 동적으로 생성 (예: "반팔티 외 1건")
-      const orderName = cartItems.length > 1 
-        ? `${cartItems[0].productName} 외 ${cartItems.length - 1}건` 
-        : cartItems[0]?.productName || "포트폴리오 테스트 결제";
-
-      await tossPayments.requestPayment("카드", {
-        amount: 100, // 💡 현재 테스트를 위해 100원으로 고정 (나중에 totalPrice 로 변경)
-        orderId: `ORDER_${new Date().getTime()}`,
-        orderName: orderName,
-        customerName: "김선우", 
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`, 
-      });
-    } catch (error) {
-      console.error("결제창 호출 실패:", error);
-    }
-  };
-
   return (
     <>
       <Header />
@@ -140,7 +115,7 @@ export default function CartPage() {
                         ₩{(item.price * item.quantity).toLocaleString()}
                       </div>
                       <button onClick={() => handleRemove(item.cartItemId)} className="text-[18px] text-[#aaa] hover:text-black">
-                        ×
+                        x
                       </button>
                     </div>
 
@@ -159,12 +134,12 @@ export default function CartPage() {
                   <span>₩{totalPrice.toLocaleString()}</span>
                 </div>
                 
-                {/* 💡 여기에 onClick 추가됨 */}
+                {/* 💡 체크아웃 페이지로 이동 */}
                 <button 
-                  onClick={handlePayment} 
+                  onClick={() => router.push("/checkout")}
                   className="mt-8 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
                 >
-                  CHECKOUT (100원 테스트 결제)
+                  PROCEED TO CHECKOUT
                 </button>
               </div>
             </>

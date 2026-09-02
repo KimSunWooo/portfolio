@@ -1,69 +1,106 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Header from "../../../components/header/Header";
+import Footer from "../../../components/layout/Footer";
+import { confirmPayment, getAccessToken } from "../../../lib/api"; // 경로에 맞게 수정
 
-// 1. URL 쿼리 파라미터를 읽어오고 화면을 렌더링하는 컴포넌트
 function PaymentSuccessContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-
-  // 토스페이먼츠에서 결제 성공 시 넘겨주는 기본 파라미터들
-  const orderId = searchParams.get("orderId");
-  const paymentKey = searchParams.get("paymentKey");
-  const amount = searchParams.get("amount");
+  const searchParams = useSearchParams();
+  
+  const [status, setStatus] = useState<"loading" | "success" | "fail">("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    // 필요한 경우 여기서 백엔드 서버로 paymentKey 등을 보내어 
-    // 최종 결제 승인(Confirm) 처리를 하는 API를 호출합니다.
-    if (orderId && paymentKey && amount) {
-      console.log("결제 승인 요청:", { orderId, paymentKey, amount });
+    // 💡 1. URL에서 토스가 보낸 3가지 핵심 데이터 추출
+    const paymentKey = searchParams.get("paymentKey");
+    const orderId = searchParams.get("orderId");
+    const amount = searchParams.get("amount");
+
+    if (!paymentKey || !orderId || !amount) {
+      setStatus("fail");
+      setErrorMessage("결제 정보가 올바르지 않습니다.");
+      return;
     }
-  }, [orderId, paymentKey, amount]);
+
+    // 💡 2. 백엔드에 최종 결제 승인 요청 (이름을 handleConfirm으로 변경하여 충돌 방지)
+    const handleConfirm = async () => {
+      try {
+        await confirmPayment({
+          paymentKey,
+          orderId,
+          amount: Number(amount),
+        });
+
+        // 에러 없이 통과했다면 성공 처리 및 프론트엔드 장바구니 초기화
+        window.dispatchEvent(new Event("cartUpdated"));
+        setStatus("success");
+
+      } catch (error: any) {
+        setStatus("fail");
+        setErrorMessage(error.message);
+      }
+    };
+
+    handleConfirm();
+  }, [searchParams]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-        <h1 className="text-2xl font-bold text-green-600 mb-4">결제가 완료되었습니다!</h1>
-        
-        <div className="text-left mb-8 space-y-3 bg-gray-50 p-4 rounded-md">
-          <p className="text-gray-700">
-            <span className="font-semibold block text-sm text-gray-500">주문 번호</span> 
-            {orderId || "정보 없음"}
-          </p>
-          <p className="text-gray-700">
-            <span className="font-semibold block text-sm text-gray-500">결제 금액</span> 
-            {amount ? `${Number(amount).toLocaleString()}원` : "정보 없음"}
-          </p>
-          <p className="text-gray-700">
-            <span className="font-semibold block text-sm text-gray-500">결제 키</span> 
-            <span className="text-xs break-all">{paymentKey || "정보 없음"}</span>
-          </p>
-        </div>
+    <div className="flex min-h-[60vh] flex-col items-center justify-center bg-[#f9f9f9] px-5 py-20 text-center">
+      <div className="w-full max-w-[500px] bg-white p-10 shadow-sm border border-black/10">
+        {status === "loading" && (
+          <>
+            <h2 className="mb-4 text-[18px] font-bold">결제 승인 중입니다...</h2>
+            <p className="text-[12px] text-[#777]">창을 닫거나 새로고침하지 마세요.</p>
+          </>
+        )}
 
-        <button 
-          onClick={() => router.push("/shop")}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition font-medium"
-        >
-          홈으로 돌아가기
-        </button>
+        {status === "success" && (
+          <>
+            <div className="mb-6 text-[40px]">✔️</div>
+            <h2 className="mb-4 text-[20px] font-bold">결제가 완료되었습니다!</h2>
+            <p className="mb-8 text-[12px] text-[#777]">
+              주문 번호: {searchParams.get("orderId")}
+            </p>
+            <Link 
+              href="/shop" 
+              className="inline-block bg-black px-8 py-3 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+            >
+              쇼핑 계속하기
+            </Link>
+          </>
+        )}
+
+        {status === "fail" && (
+          <>
+            <div className="mb-6 text-[40px]">❌</div>
+            <h2 className="mb-4 text-[20px] font-bold text-red-500">결제 실패</h2>
+            <p className="mb-8 text-[12px] text-[#777]">{errorMessage}</p>
+            <Link 
+              href="/checkout" 
+              className="inline-block border border-black px-8 py-3 text-[12px] tracking-[0.1em] transition hover:bg-black hover:text-white"
+            >
+              다시 시도하기
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// 2. 외부로 내보내는 메인 페이지 컴포넌트 (Suspense 적용)
+// Next.js에서 useSearchParams를 안전하게 사용하기 위해 Suspense로 감쌉니다.
 export default function PaymentSuccessPage() {
   return (
-    <Suspense 
-      fallback={
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <div className="text-lg font-medium text-gray-600">결제 정보를 불러오는 중입니다...</div>
-        </div>
-      }
-    >
-      <PaymentSuccessContent />
-    </Suspense>
+    <>
+      <Header />
+      <Suspense fallback={<div className="py-20 text-center">Loading...</div>}>
+        <PaymentSuccessContent />
+      </Suspense>
+      <Footer />
+    </>
   );
 }

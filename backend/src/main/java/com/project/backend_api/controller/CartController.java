@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -20,7 +21,7 @@ public class CartController {
     private final CartService cartService;
 
     // 1. 내 장바구니 조회
-    @GetMapping("/count")
+    @GetMapping
     public ResponseEntity<?> getMyCart(Authentication authentication) {
         
         if (authentication == null || authentication.getName() == null) {
@@ -58,5 +59,27 @@ public class CartController {
         String email = authentication.getName();
         cartService.deleteCartItem(email, cartItemId);
         return ResponseEntity.ok("상품이 삭제되었습니다.");
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<Integer> getCartCount(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.ok(0);
+        }
+        String email = authentication.getName();
+        
+        List<CartItemResponse> items = cartService.getCartItems(email);
+        
+        // 스트림 대신 향상된 for문을 사용하여 Null 경고를 완벽하게 원천 차단합니다.
+        int totalQuantity = 0;
+        if (items != null) {
+            for (CartItemResponse item : items) {
+                if (item != null) {
+                    totalQuantity += item.getQuantity();
+                }
+            }
+        }
+                                 
+        return ResponseEntity.ok(totalQuantity);
     }
 }

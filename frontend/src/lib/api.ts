@@ -15,7 +15,21 @@ export const getAccessToken = () => inMemoryAccessToken;
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
   if (typeof window !== "undefined") {
+    // 💡 토큰이 세팅되거나 지워질 때마다 브라우저에 '상태 변경' 이벤트를 날립니다.
     window.dispatchEvent(new Event("authStateChanged"));
+  }
+};
+
+export const removeAccessToken = () => {
+  // 1. 메모리 상의 토큰을 날려버립니다. (가장 중요)
+  inMemoryAccessToken = null;
+  
+  if (typeof window !== "undefined") {
+    // 2. 토큰이 지워졌다는 이벤트를 날려 프론트엔드 헤더가 즉각 반응하게 합니다.
+    window.dispatchEvent(new Event("authStateChanged"));
+    
+    // 3. (선택) 혹시 예전에 쓰던 로컬스토리지 찌꺼기가 남아있을까봐 확실하게 청소합니다.
+    localStorage.removeItem("accessToken"); 
   }
 };
 
