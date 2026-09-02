@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useCartStore } from "../../store/useCartStore";
-import { getAccessToken, removeAccessToken } from "../../lib/api"; 
+import { getAccessToken, removeAccessToken, silentRefresh } from "../../lib/api"; 
 
 export default function Header() {
   const pathname = usePathname();
@@ -21,6 +21,20 @@ export default function Header() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // 1. 메모리에 토큰이 있는지 확인
+      if (!getAccessToken()) {
+        // 2. 토큰이 없다면 (새로고침 된 상태라면) 백엔드 쿠키를 통해 재발급 시도
+        await silentRefresh();
+      }
+      // 3. 로그인 상태 UI 업데이트
+      setIsLoggedIn(!!getAccessToken());
+    };
+
+    initializeAuth();
+  }, []);
 
   // 스크롤 방지 (사이드바 열렸을 때 뒤에 화면이 스크롤 안 되게)
   useEffect(() => {
