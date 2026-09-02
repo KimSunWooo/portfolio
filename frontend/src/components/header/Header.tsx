@@ -3,18 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { create } from 'zustand';
+import { useAuthStore } from "../../store/useAuthStore";
 import { getAccessToken, removeAccessToken } from "../../lib/api"; // 기존 사용하시던 API 임포트
-
-interface AuthState {
-  isLoggedIn: boolean;
-  setIsLoggedIn: (status: boolean) => void;
-}
-
-export const useAuthStore = create<AuthState>((set) => ({
-  isLoggedIn: false,
-  setIsLoggedIn: (status: boolean) => set({ isLoggedIn: status }),
-}));
 
 export default function Header() {
   const pathname = usePathname();
@@ -177,7 +167,10 @@ export default function Header() {
 
           <div className="mt-auto pt-10 flex flex-col gap-4">
             {isLoggedIn ? (
-            <button onClick={handleLogout} className="hover:text-gray-500">
+            <button 
+              onClick={handleLogout} 
+              className="border border-black py-3 w-full hover:bg-black hover:text-white transition"
+            >
               LOGOUT
             </button>
           ) : (
