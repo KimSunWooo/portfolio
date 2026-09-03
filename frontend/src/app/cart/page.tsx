@@ -6,6 +6,7 @@ import Link from "next/link";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
 import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore"; // 💡 로그인 상태를 가져오기 위한 스토어 추가
 import { 
   fetchCartItems, 
   updateCartItemQuantity, 
@@ -18,6 +19,7 @@ import {
 
 export default function CartPage() {
   const { refreshCartCount } = useCartStore();
+  const { isLoggedIn } = useAuthStore(); // 💡 현재 로그인 여부 가져오기
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -26,32 +28,61 @@ export default function CartPage() {
     try {
       setLoading(true);
       
-      let token = getAccessToken();
-      if (!token) {
-        token = await silentRefresh();
+      // 1. 회원인 경우: 백엔드 API에서 장바구니 데이터 로드
+      if (isLoggedIn) {
+        let token = getAccessToken();
+        if (!token) {
+          token = await silentRefresh();
+        }
+        const items = await fetchCartItems();
+        setCartItems(items);
+      } 
+      // 2. 비회원인 경우: 로컬 스토리지에서 데이터 로드
+      else {
+        const localCartData = localStorage.getItem("cart");
+        if (localCartData) {
+          setCartItems(JSON.parse(localCartData));
+        } else {
+          setCartItems([]);
+        }
       }
-
-      const items = await fetchCartItems();
-      setCartItems(items);
-
     } catch (error) {
       console.error("장바구니 조회 실패", error);
-      alert("로그인이 만료되었거나 권한이 없습니다.");
-      router.replace("/login"); 
+      // 회원인데 에러가 났을 때만 로그인 페이지로 리다이렉트
+      if (isLoggedIn) {
+        alert("로그인이 만료되었거나 권한이 없습니다.");
+        router.replace("/login"); 
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // 로그인 상태가 바뀔 때마다 장바구니 데이터를 다시 불러옴
   useEffect(() => {
     loadCart();
-  }, []);
+  }, [isLoggedIn]);
 
   const handleQuantityChange = async (cartItemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
+    
     try {
-      await updateCartItemQuantity(cartItemId, newQuantity);
-      setCartItems(prev => prev.map(item => item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item));
+      // 회원인 경우에만 백엔드 API 호출
+      if (isLoggedIn) {
+        await updateCartItemQuantity(cartItemId, newQuantity);
+      } 
+      
+      // 화면 상태 즉각 업데이트 (회원/비회원 공통)
+      const updatedItems = cartItems.map(item => 
+        item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item
+      );
+      setCartItems(updatedItems);
+      
+      // 비회원인 경우 로컬 스토리지에 업데이트 내용 저장
+      if (!isLoggedIn) {
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+      }
+      
     } catch (error: any) {
       alert(error.message);
     }
@@ -59,13 +90,23 @@ export default function CartPage() {
 
   const handleRemove = async (cartItemId: number) => {
     if (!confirm("상품을 삭제하시겠습니까?")) return;
+    
     try {
-      await removeCartItem(cartItemId);
+      // 회원인 경우에만 백엔드 API 호출하여 삭제
+      if (isLoggedIn) {
+        await removeCartItem(cartItemId);
+      }
       
-      // 1. 장바구니 목록 화면 즉각 반영 (기존 코드 유지)
-      setCartItems(prev => prev.filter(item => item.cartItemId !== cartItemId));
+      // 1. 장바구니 목록 화면 즉각 반영 (회원/비회원 공통)
+      const updatedItems = cartItems.filter(item => item.cartItemId !== cartItemId);
+      setCartItems(updatedItems);
       
-      // 2. 💡 삭제 완료 후 Zustand에 최신 개수 갱신 요청 (헤더 카운트 동기화)
+      // 2. 비회원인 경우 로컬 스토리지에도 삭제 반영
+      if (!isLoggedIn) {
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+      }
+      
+      // 3. 삭제 완료 후 Zustand에 최신 개수 갱신 요청 (헤더 카운트 동기화)
       await refreshCartCount(); 
 
     } catch (error: any) {
@@ -142,7 +183,6 @@ export default function CartPage() {
                   <span>₩{totalPrice.toLocaleString()}</span>
                 </div>
                 
-                {/* 💡 체크아웃 페이지로 이동 */}
                 <button 
                   onClick={() => router.push("/checkout")}
                   className="mt-8 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
