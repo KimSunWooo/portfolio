@@ -53,7 +53,7 @@ public class SecurityConfig {
                 // 💡 누구나 접근 가능한 공개 API (회원가입, 로그인, 상품 목록/상세 조회)
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/cart/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/cart/**", "/api/community/**").permitAll()
                 .requestMatchers("/api/payments/**").permitAll()
                 
                 // 🔒 관리자(ADMIN)만 접근 가능한 API (상품 등록, 수정, 삭제)

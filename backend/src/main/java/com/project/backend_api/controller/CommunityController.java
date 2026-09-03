@@ -36,7 +36,7 @@ public class CommunityController {
         return communityService.createPost(request);
     }
     
-    @PutMapping("/api/admin/community/posts/{id}")
+    @PutMapping("/admin/community/posts/{id}")
     public ResponseEntity<CommunityPostDetailResponse> updatePost(
             @PathVariable Integer id,
             @Valid @RequestBody CommunityPostUpdateRequest request
