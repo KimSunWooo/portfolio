@@ -1,17 +1,22 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   createCommunityPost,
   type CommunityCategory,
 } from "../../lib/api";
+import { useAuthStore } from "../../store/useAuthStore"; // 💡 Zustand 스토어 경로를 맞춰주세요
 
 export default function CommunityWriteForm() {
   const router = useRouter();
   
-  // 기존 상태
+  // Zustand 관리자 권한 상태 가져오기
+  const { isAdmin } = useAuthStore();
+  const [isChecking, setIsChecking] = useState(true); // 클라이언트 렌더링 확인용
+
+  // 기존 폼 상태
   const [category, setCategory] = useState<CommunityCategory | "TECH">("TECH");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("ADMIN");
@@ -27,6 +32,16 @@ export default function CommunityWriteForm() {
   const [errorMessage, setErrorMessage] = useState("");
   const [situation, setSituation] = useState("");
   const [content, setContent] = useState(""); 
+
+  // 권한 체크 및 접근 제어 (클라이언트 마운트 시 실행)
+  useEffect(() => {
+    setIsChecking(false); // 마운트 완료
+
+    if (!isAdmin) {
+      alert("관리자만 접근할 수 있는 페이지입니다.");
+      router.replace("/community"); // 관리자가 아니면 커뮤니티 목록으로 쫓아냄
+    }
+  }, [isAdmin, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,6 +87,15 @@ ${content}
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // 권한 확인 중이거나 관리자가 아닐 때는 폼 노출 차단 (화면 깜빡임 방지)
+  if (isChecking || !isAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-[12px] tracking-[0.08em] text-[#999]">AUTHORIZATION CHECK...</p>
+      </div>
+    ); 
   }
 
   return (
@@ -165,7 +189,7 @@ ${content}
               value={errorMessage}
               onChange={(e) => setErrorMessage(e.target.value)}
               placeholder="발생한 에러 코드나 터미널 로그를 붙여넣어 주세요."
-              className="h-[120px] resize-y border border-black/20 bg-gray-50 p-4 text-[12px] leading-6 text-red-600 outline-none focus:border-black font-mono"
+              className="h-[120px] resize-y border border-black/20 bg-gray-50 p-4 font-mono text-[12px] leading-6 text-red-600 outline-none focus:border-black"
             />
           </div>
 
@@ -215,7 +239,7 @@ ${content}
             <button
               type="submit"
               disabled={submitting}
-              className="h-12 min-w-[140px] bg-black px-6 text-[10px] tracking-[0.08em] text-white hover:bg-gray-800 disabled:opacity-40 transition-colors"
+              className="h-12 min-w-[140px] bg-black px-6 text-[10px] tracking-[0.08em] text-white transition-colors hover:bg-gray-800 disabled:opacity-40"
             >
               {submitting ? "SUBMITTING..." : "SUBMIT LOG"}
             </button>
