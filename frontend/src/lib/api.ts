@@ -1,8 +1,18 @@
+import axios from 'axios';
+
 const IS_SERVER = typeof window === "undefined";
 
+// 💡 수정된 API_BASE_URL 설정
 const API_BASE_URL = IS_SERVER
-  ? (process.env.INTERNAL_API_URL || "http://backend-api:8080")
+  // 서버 사이드(SSR) 일 때: INTERNAL_API_URL을 우선으로 보되, 없으면 localhost (로컬 개발용 방어막)
+  ? (process.env.INTERNAL_API_URL || "http://localhost:8080")
+  
+  // 클라이언트(브라우저) 일 때: NEXT_PUBLIC_API_URL을 우선으로 보되, 없으면 localhost
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+});
 
 /* =========================================================================
  * 0. 메모리 토큰 저장소 및 헬퍼 함수
@@ -10,6 +20,38 @@ const API_BASE_URL = IS_SERVER
 let inMemoryAccessToken: string | null = null;
 
 export const getAccessToken = () => inMemoryAccessToken;
+
+export const isAccessTokenValid = (
+  token: string | null = inMemoryAccessToken
+): boolean => {
+  if (!token) return false;
+
+  try {
+    const parts = token.split(".");
+
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const payload = JSON.parse(
+      atob(
+        parts[1]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/")
+          .padEnd(Math.ceil(parts[1].length / 4) * 4, "=")
+      )
+    );
+
+    if (!payload.exp) {
+      return false;
+    }
+
+    return payload.exp * 1000 > Date.now();
+  } catch (error) {
+    console.error("Access Token 검증 실패:", error);
+    return false;
+  }
+};
 
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
@@ -390,90 +432,361 @@ export async function deleteProductImage(productId: number | string, imageId: nu
 /* =========================================================================
  * 8. 장바구니 (Cart) API
  * ========================================================================= */
-export interface CartItemResponse { cartItemId: number; productId: number; productName: string; price: number; thumbnailUrl?: string | null; quantity: number; }
-export interface GuestCartItem { cartItemId: number; productId: number; productName: string; price: number; thumbnailUrl: string; quantity: number; }
+export interface CartItemResponse {
+  cartItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  thumbnailUrl?: string | null;
+  quantity: number;
+}
 
-export const fetchCartItems = async () => {
-  const token = getAccessToken();
-  if (token) {
-    const response = await fetch(`${API_BASE_URL}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error("장바구니 조회 실패"); return response.json();
-  } else {
-    const guestCart = localStorage.getItem("guestCart"); return guestCart ? JSON.parse(guestCart) : [];
+export interface GuestCartItem {
+  cartItemId: number;
+  productId: number;
+  productName: string;
+  price: number;
+  thumbnailUrl: string;
+  quantity: number;
+}
+
+/**
+ * 비회원 장바구니 저장소
+ *
+ * 프로젝트 전체에서 반드시 "guestCart" 하나만 사용한다.
+ */
+const GUEST_CART_KEY = "guestCart";
+
+/**
+ * 비회원 장바구니 조회
+ */
+export const getGuestCart = (): GuestCartItem[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const stored = localStorage.getItem(GUEST_CART_KEY);
+
+  if (!stored) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error("비회원 장바구니 파싱 실패:", error);
+    localStorage.removeItem(GUEST_CART_KEY);
+    return [];
   }
 };
 
-export const addCartItem = async (product: any, quantity: number) => {
-  const token = getAccessToken();
-  if (token) {
-    const response = await fetch(`${API_BASE_URL}/api/cart`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ productId: product.id, quantity }) });
-    if (!response.ok) throw new Error("장바구니 담기에 실패했습니다.");
-  } else {
-    const existingCart = localStorage.getItem("guestCart"); let cart: GuestCartItem[] = existingCart ? JSON.parse(existingCart) : [];
-    const existingItemIndex = cart.findIndex(item => item.productId === product.id);
-    if (existingItemIndex > -1) { cart[existingItemIndex].quantity += quantity; } 
-    else { cart.push({ cartItemId: Date.now(), productId: product.id, productName: product.name, price: product.price, thumbnailUrl: product.thumbnail, quantity: quantity }); }
-    localStorage.setItem("guestCart", JSON.stringify(cart));
+/**
+ * 비회원 장바구니 저장
+ */
+export const setGuestCart = (cart: GuestCartItem[]): void => {
+  if (typeof window === "undefined") {
+    return;
   }
+
+  localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cart));
 };
 
-export async function addToCart(productId: number, quantity: number = 1) {
-  const response = await fetch(`${API_BASE_URL}/api/cart`, { 
-    method: "POST", headers: getAuthHeaders(true), body: JSON.stringify({ productId, quantity }), credentials: "include" 
-  });
-  if (!response.ok) await handleResponseError(response); 
-  
-  // 💡 물건 담기 성공 시 헤더에게 "장바구니 업데이트해!" 라고 알림
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("cartChanged"));
+/**
+ * 비회원 장바구니 삭제
+ */
+export const clearGuestCart = (): void => {
+  if (typeof window === "undefined") {
+    return;
   }
-  return response.text();
-}
 
-export async function updateCartItemQuantity(cartItemId: number, quantity: number) {
-  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`, { method: "PUT", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.text();
-}
+  localStorage.removeItem(GUEST_CART_KEY);
+};
 
-export async function removeCartItem(cartItemId: number) {
-  const response = await fetch(`${API_BASE_URL}/api/cart/${cartItemId}`, { method: "DELETE", headers: getAuthHeaders(true), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.text();
-}
-
-export const fetchCartCount = async () => {
+/**
+ * 장바구니 조회
+ *
+ * 유효한 JWT가 있으면 서버 장바구니
+ * JWT가 없으면 비회원 장바구니
+ */
+export const fetchCartItems = async (): Promise<CartItemResponse[]> => {
   const token = getAccessToken();
-  
-  if (token) {
-    const response = await fetch(`${API_BASE_URL}/api/cart/count`, { 
-      headers: { Authorization: `Bearer ${token}` } 
+
+  if (isAccessTokenValid(token)) {
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
     });
-    if (!response.ok) return 0;
-    return response.json(); 
-  } else {
-    const guestCart = localStorage.getItem("guestCart"); 
-    if (!guestCart) return 0;
-    
-    const cart = JSON.parse(guestCart); // GuestCartItem[]
-    return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+
+    if (!response.ok) {
+      const error = new Error("장바구니 조회 실패") as Error & {
+        status?: number;
+      };
+
+      error.status = response.status;
+
+      throw error;
+    }
+
+    return response.json();
   }
+
+  return getGuestCart();
 };
 
-export async function syncLocalCartToServer(items: any[]): Promise<void> {
+/**
+ * 장바구니 상품 추가
+ *
+ * 로그인 사용자 → 서버
+ * 비회원 → guestCart
+ */
+export const addCartItem = async (
+  product: any,
+  quantity: number
+): Promise<void> => {
   const token = getAccessToken();
-  if (!token) return; // 토큰이 없으면 동기화 불가
 
-  const response = await fetch(`${API_BASE_URL}/api/cart/sync`, {
+  if (isAccessTokenValid(token)) {
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        productId: product.id,
+        quantity,
+      }),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = new Error(
+        "장바구니 담기에 실패했습니다."
+      ) as Error & {
+        status?: number;
+      };
+
+      error.status = response.status;
+
+      throw error;
+    }
+
+    return;
+  }
+
+  const cart = getGuestCart();
+
+  const existingItemIndex = cart.findIndex(
+    (item) => item.productId === product.id
+  );
+
+  if (existingItemIndex > -1) {
+    cart[existingItemIndex].quantity += quantity;
+  } else {
+    cart.push({
+      cartItemId: Date.now(),
+      productId: product.id,
+      productName: product.name,
+      price: product.price,
+      thumbnailUrl: product.thumbnail,
+      quantity,
+    });
+  }
+
+  setGuestCart(cart);
+};
+
+/**
+ * 서버 장바구니 추가
+ *
+ * 이 함수는 로그인 사용자 전용 API다.
+ */
+export async function addToCart(
+  productId: number,
+  quantity: number = 1
+) {
+  const token = getAccessToken();
+
+  if (!isAccessTokenValid(token)) {
+    throw new Error("로그인이 필요한 기능입니다.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/cart`, {
     method: "POST",
     headers: {
+      ...getAuthHeaders(true),
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
-    // 로컬 스토리지의 아이템 배열을 통째로 전송
-    body: JSON.stringify(items),
+    body: JSON.stringify({
+      productId,
+      quantity,
+    }),
+    credentials: "include",
   });
 
   if (!response.ok) {
-    throw new Error("장바구니 동기화에 실패했습니다.");
+    const error = new Error(
+      "장바구니 담기에 실패했습니다."
+    ) as Error & {
+      status?: number;
+    };
+
+    error.status = response.status;
+
+    throw error;
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("cartChanged"));
+  }
+
+  return response.text();
+}
+
+/**
+ * 로그인 사용자 장바구니 수량 변경
+ */
+export async function updateCartItemQuantity(
+  cartItemId: number,
+  quantity: number
+) {
+  const token = getAccessToken();
+
+  if (!isAccessTokenValid(token)) {
+    throw new Error("로그인이 필요한 기능입니다.");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/cart/${cartItemId}?quantity=${quantity}`,
+    {
+      method: "PUT",
+      headers: {
+        ...getAuthHeaders(true),
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    }
+  );
+
+  if (!response.ok) {
+    const error = new Error(
+      "장바구니 수량 변경에 실패했습니다."
+    ) as Error & {
+      status?: number;
+    };
+
+    error.status = response.status;
+
+    throw error;
+  }
+
+  return response.text();
+}
+
+/**
+ * 로그인 사용자 장바구니 상품 삭제
+ *
+ * 중요:
+ * 비회원에서는 이 함수를 호출하면 안 된다.
+ * 비회원 장바구니 삭제는 CartPage에서 guestCart를 직접 수정한다.
+ */
+export async function removeCartItem(cartItemId: number) {
+  const token = getAccessToken();
+
+  if (!isAccessTokenValid(token)) {
+    throw new Error("로그인이 필요한 기능입니다.");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/cart/${cartItemId}`,
+    {
+      method: "DELETE",
+      headers: {
+        ...getAuthHeaders(true),
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    }
+  );
+
+  if (!response.ok) {
+    const error = new Error(
+      "장바구니 상품 삭제에 실패했습니다."
+    ) as Error & {
+      status?: number;
+    };
+
+    error.status = response.status;
+
+    throw error;
+  }
+
+  return response.text();
+}
+
+/**
+ * 장바구니 수량 조회
+ */
+export const fetchCartCount = async (): Promise<number> => {
+  const token = getAccessToken();
+
+  if (isAccessTokenValid(token)) {
+    const response = await fetch(
+      `${API_BASE_URL}/api/cart/count`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      return 0;
+    }
+
+    return response.json();
+  }
+
+  const cart = getGuestCart();
+
+  return cart.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
+};
+
+/**
+ * 비회원 장바구니 → 로그인 사용자 장바구니 동기화
+ */
+export async function syncLocalCartToServer(
+  items: GuestCartItem[]
+): Promise<void> {
+  const token = getAccessToken();
+
+  if (!isAccessTokenValid(token)) {
+    return;
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/cart/sync`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(items),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "장바구니 동기화에 실패했습니다."
+    );
   }
 }
 

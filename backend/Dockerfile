@@ -36,4 +36,4 @@ RUN apk add --no-cache tzdata && \
 COPY --from=builder /app/build/libs/*SNAPSHOT.jar app.jar
 
 # 3. 애플리케이션 실행
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]

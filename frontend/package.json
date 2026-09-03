@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tosspayments/payment-sdk": "^1.9.3",
+    "axios": "^1.20.0",
     "jwt-decode": "^4.0.0",
     "next": "16.3.0",
     "react": "19.2.8",

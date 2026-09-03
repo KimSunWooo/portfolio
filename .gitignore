@@ -44,3 +44,6 @@ next-env.d.ts
 /hince-importer
 /data_crawler.py
 /dummy_products_relational.sql
+
+# Local Properties (보안 파일 제외)
+application-local.properties
