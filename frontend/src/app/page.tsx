@@ -292,7 +292,7 @@ export default async function Home() {
                   },
                   {
                     id: -2,
-                    title: "Community Board",
+                    title: "Trouble SHooting",
                     subtitle: "Board UI",
                     description: "Spring Boot · JPA · MySQL",
                     techStack: "Spring Boot · JPA · MySQL",

@@ -498,25 +498,67 @@ export const fetchPaymentHistory = async (status: "DONE" | "CANCELED"): Promise<
 };
 
 /* =========================================================================
- * 10. 커뮤니티 (Community) 임시 API
+ * 10. 커뮤니티 (Community) API
  * ========================================================================= */
-export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA";
-export interface CommunityPostListItem { id: number; title: string; category: CommunityCategory; createdAt: string; author: string; isPinned: boolean; viewCount: number; }
-export interface CommunityPostDetail extends CommunityPostListItem { content: string; }
+export type CommunityCategory = "NOTICE" | "FAQ" | "EVENT" | "QNA" | "TECH"; // TECH(트러블슈팅) 추가
+
+export interface CommunityPostListItem { 
+  id: number; 
+  title: string; 
+  category: CommunityCategory; 
+  createdAt: string; 
+  author: string; 
+  isPinned: boolean; 
+  viewCount: number; 
+}
+
+export interface CommunityPostDetail extends CommunityPostListItem { 
+  content: string; 
+  // --- TECH(트러블슈팅) 전용 선택적 필드 (일반 글에서는 undefined 또는 null) ---
+  occurrenceDate?: string;
+  status?: string;
+  severity?: string;
+  techStack?: string;
+  errorMessage?: string;
+  situation?: string;
+}
+
+// 폼(Form)에서 전송할 페이로드 타입 정의 (타입 안정성 확보)
+export interface CommunityPostCreatePayload {
+  category: CommunityCategory;
+  title: string;
+  content: string;
+  author?: string;
+  isPinned?: boolean;
+  occurrenceDate?: string;
+  status?: string;
+  severity?: string;
+  techStack?: string;
+  errorMessage?: string;
+  situation?: string;
+}
 
 // 💡 작성 API의 경우 관리자 권한으로 변경 (/admin/community/posts)
-export const createCommunityPost = async (data: any) => {
-  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts`, { method: "POST", headers: getAuthHeaders(true), body: JSON.stringify(data), credentials: "include" });
-  if (!response.ok) await handleResponseError(response); return response.json();
+export const createCommunityPost = async (data: CommunityPostCreatePayload) => {
+  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts`, { 
+    method: "POST", 
+    headers: getAuthHeaders(true), // Content-Type: application/json 등 포함되어 있다고 가정
+    body: JSON.stringify(data), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
 };
 
-export const fetchCommunityPost = async (id: string | number) => {
+export const fetchCommunityPost = async (id: string | number): Promise<CommunityPostDetail> => {
   const response = await fetch(`${API_BASE_URL}/api/community/posts/${id}`);
-  if (!response.ok) await handleResponseError(response); return response.json();
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
 };
 
-export const fetchCommunityPosts = async (category?: string) => {
+export const fetchCommunityPosts = async (category?: string): Promise<CommunityPostListItem[]> => {
   const url = category ? `${API_BASE_URL}/api/community/posts?category=${encodeURIComponent(category)}` : `${API_BASE_URL}/api/community/posts`;
   const response = await fetch(url);
-  if (!response.ok) await handleResponseError(response); return response.json();
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
 };

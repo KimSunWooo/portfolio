@@ -55,13 +55,32 @@ public class CommunityService {
     public CommunityPostDetailResponse createPost(CommunityPostCreateRequest request) {
         CommunityCategory category = parseCategory(request.category());
 
-        CommunityPost post = CommunityPost.create(
-                category,
-                request.title().trim(),
-                request.content().trim(),
-                request.author(),
-                request.isPinned()
-        );
+        CommunityPost post;
+
+        // TECH 카테고리인 경우 전용 팩토리 메서드 사용
+        if (category == CommunityCategory.TECH) {
+            post = CommunityPost.createTechLog(
+                    request.title().trim(),
+                    request.content().trim(),
+                    request.author(),
+                    request.isPinned(),
+                    request.occurrenceDate(),
+                    request.status(),
+                    request.severity(),
+                    request.techStack(),
+                    request.errorMessage(),
+                    request.situation()
+            );
+        } else {
+            // 일반 카테고리인 경우 기존 팩토리 메서드 사용
+            post = CommunityPost.create(
+                    category,
+                    request.title().trim(),
+                    request.content().trim(),
+                    request.author(),
+                    request.isPinned()
+            );
+        }
 
         CommunityPost saved = communityPostRepository.save(post);
         return CommunityPostDetailResponse.from(saved);
@@ -73,7 +92,7 @@ public class CommunityService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new ResponseStatusException(
                     BAD_REQUEST,
-                    "지원하지 않는 category입니다. NOTICE, FAQ, EVENT, QNA 중 하나를 사용하세요."
+                    "지원하지 않는 category입니다. NOTICE, FAQ, EVENT, QNA, TECH 중 하나를 사용하세요." // TECH 추가
             );
         }
     }

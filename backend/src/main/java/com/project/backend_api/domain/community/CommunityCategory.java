@@ -4,5 +4,6 @@ public enum CommunityCategory {
     NOTICE,
     FAQ,
     EVENT,
-    QNA
+    QNA,
+    TECH // 트러블슈팅 카테고리 추가
 }

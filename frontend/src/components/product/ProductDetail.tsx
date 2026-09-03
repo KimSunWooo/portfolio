@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductDetailResponse, resolveAssetUrl } from "../../lib/api"; // 경로를 맞춰주세요
 import { addToCart, getAccessToken } from "../../lib/api";
+import { useCartStore } from "../../store/useCartStore";
 
 function formatPrice(price: number) {
   return `${price.toLocaleString("ko-KR")}원`;
 }
 
 export default function ProductDetail({ product }: { product: ProductDetailResponse }) {
+  const { refreshCartCount } = useCartStore();
   const [selectedColor, setSelectedColor] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const router = useRouter();
