@@ -44,4 +44,10 @@ public class CommunityController {
         CommunityPostDetailResponse response = communityService.updatePost(id, request);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/admin/community/posts/{id}")
+    public ResponseEntity<Void> deletePost(@PathVariable Integer id) {
+        communityService.deletePost(id);
+        return ResponseEntity.noContent().build();
+    }
 }
