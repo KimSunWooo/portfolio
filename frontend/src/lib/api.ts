@@ -573,3 +573,16 @@ export const fetchCommunityPosts = async (category?: string): Promise<CommunityP
   if (!response.ok) await handleResponseError(response); 
   return response.json();
 };
+
+export async function deleteCommunityPost(id: string | number): Promise<void> {
+  // getAuthHeaders(true)는 어제 만드신 토큰 헤더 반환 함수입니다.
+  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(true), 
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(errorData || "게시글 삭제에 실패했습니다.");
+  }
+}

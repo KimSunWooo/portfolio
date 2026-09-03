@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   fetchCommunityPost,
   updateCommunityPost,
-  //deleteCommunityPost, 
+  deleteCommunityPost, 
   type CommunityPostDetail,
   type CommunityCategory,
 } from "../../lib/api";

@@ -125,4 +125,12 @@ public class CommunityService {
             );
         }
     }
+
+    @Transactional
+    public void deletePost(Integer id) {
+        CommunityPost post = communityPostRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글을 찾을 수 없습니다. id=" + id));
+        
+        communityPostRepository.delete(post);
+    }
 }
