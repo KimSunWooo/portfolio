@@ -143,7 +143,7 @@ export default async function Home() {
               </div>
 
               <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
-                <p className="max-w-[680px] text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
+                <p className="whitespace-pre-wrap max-w-[680px] text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
                   {profile.shortIntro}
                 </p>
 
