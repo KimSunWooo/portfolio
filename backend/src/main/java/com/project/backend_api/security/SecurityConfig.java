@@ -69,6 +69,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/admin/community/**").hasRole("ADMIN")
                 
                 .requestMatchers("/actuator/**", "/error").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/cart/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/cart/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/cart/**").authenticated()
                 
                 // 그 외의 모든 요청은 로그인(인증)된 유저만 접근 가능
                 .anyRequest().authenticated()
