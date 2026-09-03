@@ -550,6 +550,17 @@ export const createCommunityPost = async (data: CommunityPostCreatePayload) => {
   return response.json();
 };
 
+export const updateCommunityPost = async (id: number | string, data: CommunityPostCreatePayload) => {
+  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts/${id}`, { 
+    method: "PUT", 
+    headers: getAuthHeaders(true), 
+    body: JSON.stringify(data), 
+    credentials: "include" 
+  });
+  if (!response.ok) await handleResponseError(response); 
+  return response.json();
+};
+
 export const fetchCommunityPost = async (id: string | number): Promise<CommunityPostDetail> => {
   const response = await fetch(`${API_BASE_URL}/api/community/posts/${id}`);
   if (!response.ok) await handleResponseError(response); 

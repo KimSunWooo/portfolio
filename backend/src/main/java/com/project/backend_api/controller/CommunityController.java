@@ -3,10 +3,12 @@ package com.project.backend_api.controller;
 import com.project.backend_api.dto.community.CommunityPostCreateRequest;
 import com.project.backend_api.dto.community.CommunityPostDetailResponse;
 import com.project.backend_api.dto.community.CommunityPostListResponse;
+import com.project.backend_api.dto.community.CommunityPostUpdateRequest;
 import com.project.backend_api.service.CommunityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -32,5 +34,14 @@ public class CommunityController {
     @ResponseStatus(HttpStatus.CREATED)
     public CommunityPostDetailResponse createPost(@Valid @RequestBody CommunityPostCreateRequest request) {
         return communityService.createPost(request);
+    }
+    
+    @PutMapping("/api/admin/community/posts/{id}")
+    public ResponseEntity<CommunityPostDetailResponse> updatePost(
+            @PathVariable Integer id,
+            @Valid @RequestBody CommunityPostUpdateRequest request
+    ) {
+        CommunityPostDetailResponse response = communityService.updatePost(id, request);
+        return ResponseEntity.ok(response);
     }
 }

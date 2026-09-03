@@ -116,6 +116,47 @@ public class CommunityPost {
         return post;
     }
 
+    public void update(
+            CommunityCategory category,
+            String title,
+            String content,
+            String author,
+            Boolean isPinned,
+            // TECH 전용 필드들
+            LocalDate occurrenceDate,
+            String status,
+            String severity,
+            String techStack,
+            String errorMessage,
+            String situation
+    ) {
+        this.category = category;
+        this.title = title;
+        this.content = content;
+        if (author != null && !author.isBlank()) {
+            this.author = author.trim();
+        }
+        this.isPinned = Boolean.TRUE.equals(isPinned);
+        
+        // TECH 카테고리일 때만 트러블슈팅 데이터 저장, 아니면 null 처리
+        if (category == CommunityCategory.TECH) {
+            this.occurrenceDate = occurrenceDate;
+            this.status = status;
+            this.severity = severity;
+            this.techStack = techStack;
+            this.errorMessage = errorMessage;
+            this.situation = situation;
+        } else {
+            this.occurrenceDate = null;
+            this.status = null;
+            this.severity = null;
+            this.techStack = null;
+            this.errorMessage = null;
+            this.situation = null;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void increaseViewCount() {
         this.viewCount = (this.viewCount == null ? 0 : this.viewCount) + 1;
         this.updatedAt = LocalDateTime.now();

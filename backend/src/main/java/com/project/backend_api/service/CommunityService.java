@@ -5,6 +5,7 @@ import com.project.backend_api.domain.community.CommunityPost;
 import com.project.backend_api.dto.community.CommunityPostCreateRequest;
 import com.project.backend_api.dto.community.CommunityPostDetailResponse;
 import com.project.backend_api.dto.community.CommunityPostListResponse;
+import com.project.backend_api.dto.community.CommunityPostUpdateRequest;
 import com.project.backend_api.repository.CommunityPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -84,6 +85,34 @@ public class CommunityService {
 
         CommunityPost saved = communityPostRepository.save(post);
         return CommunityPostDetailResponse.from(saved);
+    }
+
+    @Transactional
+    public CommunityPostDetailResponse updatePost(Integer id, CommunityPostUpdateRequest request) {
+        CommunityPost post = communityPostRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        NOT_FOUND,
+                        "게시글을 찾을 수 없습니다. id=" + id
+                ));
+
+        CommunityCategory category = parseCategory(request.category());
+
+        // 엔티티 수정 (JPA 더티 체킹으로 인해 save 호출 불필요)
+        post.update(
+                category,
+                request.title().trim(),
+                request.content().trim(),
+                request.author(),
+                request.isPinned(),
+                request.occurrenceDate(),
+                request.status(),
+                request.severity(),
+                request.techStack(),
+                request.errorMessage(),
+                request.situation()
+        );
+
+        return CommunityPostDetailResponse.from(post);
     }
 
     private CommunityCategory parseCategory(String category) {
