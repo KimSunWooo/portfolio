@@ -15,16 +15,17 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -241,7 +242,7 @@ public class ProductService {
             MultipartFile file,
             String caption,
             String altText,
-            String imageType,
+            String imageType, // 프론트에서 넘어오는 String 타입
             Integer sortOrder
     ) {
 
@@ -250,109 +251,91 @@ public class ProductService {
                         .orElseThrow(() ->
                                 new ResponseStatusException(
                                         NOT_FOUND,
-                                        "상품을 찾을 수 없습니다. id="
-                                                + productId
+                                        "상품을 찾을 수 없습니다. id=" + productId
                                 )
                         );
-
 
         // -----------------------------------------------------
         // 파일 존재 확인
         // -----------------------------------------------------
-
         if (file == null || file.isEmpty()) {
-
             throw new ResponseStatusException(
                     BAD_REQUEST,
                     "업로드할 이미지가 없습니다."
             );
         }
 
-
         // -----------------------------------------------------
         // 이미지 파일인지 확인
         // -----------------------------------------------------
-
-        String contentType =
-                file.getContentType();
-
-        if (
-                contentType == null ||
-                !contentType.startsWith("image/")
-        ) {
-
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
             throw new ResponseStatusException(
                     BAD_REQUEST,
                     "이미지 파일만 업로드할 수 있습니다."
             );
         }
 
-
         // -----------------------------------------------------
-        // 이미지 타입
+        // 💡 핵심 1: ImageType 변수 선언 및 String -> Enum 변환
         // -----------------------------------------------------
-
-        ImageType type;
-
+        ImageType type; // 여기서 변수를 선언해야 아래에서 에러가 안 납니다!
+        
         try {
-
-            type =
-                    imageType == null ||
-                    imageType.isBlank()
+            type = imageType == null || imageType.isBlank()
                             ? ImageType.DETAIL
-                            : ImageType.valueOf(
-                                    imageType.toUpperCase()
-                            );
-
+                            : ImageType.valueOf(imageType.toUpperCase());
         } catch (IllegalArgumentException e) {
-
             throw new ResponseStatusException(
                     BAD_REQUEST,
                     "지원하지 않는 이미지 타입입니다."
             );
         }
 
-
         // -----------------------------------------------------
-        // 실제 이미지 파일 저장 (S3)
+        // 실제 이미지 파일 저장 (S3) + 🚨 껍데기 상품 방어 로직
         // -----------------------------------------------------
-
-        String imageUrl =
-                saveProductImage(
-                        productId,
-                        file
+        String imageUrl;
+        try {
+            imageUrl = saveProductImage(productId, file);
+        } catch (Exception e) {
+            // S3 업로드 실패 시 방어 로직 (수동 롤백)
+            if (product.getThumbnail() == null || product.getThumbnail().isBlank()) {
+                productRepository.delete(product);
+                
+                throw new ResponseStatusException(
+                        INTERNAL_SERVER_ERROR,
+                        "S3 이미지 업로드 실패로 인해 상품 등록이 취소(롤백)되었습니다.", e
                 );
-
+            }
+            
+            throw new ResponseStatusException(
+                    INTERNAL_SERVER_ERROR,
+                    "이미지 업로드에 실패했습니다.", e
+            );
+        }
 
         // -----------------------------------------------------
         // product_images DB 저장
         // -----------------------------------------------------
-
         ProductImage image =
                 ProductImage.create(
                         productId,
                         imageUrl,
                         caption,
                         altText,
-                        type,
+                        type,      // 💡 핵심 2: 변환이 완료된 Enum 타입(type)을 전달
                         sortOrder
                 );
 
-        ProductImage saved =
-                productImageRepository.save(image);
-
+        ProductImage saved = productImageRepository.save(image);
 
         // -----------------------------------------------------
         // MAIN 이미지라면 products.thumbnail 변경
         // -----------------------------------------------------
-
         if (type == ImageType.MAIN) {
-
-            product.updateThumbnail(
-                    imageUrl
-            );
+            product.updateThumbnail(imageUrl);
         }
-
 
         return ProductImageResponse.from(saved);
     }
