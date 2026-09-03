@@ -1,4 +1,3 @@
-// src/lib/api.ts
 const IS_SERVER = typeof window === "undefined";
 
 const API_BASE_URL = IS_SERVER
@@ -445,21 +444,38 @@ export const fetchCartCount = async () => {
   const token = getAccessToken();
   
   if (token) {
-    // 로그인 유저: 수량 전용 API 호출
     const response = await fetch(`${API_BASE_URL}/api/cart/count`, { 
       headers: { Authorization: `Bearer ${token}` } 
     });
     if (!response.ok) return 0;
-    return response.json(); // 숫자만 반환됨
+    return response.json(); 
   } else {
-    // 비로그인 유저: 로컬 스토리지에서 즉시 계산
     const guestCart = localStorage.getItem("guestCart"); 
     if (!guestCart) return 0;
     
-    const cart: GuestCartItem[] = JSON.parse(guestCart);
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
+    const cart = JSON.parse(guestCart); // GuestCartItem[]
+    return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
   }
 };
+
+export async function syncLocalCartToServer(items: any[]): Promise<void> {
+  const token = getAccessToken();
+  if (!token) return; // 토큰이 없으면 동기화 불가
+
+  const response = await fetch(`${API_BASE_URL}/api/cart/sync`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    // 로컬 스토리지의 아이템 배열을 통째로 전송
+    body: JSON.stringify(items),
+  });
+
+  if (!response.ok) {
+    throw new Error("장바구니 동기화에 실패했습니다.");
+  }
+}
 
 /* =========================================================================
  * 9. 어드민 고객(Users) 관리 API

@@ -4,17 +4,19 @@ import { fetchCartCount } from '../lib/api';
 interface CartState {
   cartCount: number;
   setCartCount: (count: number) => void;
-  // 💡 백엔드에서 개수를 다시 갱신해오는 편의성 함수도 같이 넣어둡니다.
   refreshCartCount: () => Promise<void>; 
 }
 
 export const useCartStore = create<CartState>()((set) => ({
   cartCount: 0,
+  
   setCartCount: (count) => set({ cartCount: count }),
+  
+  // 로그인/비로그인 분기가 내장된 api.ts의 fetchCartCount를 호출
   refreshCartCount: async () => {
     try {
       const count = await fetchCartCount();
-      set({ cartCount: count || 0 });
+      set({ cartCount: count });
     } catch (error) {
       set({ cartCount: 0 });
     }

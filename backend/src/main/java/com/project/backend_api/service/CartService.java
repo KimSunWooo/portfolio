@@ -112,5 +112,44 @@ public class CartService {
         cartItemRepository.delete(cartItem);
     }
 
-    
+    @Transactional
+    public void syncCart(String email, List<CartRequest> guestCartItems) {
+        if (guestCartItems == null || guestCartItems.isEmpty()) {
+            return;
+        }
+
+        // 1. 유저의 장바구니(Cart) 통을 찾고, 없다면 새로 생성합니다.
+        Cart cart = cartRepository.findByUser_Email(email)
+                .orElseGet(() -> {
+                    // 유저 엔티티를 찾아서 새 장바구니를 만들어주는 로직 (프로젝트에 맞게 수정)
+                    User user = userRepository.findByEmail(email).orElseThrow();
+                    Cart newCart = Cart.builder().user(user).build();
+                    return cartRepository.save(newCart);
+                });
+
+        // 2. 비회원 장바구니 상품들을 하나씩 회원의 장바구니 통에 넣습니다.
+        for (CartRequest item : guestCartItems) {
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + item.getProductId()));
+
+            // 3. 이미 갖고 계신 완벽한 메서드를 사용해 중복을 확인합니다!
+            cartItemRepository.findByCart_IdAndProduct_Id(cart.getId(), product.getId())
+                .ifPresentOrElse(
+                    // 이미 카트에 상품이 있다면 수량(Quantity)만 더해줍니다.
+                    existingItem -> {
+                        existingItem.addQuantity(item.getQuantity()); 
+                        // 💡 CartItem 엔티티에 addQuantity() 또는 updateQuantity() 메서드가 있어야 합니다.
+                    },
+                    // 카트에 없는 상품이면 새 CartItem을 만들어 저장합니다.
+                    () -> {
+                        CartItem newItem = CartItem.builder()
+                                .cart(cart)
+                                .product(product)
+                                .quantity(item.getQuantity())
+                                .build();
+                        cartItemRepository.save(newItem);
+                    }
+                );
+        }
+    }
 }

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginUser } from "../../lib/api"; // 경로 확인
+import { loginUser, syncLocalCartToServer } from "../../lib/api"; // 경로 확인
+import { useCartStore } from "@/store/useCartStore";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,23 +12,44 @@ export default function Login() {
   const router = useRouter(); 
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // 💡 2. 로그인 시도 전 기존 에러 메시지 초기화
-    setErrorMessage(""); 
+  const handleLogin = async (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      setErrorMessage(""); 
 
-    try {
-      // API 호출
-      await loginUser({ email, password });
-      
-      // 로그인 성공 시 관리자 페이지로 이동
-      router.push("/admin/projects"); 
-    } catch (error: any) {
-      // 💡 3. API 통신 중 에러가 발생하면 catch로 넘어옴
-      // error.message에 "비밀번호가 일치하지 않습니다."가 들어있습니다.
-      setErrorMessage(error.message);
-    }
+      try {
+        // 1. 로그인 API 호출 (토큰 발급 및 저장 완료)
+        await loginUser({ email, password });
+        
+        // 2. 장바구니 동기화 (Cart Migration)
+        try {
+          // 기존에 사용하시던 로컬 스토리지 키 값 사용
+          const guestCartData = localStorage.getItem("guestCart");
+
+          if (guestCartData) {
+            const guestItems = JSON.parse(guestCartData);
+            
+            if (guestItems && guestItems.length > 0) {
+              // 서버로 병합 요청
+              await syncLocalCartToServer(guestItems);
+              
+              // 병합 완료 후 로컬 스토리지 비우기
+              localStorage.removeItem("guestCart"); 
+            }
+          }
+
+          // 3. 병합이 끝났으니 최신 장바구니 개수(DB 기준)로 스토어 갱신
+          useCartStore.getState().refreshCartCount();
+
+        } catch (syncError) {
+          console.error("장바구니 동기화 에러 (로그인은 유지됨):", syncError);
+        }
+
+        // 4. 페이지 이동
+        router.push("/admin/projects"); 
+        
+      } catch (error: any) {
+        setErrorMessage(error.message);
+      }
   };
 
   return (

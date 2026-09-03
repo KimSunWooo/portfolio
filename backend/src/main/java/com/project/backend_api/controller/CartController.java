@@ -81,4 +81,17 @@ public class CartController {
                                  
         return ResponseEntity.ok(totalQuantity);
     }
+
+    @PostMapping("/sync")
+    public ResponseEntity<Void> syncGuestCart(
+            Authentication authentication, 
+            @RequestBody List<CartRequest> guestCartItems
+    ) {
+        // JWT 토큰에서 유저 이메일 추출
+        String email = authentication.getName(); 
+        
+        cartService.syncCart(email, guestCartItems); 
+        
+        return ResponseEntity.ok().build();
+    }
 }
