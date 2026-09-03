@@ -1,6 +1,6 @@
 import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
-import MarkdownContent from "../components/Common/MarkDownContent";
+import MarkdownContent from "../components/common/MarkdownContent";
 import {
   fetchProjects,
   fetchResume,
