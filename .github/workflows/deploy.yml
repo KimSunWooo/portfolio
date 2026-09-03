@@ -34,17 +34,15 @@ jobs:
             NEXT_PUBLIC_API_URL=https://swportfolioservices.com
 
   deploy:
-    needs: build-and-push # 빌드가 성공해야 배포 실행
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: EC2에 SSH 접속하여 배포 실행
+      - name: EC2에 SSH 접속하여 블루-그린 배포 실행
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/portfolio  # 💡 EC2 내의 프로젝트 루트 폴더 이름으로 맞춰주세요
-            docker compose pull
-            docker compose up -d
-            docker image prune -f # 사용 안 하는 옛날 이미지 자동 청소
+            cd ~/portfolio
+            ./deploy.sh
