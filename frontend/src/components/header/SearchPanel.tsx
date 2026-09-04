@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { SyntheticEvent, useEffect, useState } from "react";
 import Icon from "../common/Icon";
 
 const keywords = ["파운데이션", "쿠션", "립스틱", "아이섀도우", "블러셔", "프라이머"];
@@ -15,7 +15,7 @@ export default function SearchPanel({ open, onClose }: { open: boolean; onClose:
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: SyntheticEvent) => {
     e.preventDefault();
     // 검색 API 또는 라우팅을 연결하세요.
   };

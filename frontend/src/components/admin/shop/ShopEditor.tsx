@@ -399,7 +399,7 @@ function UsersEditor() {
 
   useEffect(() => { loadUsers(); }, [currentPage]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (currentPage === 0) loadUsers();
     else setCurrentPage(0);
@@ -467,7 +467,7 @@ function SettingsEditor() {
   const [shopName, setShopName] = useState("STUDIO.");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = (e: React.SyntheticEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setTimeout(() => { setIsSaving(false); alert("설정이 저장되었습니다."); }, 600);

@@ -19,88 +19,151 @@ export const api = axios.create({
  * ========================================================================= */
 let inMemoryAccessToken: string | null = null;
 
-export const getAccessToken = () => inMemoryAccessToken;
+export const getAccessToken = (): string | null => {
+  return inMemoryAccessToken;
+};
 
-export const isAccessTokenValid = (
+/**
+ * JWT Payload를 파싱합니다.
+ *
+ * 현재 백엔드는 다음 형태로 JWT를 생성합니다.
+ *
+ * {
+ *   sub: email,
+ *   role: "ROLE_USER" | "ROLE_ADMIN",
+ *   exp: ...
+ * }
+ */
+export const getAccessTokenPayload = (
   token: string | null = inMemoryAccessToken
-): boolean => {
-  if (!token) return false;
+): Record<string, any> | null => {
+  if (!token) {
+    return null;
+  }
 
   try {
     const parts = token.split(".");
 
     if (parts.length !== 3) {
-      return false;
+      return null;
     }
 
-    const payload = JSON.parse(
-      atob(
-        parts[1]
-          .replace(/-/g, "+")
-          .replace(/_/g, "/")
-          .padEnd(Math.ceil(parts[1].length / 4) * 4, "=")
-      )
-    );
+    const base64Payload = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
 
-    if (!payload.exp) {
-      return false;
-    }
-
-    return payload.exp * 1000 > Date.now();
+    return JSON.parse(atob(base64Payload));
   } catch (error) {
-    console.error("Access Token 검증 실패:", error);
+    console.error("Access Token Payload 파싱 실패:", error);
+    return null;
+  }
+};
+
+/**
+ * Access Token의 만료 여부를 확인합니다.
+ */
+export const isAccessTokenValid = (
+  token: string | null = inMemoryAccessToken
+): boolean => {
+  const payload = getAccessTokenPayload(token);
+
+  if (!payload?.exp) {
     return false;
   }
+
+  return payload.exp * 1000 > Date.now();
 };
 
+/**
+ * Access Token의 role을 기준으로 관리자 여부를 확인합니다.
+ *
+ * 백엔드 JwtTokenProvider에서:
+ * user.getRole().name()
+ *
+ * 을 전달하고 있으므로 현재 관리자 role은 "ROLE_ADMIN"입니다.
+ */
+export const isAdminFromToken = (
+  token: string | null = inMemoryAccessToken
+): boolean => {
+  const payload = getAccessTokenPayload(token);
+
+  if (!payload) {
+    return false;
+  }
+
+  return payload.role === "ROLE_ADMIN";
+};
+
+/**
+ * Access Token을 메모리에 저장합니다.
+ *
+ * localStorage에는 저장하지 않습니다.
+ * Refresh Token은 백엔드의 HttpOnly Cookie에서 관리합니다.
+ */
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
+
   if (typeof window !== "undefined") {
-    // 💡 토큰이 세팅되거나 지워질 때마다 브라우저에 '상태 변경' 이벤트를 날립니다.
     window.dispatchEvent(new Event("authStateChanged"));
   }
 };
 
+/**
+ * Access Token 제거
+ */
 export const removeAccessToken = () => {
-  // 1. 메모리 상의 토큰을 날려버립니다. (가장 중요)
   inMemoryAccessToken = null;
-  
+
   if (typeof window !== "undefined") {
-    // 2. 토큰이 지워졌다는 이벤트를 날려 프론트엔드 헤더가 즉각 반응하게 합니다.
     window.dispatchEvent(new Event("authStateChanged"));
-    
-    // 3. (선택) 혹시 예전에 쓰던 로컬스토리지 찌꺼기가 남아있을까봐 확실하게 청소합니다.
-    localStorage.removeItem("accessToken"); 
+
+    // 과거 버전에서 사용했던 accessToken 찌꺼기 제거
+    localStorage.removeItem("accessToken");
   }
 };
 
 const getAuthHeaders = (isJson: boolean = true): HeadersInit => {
   const headers: Record<string, string> = {};
-  if (isJson) headers["Content-Type"] = "application/json";
-  if (inMemoryAccessToken) headers["Authorization"] = `Bearer ${inMemoryAccessToken}`;
+
+  if (isJson) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (inMemoryAccessToken) {
+    headers["Authorization"] = `Bearer ${inMemoryAccessToken}`;
+  }
+
   return headers;
 };
 
 export async function handleResponseError(response: Response) {
-  // 1. 스트림을 딱 한 번만 텍스트로 읽음
   const errorText = await response.clone().text();
+
   let errorMessage = "요청 처리에 실패했습니다.";
 
   try {
     const errorJson = JSON.parse(errorText);
     errorMessage = errorJson.message || errorMessage;
   } catch {
-    errorMessage = errorText;
+    errorMessage = errorText || errorMessage;
   }
 
-  // 4. 반드시 Error를 throw하여 loginUser 함수의 남은 로직이 실행되지 않도록 차단
   throw new Error(errorMessage);
 }
 
 export function resolveAssetUrl(path?: string | null) {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  const PUBLIC_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  if (!path) {
+    return null;
+  }
+
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  const PUBLIC_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
   return `${PUBLIC_URL}${path}`;
 }
 
@@ -215,54 +278,74 @@ export async function signupUser(userData: { email: string; password: string; na
   if (!response.ok) await handleResponseError(response); return response.text();
 }
 
-export async function loginUser(credentials: { email: string; password: string }) {
+export async function loginUser(credentials: {
+  email: string;
+  password: string;
+}) {
   const response = await fetch(`${API_BASE_URL}/api/users/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(credentials),
-    credentials: "include", 
+    credentials: "include",
   });
 
-  // 1. 상태가 200번대(성공)가 아니면 에러 처리
   if (!response.ok) {
-    // 백엔드가 JSON이 아닌 텍스트로 보냈으므로 text()로 읽음
-    const errorText = await response.text(); 
-    // 그 텍스트 그대로 에러를 발생시켜 로그인 컴포넌트의 catch로 던짐
-    throw new Error(errorText); 
+    const errorText = await response.text();
+    throw new Error(errorText);
   }
 
-  // 2. 성공했을 때만 JSON으로 파싱
   const data = await response.json();
-  setAccessToken(data.accessToken); 
+
+  if (!data.accessToken) {
+    throw new Error("Access Token을 전달받지 못했습니다.");
+  }
+
+  setAccessToken(data.accessToken);
+
   return data;
 }
 
 export async function silentRefresh() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/users/refresh`, { 
-      method: "POST", 
-      credentials: "include" 
+    const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
+      method: "POST",
+      credentials: "include",
     });
-    
-    // 401 에러(비로그인)가 뜨면 에러를 던지지(throw) 않고 조용히 null을 반환
-    if (!response.ok) { 
-      setAccessToken(null); 
-      return null; 
+
+    if (!response.ok) {
+      setAccessToken(null);
+      return null;
     }
-    
+
     const data = await response.json();
-    setAccessToken(data.accessToken); 
+
+    if (!data.accessToken) {
+      setAccessToken(null);
+      return null;
+    }
+
+    setAccessToken(data.accessToken);
+
     return data.accessToken;
   } catch (error) {
-    // 서버가 꺼져있거나 네트워크 에러 시에도 조용히 처리
     setAccessToken(null);
     return null;
   }
 }
 
 export async function logoutUser() {
-  try { await fetch(`${API_BASE_URL}/api/users/logout`, { method: "POST", credentials: "include" }); } 
-  catch (e) {} finally { setAccessToken(null); }
+  try {
+    await fetch(`${API_BASE_URL}/api/users/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    // 로그아웃 요청 실패와 관계없이 클라이언트 인증 상태는 제거
+  } finally {
+    removeAccessToken();
+  }
 }
 
 /* =========================================================================

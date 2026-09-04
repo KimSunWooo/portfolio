@@ -21,7 +21,7 @@ export default function SignupPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (formData.password !== formData.passwordConfirm) {
       alert("비밀번호가 일치하지 않습니다.");

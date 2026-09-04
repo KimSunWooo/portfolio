@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { SyntheticEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   fetchCommunityPost,
@@ -90,19 +90,27 @@ export default function CommunityPostView({ id }: { id: string }) {
     setError("");
   };
 
+  // 💡 상세 페이지 삭제 처리 핸들러 추가
   const handleDelete = async () => {
-    if (confirm("정말 이 게시글을 삭제하시겠습니까?")) {
+    if (submitting) return; // 연타 방지
+    const isConfirmed = window.confirm("정말 이 게시글을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.");
+    
+    if (isConfirmed) {
       try {
+        setSubmitting(true);
         await deleteCommunityPost(id);
-        router.push("/community");
+        alert("게시글이 성공적으로 삭제되었습니다.");
+        router.push("/community"); // 삭제 후 목록으로 이동
         router.refresh();
       } catch (err) {
-        alert("게시글 삭제에 실패했습니다.");
+        alert(err instanceof Error ? err.message : "게시글 삭제에 실패했습니다.");
+      } finally {
+        setSubmitting(false);
       }
     }
   };
 
-  async function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleUpdateSubmit(event: SyntheticEvent) {
     event.preventDefault();
     setError("");
 
@@ -158,15 +166,17 @@ export default function CommunityPostView({ id }: { id: string }) {
           <div className="flex gap-4">
             <button 
               onClick={handleEditClick} 
-              className="text-blue-600 hover:underline transition-colors"
+              disabled={submitting}
+              className="text-blue-600 hover:underline transition-colors disabled:opacity-50"
             >
               EDIT POST
             </button>
             <button 
               onClick={handleDelete} 
-              className="text-red-600 hover:underline transition-colors"
+              disabled={submitting}
+              className="text-red-600 hover:underline transition-colors disabled:opacity-50"
             >
-              DELETE
+              {submitting ? "DELETING..." : "DELETE"}
             </button>
           </div>
         )}
@@ -365,7 +375,6 @@ export default function CommunityPostView({ id }: { id: string }) {
                   {post.situation && (
                     <section>
                       <h2 className="text-[11px] font-bold tracking-[0.08em] text-[#555]">CONTEXT (발생 상황)</h2>
-                      {/* 💡 whitespace-pre-wrap 적용 */}
                       <div className="mt-3 whitespace-pre-wrap text-[13px] leading-[2] text-[#333]">
                         {post.situation}
                       </div>
@@ -374,7 +383,6 @@ export default function CommunityPostView({ id }: { id: string }) {
 
                   <section>
                     <h2 className="text-[11px] font-bold tracking-[0.08em] text-[#555]">RESOLUTION (해결 과정)</h2>
-                    {/* 💡 whitespace-pre-wrap 적용 */}
                     <div className="mt-3 whitespace-pre-wrap text-[13px] leading-[2] text-[#333]">
                       {post.content}
                     </div>
