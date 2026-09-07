@@ -37,11 +37,8 @@ const SEVERITY_MAP: Record<string, string> = {
 
 export default function CommunityPostView({ id }: { id: string }) {
   const router = useRouter();
-
-  // 1. 전역 상태에서 유저 정보 가져오기 (Zustand)
   const isAdmin = useAuthStore((state) => state.isAdmin);
 
-  // 공통 상태
   const [post, setPost] = useState<CommunityPostDetail | null>(null);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -69,10 +66,12 @@ export default function CommunityPostView({ id }: { id: string }) {
 
   const handleEditClick = () => {
     if (!post) return;
-    setEditCategory(post.category as CommunityCategory | "TECH");
-    setEditTitle(post.title);
-    setEditIsPinned(post.isPinned);
-    setEditContent(post.content);
+    
+    // 🌟 안전한 기본값 할당 (비제어 컴포넌트 에러 방지)
+    setEditCategory((post.category as CommunityCategory | "TECH") || "TECH");
+    setEditTitle(post.title || "");
+    setEditIsPinned(post.isPinned || false);
+    setEditContent(post.content || "");
 
     if (post.category === "TECH") {
       setEditOccurrenceDate(post.occurrenceDate ? post.occurrenceDate.split("T")[0] : "");
@@ -90,9 +89,8 @@ export default function CommunityPostView({ id }: { id: string }) {
     setError("");
   };
 
-  // 💡 상세 페이지 삭제 처리 핸들러 추가
   const handleDelete = async () => {
-    if (submitting) return; // 연타 방지
+    if (submitting) return;
     const isConfirmed = window.confirm("정말 이 게시글을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.");
     
     if (isConfirmed) {
@@ -100,8 +98,8 @@ export default function CommunityPostView({ id }: { id: string }) {
         setSubmitting(true);
         await deleteCommunityPost(id);
         alert("게시글이 성공적으로 삭제되었습니다.");
-        router.push("/community"); // 삭제 후 목록으로 이동
-        router.refresh();
+        router.push("/community");
+        router.refresh(); // 목록 페이지 캐시 갱신
       } catch (err) {
         alert(err instanceof Error ? err.message : "게시글 삭제에 실패했습니다.");
       } finally {
@@ -127,17 +125,29 @@ export default function CommunityPostView({ id }: { id: string }) {
         content: editContent.trim(),
         author: post?.author || "ADMIN",
         isPinned: editIsPinned,
-        occurrenceDate: editCategory === "TECH" ? editOccurrenceDate : undefined,
-        status: editCategory === "TECH" ? editStatus : undefined,
-        severity: editCategory === "TECH" ? editSeverity : undefined,
-        techStack: editCategory === "TECH" ? editTechStack : undefined,
-        errorMessage: editCategory === "TECH" ? editErrorMessage : undefined,
-        situation: editCategory === "TECH" ? editSituation : undefined,
+        
+        // 🌟 null 대신 undefined로 수정하여 타입스크립트 에러 해결
+        occurrenceDate: editCategory === "TECH" ? (editOccurrenceDate || undefined) : undefined,
+        status: editCategory === "TECH" ? (editStatus || undefined) : undefined,
+        severity: editCategory === "TECH" ? (editSeverity || undefined) : undefined,
+        techStack: editCategory === "TECH" ? (editTechStack || undefined) : undefined,
+        errorMessage: editCategory === "TECH" ? (editErrorMessage || undefined) : undefined,
+        situation: editCategory === "TECH" ? (editSituation || undefined) : undefined,
       };
 
       const updatedPost = await updateCommunityPost(id, payload);
-      setPost(updatedPost);
+      
+      // API가 전체 데이터를 반환하지 않을 경우를 대비한 방어 코드
+      if (updatedPost && updatedPost.id) {
+        setPost(updatedPost);
+      } else {
+        // 응답에 전체 데이터가 없으면 다시 최신 데이터를 Fetch 해옵니다.
+        const freshPost = await fetchCommunityPost(id);
+        setPost(freshPost);
+      }
+
       setIsEditing(false);
+      router.refresh(); // 🌟 Next.js 서버 캐시 갱신 (목록으로 돌아갔을 때 반영되게 함)
     } catch (err) {
       setError(err instanceof Error ? err.message : "게시글 수정에 실패했습니다.");
     } finally {
@@ -161,10 +171,10 @@ export default function CommunityPostView({ id }: { id: string }) {
       <div className="flex items-center justify-between text-[9px] tracking-[0.08em] text-[#999]">
         <span>HOME / COMMUNITY / {isEditing ? "EDIT" : post.category}</span>
         
-        {/* 관리자 전용 컨트롤 패널 */}
         {!isEditing && isAdmin && (
           <div className="flex gap-4">
             <button 
+              type="button" // 🌟 form 안의 button 처럼 동작하지 않도록 명시
               onClick={handleEditClick} 
               disabled={submitting}
               className="text-blue-600 hover:underline transition-colors disabled:opacity-50"
@@ -172,6 +182,7 @@ export default function CommunityPostView({ id }: { id: string }) {
               EDIT POST
             </button>
             <button 
+              type="button"
               onClick={handleDelete} 
               disabled={submitting}
               className="text-red-600 hover:underline transition-colors disabled:opacity-50"
@@ -184,9 +195,6 @@ export default function CommunityPostView({ id }: { id: string }) {
 
       <article className="mx-auto mt-[54px] max-w-[960px] max-sm:mt-[38px]">
         {isEditing ? (
-          /* =========================================
-             모드 1: EDIT MODE (수정 폼)
-             ========================================= */
           <form onSubmit={handleUpdateSubmit} className="border-t border-black pt-7">
             <div className="grid grid-cols-[140px_1fr] items-center border-b border-black/10 py-5 max-sm:grid-cols-1 max-sm:gap-3">
               <label className="text-[10px] tracking-[0.08em] text-[#777]">CATEGORY</label>
@@ -195,8 +203,8 @@ export default function CommunityPostView({ id }: { id: string }) {
                 onChange={(e) => setEditCategory(e.target.value as CommunityCategory | "TECH")}
                 className="h-11 border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
               >
-                <option value="TECH">TECH (트러블슈팅)</option>
-                <option value="TECH">TECH (개선사항)</option>
+                {/* 🌟 value가 중복되면 버그가 생기므로 명확하게 정리 */}
+                <option value="TECH">TECH (트러블슈팅 / 개선사항)</option>
                 <option value="NOTICE">NOTICE</option>
               </select>
             </div>
@@ -211,7 +219,6 @@ export default function CommunityPostView({ id }: { id: string }) {
               />
             </div>
 
-            {/* TECH 전용 필드들 */}
             {editCategory === "TECH" && (
               <>
                 <div className="grid grid-cols-[140px_1fr] items-center border-b border-black/10 py-5 max-sm:grid-cols-1 max-sm:gap-3">
@@ -316,10 +323,8 @@ export default function CommunityPostView({ id }: { id: string }) {
             </div>
           </form>
         ) : (
-          /* =========================================
-             모드 2: READ MODE (일반 읽기 뷰)
-             ========================================= */
           <>
+            {/* --- READ MODE 부분 유지 --- */}
             <header className="border-y border-black py-7">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-[9px] tracking-[0.1em] text-[#888]">
