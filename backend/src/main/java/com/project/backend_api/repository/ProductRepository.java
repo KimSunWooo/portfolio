@@ -9,12 +9,13 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 
+    List<Product> findAllByOrderByIdDesc();
+
     List<Product> findByStatusOrderByIdAsc(ProductStatus status);
 
-    List<Product> findByStatusAndCategoryIgnoreCaseOrderByIdAsc(
-            ProductStatus status,
-            String category
-    );
+    List<Product> findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus status, String category);
 
-    List<Product> findAllByOrderByIdDesc();
+    List<Product> findByStatusAndNameContainingIgnoreCaseOrderByIdAsc(ProductStatus status, String search);
+
+    List<Product> findByStatusAndCategoryIgnoreCaseAndNameContainingIgnoreCaseOrderByIdAsc(ProductStatus status, String category, String search);
 }

@@ -3,6 +3,7 @@ package com.project.backend_api.controller;
 import com.project.backend_api.domain.product.Product;
 import com.project.backend_api.dto.product.ProductDetailResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
+import com.project.backend_api.dto.product.ProductListWrapper;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.service.ProductService;
 import com.project.backend_api.dto.product.ProductImageResponse;
@@ -28,10 +29,12 @@ public class ProductController {
 
     // 👉 GET /api/products
     @GetMapping("/products")
-    public List<ProductListResponse> getProducts(
-            @RequestParam(required = false) String category
+    public List<ProductListResponse> getProducts( // 🌟 반환 타입은 List<ProductListResponse> 그대로 유지!
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String search
     ) {
-        return productService.getProducts(category);
+        // 🌟 서비스에서 반환된 포장지(Wrapper)에서 .getProducts()로 알맹이(List)만 꺼내서 프론트로 보냅니다.
+        return productService.getProducts(category, search).getProducts(); 
     }
 
     // 👉 GET /api/products/{id}

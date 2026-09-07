@@ -32,7 +32,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   try {
     const categoryParam = product.category ? product.category : undefined;
     // 이제 api.ts를 수정했으므로 에러 없이 인자를 넘길 수 있습니다.
-    const relatedProducts = await fetchProducts(categoryParam);
+    const relatedProducts = await fetchProducts({ category : categoryParam});
     
     recommendations = relatedProducts
       .filter((item) => String(item.id) !== id)

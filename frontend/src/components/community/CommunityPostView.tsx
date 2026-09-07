@@ -196,10 +196,8 @@ export default function CommunityPostView({ id }: { id: string }) {
                 className="h-11 border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
               >
                 <option value="TECH">TECH (트러블슈팅)</option>
+                <option value="TECH">TECH (개선사항)</option>
                 <option value="NOTICE">NOTICE</option>
-                <option value="FAQ">FAQ</option>
-                <option value="EVENT">EVENT</option>
-                <option value="QNA">QNA</option>
               </select>
             </div>
 

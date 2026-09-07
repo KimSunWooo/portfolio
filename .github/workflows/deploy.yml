@@ -7,6 +7,19 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    
+    # 🌟 백엔드 테스트(Context Load 등) 통과를 위한 임시 Redis 컨테이너
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: 저장소 코드 가져오기
         uses: actions/checkout@v3
@@ -23,6 +36,8 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/portfolio-backend:latest
+          # 🌟 Dockerfile 내부에서 빌드할 때 localhost(Redis)에 접근할 수 있도록 호스트 네트워크 사용
+          network: host
 
       - name: 프론트엔드 도커 이미지 빌드 및 푸시
         uses: docker/build-push-action@v4

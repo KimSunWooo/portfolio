@@ -4,6 +4,7 @@ import com.project.backend_api.domain.product.*;
 import com.project.backend_api.dto.product.ProductDetailResponse;
 import com.project.backend_api.dto.product.ProductImageResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
+import com.project.backend_api.dto.product.ProductListWrapper;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.repository.*;
 
@@ -20,6 +21,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.io.IOException;
 import java.util.List;
@@ -56,23 +58,45 @@ public class ProductService {
      * SALE 상태의 상품만 반환한다.
      * category가 전달되면 카테고리 필터링을 적용한다.
      */
-    public List<ProductListResponse> getProducts(String category) {
+    @Cacheable(
+            value = "productList", 
+            key = "(#category != null ? #category : 'ALL') + '_' + (#search != null ? #search : 'NONE')"
+    )
+    public ProductListWrapper getProducts(String category, String search) {
+    boolean hasCategory = category != null && !category.isBlank();
+    boolean hasSearch = search != null && !search.isBlank();
 
-        List<Product> products =
-                category == null || category.isBlank()
-                        ? productRepository.findByStatusOrderByIdAsc(
-                                ProductStatus.SALE
-                        )
-                        : productRepository
-                                .findByStatusAndCategoryIgnoreCaseOrderByIdAsc(
-                                        ProductStatus.SALE,
-                                        category
-                                );
+    List<Product> products;
 
-        return products.stream()
+    if (hasCategory && hasSearch) {
+        // 카테고리와 검색어 모두 있을 때
+        products = productRepository.findByStatusAndCategoryIgnoreCaseAndNameContainingIgnoreCaseOrderByIdAsc(
+                ProductStatus.SALE, category, search
+        );
+    } else if (hasCategory) {
+        // 카테고리만 있을 때
+        products = productRepository.findByStatusAndCategoryIgnoreCaseOrderByIdAsc(
+                ProductStatus.SALE, category
+        );
+    } else if (hasSearch) {
+        // 검색어만 있을 때 (정상: Name Containing 메서드를 호출해야 함)
+        products = productRepository.findByStatusAndNameContainingIgnoreCaseOrderByIdAsc(
+                ProductStatus.SALE, search
+        );
+    } else {
+        // 둘 다 없을 때 (전체 조회)
+        products = productRepository.findByStatusOrderByIdAsc(
+                ProductStatus.SALE
+        );
+    }
+
+    List<ProductListResponse> list = products.stream()
                 .map(ProductListResponse::from)
                 .toList();
-    }
+
+        // 🌟 마지막에 List를 감싸서 반환!
+        return new ProductListWrapper(list);
+}
 
 
     /**

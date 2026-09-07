@@ -714,10 +714,21 @@ async function deleteProjectMedia(projectId, mediaId) {
     if (!response.ok) await handleResponseError(response);
     return response.ok;
 }
-async function fetchProducts(category) {
-    const url = category ? `${API_BASE_URL}/api/products?category=${encodeURIComponent(category)}` : `${API_BASE_URL}/api/products`;
+async function fetchProducts(params) {
+    const query = new URLSearchParams();
+    // 파라미터가 존재할 경우에만 쿼리 스트링에 추가 (자동으로 URL 인코딩 처리됨)
+    if (params?.category && params.category !== "ALL") {
+        query.append("category", params.category);
+    }
+    if (params?.search) {
+        query.append("search", params.search);
+    }
+    const queryString = query.toString();
+    const url = queryString ? `${API_BASE_URL}/api/products?${queryString}` : `${API_BASE_URL}/api/products`;
     const response = await fetch(url);
-    if (!response.ok) await handleResponseError(response);
+    if (!response.ok) {
+        await handleResponseError(response);
+    }
     return response.json();
 }
 async function getProductById(productId) {
