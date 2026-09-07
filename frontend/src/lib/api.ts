@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { jwtDecode } from "jwt-decode";
 
 const IS_SERVER = typeof window === "undefined";
 
@@ -42,6 +43,7 @@ export const setAccessToken = (token: string | null) => {
     window.dispatchEvent(new Event("authStateChanged"));
   }
 };
+
 export const getAccessTokenPayload = (
   token: string | null = inMemoryAccessToken
 ): Record<string, any> | null => {
@@ -50,18 +52,8 @@ export const getAccessTokenPayload = (
   }
 
   try {
-    const parts = token.split(".");
-
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const base64Payload = parts[1]
-      .replace(/-/g, "+")
-      .replace(/_/g, "/")
-      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
-
-    return JSON.parse(atob(base64Payload));
+    // 🌟 위험한 atob 수제 로직을 버리고, AdminLayout과 동일하게 jwtDecode 사용!
+    return jwtDecode(token);
   } catch (error) {
     console.error("Access Token Payload 파싱 실패:", error);
     return null;
