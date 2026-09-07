@@ -34,6 +34,14 @@ export const getAccessToken = (): string | null => {
  *   exp: ...
  * }
  */
+
+export const setAccessToken = (token: string | null) => {
+  inMemoryAccessToken = token;
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("authStateChanged"));
+  }
+};
 export const getAccessTokenPayload = (
   token: string | null = inMemoryAccessToken
 ): Record<string, any> | null => {
@@ -92,21 +100,7 @@ export const isAdminFromToken = (
     return false;
   }
 
-  return payload.role === "ROLE_ADMIN";
-};
-
-/**
- * Access Token을 메모리에 저장합니다.
- *
- * localStorage에는 저장하지 않습니다.
- * Refresh Token은 백엔드의 HttpOnly Cookie에서 관리합니다.
- */
-export const setAccessToken = (token: string | null) => {
-  inMemoryAccessToken = token;
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("authStateChanged"));
-  }
+  return payload.role === "ROLE_ADMIN" || payload.role === "ADMIN";
 };
 
 /**
@@ -1030,12 +1024,17 @@ export const fetchCommunityPosts = async (category?: string): Promise<CommunityP
   return response.json();
 };
 
-export async function deleteCommunityPost(id: string | number): Promise<void> {
-  // getAuthHeaders(true)는 어제 만드신 토큰 헤더 반환 함수입니다.
-  const response = await fetch(`${API_BASE_URL}/api/admin/community/posts/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(true), 
-  });
+export async function deleteCommunityPost(
+  id: string | number
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/admin/community/posts/${id}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(true),
+      credentials: "include",
+    }
+  );
 
   if (!response.ok) {
     const errorData = await response.text();
