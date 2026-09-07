@@ -80,25 +80,34 @@ public class SecurityConfig {
     }
 
     // 💡 2. CORS 허용 규칙 상세 설정 (새로 추가된 메서드)
-    @Value("${app.cors.allowed-origins:http://localhost:3000}")
+    @Value("${app.cors.allowed-origins:https://swportfolioservices.com}")
     private String allowedOrigins;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // 2. 하드코딩된 주소를 지우고, 주입받은 변수를 리스트로 변환해 넣습니다.
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        
-        // 허용할 HTTP 메서드 (api.ts에 있던 PATCH도 안전하게 추가)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        // 허용할 헤더
+
+        configuration.setAllowedOrigins(
+                Arrays.asList(allowedOrigins.split(","))
+        );
+
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+        ));
+
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        // 자격 증명 허용
         configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); 
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
