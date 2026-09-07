@@ -96,6 +96,44 @@ export default function Header() {
     };
   }, [setAuthState, clearAuthState]);
 
+  useEffect(() => {
+  const initializeAuth = async () => {
+    try {
+      let token = getAccessToken();
+
+      console.log("[AUTH] 기존 Access Token:", !!token);
+      console.log("[AUTH] 기존 Token 유효:", isAccessTokenValid(token));
+
+      if (!isAccessTokenValid(token)) {
+        console.log("[AUTH] silentRefresh 실행");
+
+        token = await silentRefresh();
+
+        console.log("[AUTH] silentRefresh 결과:", !!token);
+      }
+
+      if (isAccessTokenValid(token)) {
+        const admin = isAdminFromToken(token);
+
+        console.log("[AUTH] 최종 관리자 여부:", admin);
+
+        setAuthState(true, admin);
+      } else {
+        console.log("[AUTH] 인증 실패");
+
+        clearAuthState();
+      }
+    } catch (error) {
+      console.error("[AUTH] 초기화 실패:", error);
+      clearAuthState();
+    } finally {
+      setIsAuthChecking(false);
+    }
+  };
+
+  initializeAuth();
+}, [setAuthState, clearAuthState]);
+
   const handleLogout = async () => {
     try {
       await logoutUser();
