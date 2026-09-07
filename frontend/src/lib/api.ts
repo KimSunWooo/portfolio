@@ -307,15 +307,24 @@ export async function loginUser(credentials: {
   return data;
 }
 
+import { jwtDecode } from "jwt-decode";
+import { useAuthStore } from "../store/useAuthStore"; // 경로를 프로젝트에 맞게 맞춰주세요.
+
+interface CustomJwtPayload {
+  sub: string;
+  role: string;
+}
+
 export async function silentRefresh() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
       method: "POST",
-      credentials: "include",
+      credentials: "include", // 쿠키를 백엔드로 전송
     });
 
     if (!response.ok) {
       setAccessToken(null);
+      useAuthStore.getState().clearAuthState(); // 🌟 갱신 실패 시 전역 상태 초기화
       return null;
     }
 
@@ -323,14 +332,24 @@ export async function silentRefresh() {
 
     if (!data.accessToken) {
       setAccessToken(null);
+      useAuthStore.getState().clearAuthState(); // 🌟 갱신 실패 시 전역 상태 초기화
       return null;
     }
 
     setAccessToken(data.accessToken);
 
+    // 🌟 1. 발급받은 새 토큰을 직접 디코딩합니다.
+    const decoded = jwtDecode<CustomJwtPayload>(data.accessToken);
+    // 🌟 2. 권한을 확인합니다.
+    const isAdmin = decoded.role === "ROLE_ADMIN" || decoded.role === "ADMIN";
+    
+    // 🌟 3. Zustand 전역 스토어에 로그인 상태와 관리자 상태를 즉시 동기화합니다.
+    useAuthStore.getState().setAuthState(true, isAdmin);
+
     return data.accessToken;
   } catch (error) {
     setAccessToken(null);
+    useAuthStore.getState().clearAuthState();
     return null;
   }
 }

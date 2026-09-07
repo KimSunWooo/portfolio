@@ -107,8 +107,7 @@ export default function CommunityWriteForm() {
               onChange={(e) => setCategory(e.target.value as CommunityCategory | "TECH")}
               className="h-11 border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
             >
-              <option value="TECH">TECH (트러블슈팅)</option>
-              <option value="TECH">TECH (개선사항)</option>
+              <option value="TECH">TECH (트러블슈팅 / 개선사항)</option>
               <option value="NOTICE">NOTICE</option>
             </select>
           </div>
