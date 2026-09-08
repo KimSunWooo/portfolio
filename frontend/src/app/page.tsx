@@ -262,9 +262,7 @@ export default async function Home() {
                 {profileImageUrl && (
                   <div className="flex justify-end max-md:justify-start">
                     <div className="relative w-full max-w-[320px] overflow-hidden max-md:max-w-[240px]">
-                      <Image
-                        width={300}   
-                        height={400}  
+                      <img
                         src={profileImageUrl}
                         alt={profile.name ?? "Profile"}
                         className="aspect-[3/4] w-full object-cover"
