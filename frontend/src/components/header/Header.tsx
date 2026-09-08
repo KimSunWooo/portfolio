@@ -175,6 +175,9 @@ export default function Header() {
             <Link href="/cart" className="hover:text-gray-500">
               CART ({mounted ? cartCount : 0})
             </Link>
+            <Link href="/community" className="hover:text-gray-500">
+              Trouble-Shooting
+            </Link>
           </nav>
 
           <div className="flex items-center gap-4 md:hidden">
@@ -248,6 +251,12 @@ export default function Header() {
           >
             SHOP
           </Link>
+          <Link
+            href="/community"
+            className="border-b border-gray-100 pb-2"
+          >
+            Trouble-Shooting
+          </Link>
 
           {isLoadingUI ? (
             <div className="mt-2 h-[150px] w-full animate-pulse bg-gray-50 rounded-sm"></div>
@@ -260,17 +269,22 @@ export default function Header() {
                   </span>
 
                   <Link
-                    href="/admin/products"
+                    href="/admin/resume"
                     className="text-blue-600"
                   >
-                    PRODUCT MGT
+                    RESUME
                   </Link>
-
                   <Link
-                    href="/admin/orders"
+                    href="/admin/shop"
                     className="text-blue-600"
                   >
-                    ORDER MGT
+                    SHOP
+                  </Link>
+                  <Link
+                    href="/admin/projects"
+                    className="text-blue-600"
+                  >
+                    PROJECTS
                   </Link>
                 </div>
               )}

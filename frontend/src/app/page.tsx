@@ -7,6 +7,7 @@ import {
   type PortfolioProject,
   type ResumeData,
 } from "../lib/api";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
@@ -155,8 +156,9 @@ export default async function Home() {
     ) {
       resume = fetched;
     }
-  } catch {
+  } catch (error){
     // 개발 중 백엔드가 꺼져 있어도 fallback 데이터로 화면 확인 가능
+    console.error("[SSR Fetch Error]:", error)
   }
 
   /**
@@ -260,7 +262,9 @@ export default async function Home() {
                 {profileImageUrl && (
                   <div className="flex justify-end max-md:justify-start">
                     <div className="relative w-full max-w-[320px] overflow-hidden max-md:max-w-[240px]">
-                      <img
+                      <Image
+                        width={300}   
+                        height={400}  
                         src={profileImageUrl}
                         alt={profile.name ?? "Profile"}
                         className="aspect-[3/4] w-full object-cover"
