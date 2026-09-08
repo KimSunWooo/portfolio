@@ -5,10 +5,10 @@ const IS_SERVER = typeof window === "undefined";
 
 // 💡 수정된 API_BASE_URL 설정
 const API_BASE_URL = IS_SERVER
-  // 서버 사이드(SSR) 일 때: INTERNAL_API_URL을 우선으로 보되, 없으면 localhost (로컬 개발용 방어막)
+  // 서버(SSR)일 때: 각 환경(.env)에 맞는 내부 주소 사용
   ? (process.env.INTERNAL_API_URL || "http://localhost:8080")
   
-  // 클라이언트(브라우저) 일 때: NEXT_PUBLIC_API_URL을 우선으로 보되, 없으면 localhost
+  // 브라우저일 때: 각 환경(.env)에 맞는 외부 주소 사용
   : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080");
 
 export const api = axios.create({
