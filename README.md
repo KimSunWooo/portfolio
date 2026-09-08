@@ -246,7 +246,7 @@ Database
 Spring Security의 Authority 기반 접근 제어를 사용했습니다.
 
 ```java
-.hasAuthority("ADMIN")
+.hasRole("ADMIN")
 ```
 
 ---
