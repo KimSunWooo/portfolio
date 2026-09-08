@@ -549,7 +549,7 @@ ADMIN
 ### 해결
 
 ```java
-hasAuthority("ADMIN")
+hasRole("Admin") 으로 통일
 ```
 
 으로 변경하여 실제 권한 값과 일치시켰습니다.
