@@ -14,6 +14,10 @@ Frontend → Backend → Database → Cache → Docker → AWS EC2 → CI/CD까�
 
 또한 동일한 서비스에 상품 조회, 장바구니, 주문/결제 관련 기능을 추가하여 실제 웹 서비스에 가까운 Commerce Platform 구조로 확장했습니다.
 
+테스트 관리자계정
+아이디 : test@test.com
+비밀번호 : test147@
+
 ### 핵심 목표
 
 * **Full-Stack Architecture:** Next.js App Router 기반 SSR / CSR 구조와 Spring Boot REST API 서버 구축
