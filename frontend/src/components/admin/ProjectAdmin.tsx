@@ -58,9 +58,9 @@ export default function ProjectAdmin() {
     <div className="min-h-full bg-[#f9f9f9] px-4 py-6 md:px-8 md:py-8">
       {notice && (
         <div className="fixed inset-0 z-[200] grid place-items-center bg-black/40 px-4 backdrop-blur-sm" onClick={()=>setNotice(null)}>
-          <div className="w-full max-w-[420px] bg-white p-6 md:p-8 shadow-xl" onClick={e=>e.stopPropagation()}>
+          <div className="w-full max-w-[420px] bg-white p-6 shadow-xl md:p-8" onClick={e=>e.stopPropagation()}>
             <p className="text-[10px] font-bold tracking-[0.2em] text-[#000]">PROJECT CMS</p>
-            <h2 className="mt-4 text-[18px] md:text-[20px] text-[#333]">{notice}</h2>
+            <h2 className="mt-4 text-[18px] text-[#333] md:text-[20px]">{notice}</h2>
             <button onClick={()=>setNotice(null)} className="mt-8 w-full bg-black py-3 text-[11px] text-white">확인</button>
           </div>
         </div>
@@ -82,32 +82,32 @@ export default function ProjectAdmin() {
       </div>
 
       <div className="mt-8 flex flex-col items-start gap-8 md:mt-10 xl:flex-row">
-        {/* 좌측: 프로젝트 목록 (모바일 가로 스크롤) */}
-        <div className="w-full flex-1 border-t border-black overflow-x-auto custom-scrollbar">
-          <div className="min-w-[500px]">
-            <div className="grid grid-cols-[60px_1fr_100px_60px] gap-4 border-b border-black/10 py-4 text-[9px] font-bold tracking-[0.14em] text-[#777] md:grid-cols-[80px_1fr_120px_80px]">
-              <span>THUMBNAIL</span>
-              <span>PROJECT</span>
-              <span>STATUS</span>
-              <span className="text-right">ACTIONS</span>
-            </div>
-            {items.length === 0 && <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">등록된 프로젝트가 없습니다.</div>}
-            
-            {items.map((item) => (
-              <ProjectListItem 
-                key={item.id}
-                item={item} 
-                isActive={editingProject?.id === item.id}
-                onEdit={() => { setIsAdding(false); setEditingProject(item); }}
-                onDelete={async () => {
-                  if (confirm(`"${item.title}" 프로젝트를 삭제하시겠습니까?`)) {
-                    await run(() => deleteProject(item.id), "프로젝트를 삭제했습니다.");
-                    if (editingProject?.id === item.id) { setEditingProject(null); setIsAdding(false); }
-                  }
-                }}
-              />
-            ))}
+        {/* 좌측: 프로젝트 목록 */}
+        <div className="w-full flex-1 border-t border-black">
+          {/* 헤더 행 (데스크톱 전용) */}
+          <div className="hidden grid-cols-[80px_1fr_120px_80px] gap-4 border-b border-black/10 py-4 text-[9px] font-bold tracking-[0.14em] text-[#777] md:grid">
+            <span>THUMBNAIL</span>
+            <span>PROJECT</span>
+            <span>STATUS</span>
+            <span className="text-right">ACTIONS</span>
           </div>
+          
+          {items.length === 0 && <div className="py-16 text-center text-[11px] tracking-[0.08em] text-[#999]">등록된 프로젝트가 없습니다.</div>}
+          
+          {items.map((item) => (
+            <ProjectListItem 
+              key={item.id}
+              item={item} 
+              isActive={editingProject?.id === item.id}
+              onEdit={() => { setIsAdding(false); setEditingProject(item); }}
+              onDelete={async () => {
+                if (confirm(`"${item.title}" 프로젝트를 삭제하시겠습니까?`)) {
+                  await run(() => deleteProject(item.id), "프로젝트를 삭제했습니다.");
+                  if (editingProject?.id === item.id) { setEditingProject(null); setIsAdding(false); }
+                }
+              }}
+            />
+          ))}
         </div>
 
         {/* 우측: 프로젝트 등록/수정 폼 */}
@@ -126,6 +126,7 @@ export default function ProjectAdmin() {
   );
 }
 
+// 💡 모바일 친화적으로 개선된 ProjectListItem
 function ProjectListItem({ item, isActive, onEdit, onDelete }: { item: PortfolioProject; isActive: boolean; onEdit: () => void; onDelete: () => void; }) {
   const [firstMediaUrl, setFirstMediaUrl] = useState<string | null>(null);
 
@@ -144,20 +145,34 @@ function ProjectListItem({ item, isActive, onEdit, onDelete }: { item: Portfolio
   const displayThumbnail = item.thumbnail ? resolveAssetUrl(item.thumbnail) : firstMediaUrl ? resolveAssetUrl(firstMediaUrl) : null;
 
   return (
-    <div className={`grid grid-cols-[60px_1fr_100px_60px] md:grid-cols-[80px_1fr_120px_80px] items-center gap-4 border-b border-black/10 py-4 transition-colors ${isActive ? 'bg-black/5' : ''}`}>
-      <div className="h-12 w-12 overflow-hidden bg-[#f1efec] md:h-16 md:w-16">
-        {displayThumbnail ? <img src={displayThumbnail} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[8px] text-[#aaa]">NO IMG</div>}
+    <div className={`flex flex-col gap-3 border-b border-black/10 py-4 transition-colors md:grid md:grid-cols-[80px_1fr_120px_80px] md:items-center md:gap-4 ${isActive ? 'bg-black/5' : ''}`}>
+      
+      {/* 1단 (모바일): 이미지 + 제목 */}
+      <div className="flex items-center gap-4 md:contents">
+        <div className="h-14 w-14 shrink-0 overflow-hidden bg-[#f1efec] md:h-16 md:w-16">
+          {displayThumbnail ? (
+            <img src={displayThumbnail} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[8px] text-[#aaa]">NO IMG</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-bold">
+            {item.title} {item.isFeatured && <span className="text-[10px] text-blue-500">★</span>}
+          </p>
+          {item.subtitle && <p className="mt-1 truncate text-[11px] text-[#777]">{item.subtitle}</p>}
+        </div>
       </div>
-      <div>
-        <p className="truncate text-[13px] font-bold md:text-[14px]">{item.title} {item.isFeatured && <span className="text-blue-500 text-[10px]">★</span>}</p>
-        {item.subtitle && <p className="mt-1 truncate text-[10px] text-[#777] md:text-[11px]">{item.subtitle}</p>}
-      </div>
-      <div>
-        <span className="inline-block bg-black px-2 py-1 text-[8px] tracking-widest text-white md:text-[9px]">{item.status}</span>
-      </div>
-      <div className="flex items-center justify-end gap-2 md:gap-3">
-        <button type="button" onClick={onEdit} className="text-[9px] font-bold tracking-[0.12em] text-[#777] hover:text-black md:text-[10px]">EDIT</button>
-        <button type="button" onClick={onDelete} className="text-[9px] font-bold tracking-[0.12em] text-[#999] hover:text-red-600 md:text-[10px]">DEL</button>
+
+      {/* 2단 (모바일): 여백(썸네일 너비만큼 띄움) + 뱃지 + 버튼 */}
+      <div className="flex items-center justify-between pl-[72px] md:contents md:pl-0">
+        <div>
+          <span className="inline-block bg-black px-2 py-1 text-[9px] tracking-widest text-white">{item.status}</span>
+        </div>
+        <div className="flex items-center justify-end gap-3">
+          <button type="button" onClick={onEdit} className="text-[10px] font-bold tracking-[0.12em] text-[#777] hover:text-black">EDIT</button>
+          <button type="button" onClick={onDelete} className="text-[10px] font-bold tracking-[0.12em] text-[#999] hover:text-red-600">DEL</button>
+        </div>
       </div>
     </div>
   );

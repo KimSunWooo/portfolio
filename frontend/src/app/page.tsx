@@ -156,9 +156,8 @@ export default async function Home() {
     ) {
       resume = fetched;
     }
-  } catch (error){
-    // 개발 중 백엔드가 꺼져 있어도 fallback 데이터로 화면 확인 가능
-    console.error("[SSR Fetch Error]:", error)
+  } catch (error) {
+    console.error("[SSR Fetch Error]:", error);
   }
 
   /**
@@ -226,10 +225,8 @@ export default async function Home() {
         >
           <div className="mx-auto flex min-h-[620px] max-w-[1440px] flex-col justify-between max-sm:min-h-[560px]">
             {/* Top Meta */}
-
             <div className="flex items-start justify-between gap-8 text-[10px] tracking-[0.14em] text-[#777] max-sm:flex-col max-sm:gap-2">
               <span>PORTFOLIO · 2026</span>
-
               <span>
                 {profile.jobTitle?.toUpperCase() ??
                   "BACKEND / FULL-STACK DEVELOPER"}
@@ -237,18 +234,14 @@ export default async function Home() {
             </div>
 
             {/* Main Profile */}
-
             <div className="py-16 max-sm:py-14">
               <p className="mb-5 text-[30px] tracking-[0.18em] text-[#777] max-sm:text-[20px]">
                 DEVELOPER
               </p>
 
               <div className="grid grid-cols-[1fr_360px] items-end gap-16 max-lg:grid-cols-[1fr_280px] max-md:grid-cols-1 max-md:gap-10">
-                {/* NAME */}
-
                 <h1 className="text-[clamp(42px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
                   {englishName[0]}
-
                   {englishName[1] && (
                     <>
                       <br />
@@ -256,8 +249,6 @@ export default async function Home() {
                     </>
                   )}
                 </h1>
-
-                {/* PROFILE IMAGE */}
 
                 {profileImageUrl && (
                   <div className="flex justify-end max-md:justify-start">
@@ -273,7 +264,6 @@ export default async function Home() {
               </div>
 
               {/* Short Intro */}
-
               <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
                 <p className="max-w-[680px] whitespace-pre-wrap text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
                   {profile.shortIntro}
@@ -289,7 +279,6 @@ export default async function Home() {
             </div>
 
             {/* Profile Summary */}
-
             <div className="grid grid-cols-4 border-y border-black/15 max-md:grid-cols-2">
               {[
                 ["FOCUS", profile.jobTitle ?? "Backend"],
@@ -304,7 +293,6 @@ export default async function Home() {
                   <div className="text-[9px] tracking-[0.14em] text-[#888]">
                     {label}
                   </div>
-
                   <div className="mt-8 text-[15px] tracking-[-0.02em] max-sm:text-[13px]">
                     {value}
                   </div>
@@ -327,7 +315,6 @@ export default async function Home() {
               <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
                 01 · SKILLS
               </p>
-
               <h2 className="max-w-[900px] text-[clamp(28px,5.2vw,78px)] font-normal leading-[1.1] tracking-[-0.055em]">
                 기술은 목적이 아니라,
                 <br />
@@ -359,42 +346,29 @@ export default async function Home() {
         >
           <div className="mx-auto max-w-[1440px]">
             <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              {/* Section Label */}
-
               <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
                 02 · EXPERIENCE
               </p>
-
               <div>
                 <h2 className="text-[clamp(32px,6vw,88px)] font-normal tracking-[-0.06em]">
                   Career
                 </h2>
-
                 <div className="mt-14 border-t border-black max-sm:mt-8">
                   {resume.experiences.map((item) => (
                     <div
                       key={item.id}
                       className="grid grid-cols-[180px_1fr] gap-8 border-b border-black/15 py-8 max-md:grid-cols-1 max-md:gap-3 max-sm:py-6"
                     >
-                      {/* Period */}
-
                       <div className="text-[11px] tracking-[0.06em] text-[#666]">
                         {formatPeriod(item.startDate, item.endDate)}
                       </div>
-
-                      {/* Experience */}
-
                       <div>
                         <p className="mb-2 text-[15px] tracking-[0.12em] text-[#777] max-sm:text-[13px]">
                           {item.companyName}
                         </p>
-
                         <h3 className="text-[20px] tracking-[-0.03em] max-sm:text-[18px]">
                           {item.position}
                         </h3>
-
-                        {/* Markdown Description */}
-
                         {item.description && (
                           <div className="mt-5 max-w-[720px]">
                             <MarkdownContent
@@ -425,7 +399,6 @@ export default async function Home() {
               <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
                 03 · EDUCATION
               </p>
-
               <div className="border-t border-black">
                 {resume.educations.map((item) => (
                   <div
@@ -436,7 +409,6 @@ export default async function Home() {
                       <h2 className="text-[28px] tracking-[-0.04em] max-sm:text-[20px]">
                         {item.schoolName}
                       </h2>
-
                       <p className="mt-3 text-[12px] text-[#666] max-sm:text-[11px]">
                         {[
                           item.major,
@@ -447,7 +419,6 @@ export default async function Home() {
                           .join(" · ")}
                       </p>
                     </div>
-
                     <span className="text-[10px] tracking-[0.12em] text-[#777]">
                       EDUCATION
                     </span>
@@ -477,14 +448,9 @@ export default async function Home() {
                   key={item.id}
                   className="grid grid-cols-[1.2fr_0.8fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8"
                 >
-                  {/* Introduction Title */}
-
                   <h2 className="text-[clamp(28px,6vw,86px)] font-normal leading-[1.1] tracking-[-0.06em]">
                     {item.title ?? "Introduction"}
                   </h2>
-
-                  {/* Markdown Content */}
-
                   <MarkdownContent
                     content={item.content}
                     variant="dark"
@@ -505,18 +471,15 @@ export default async function Home() {
         >
           <div className="mx-auto max-w-[1440px]">
             {/* Header */}
-
             <div className="flex items-end justify-between gap-8 border-b border-black pb-6 max-sm:pb-4">
               <div>
                 <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
                   05 · PORTFOLIO DEMO
                 </p>
-
                 <h2 className="text-[clamp(32px,6vw,84px)] font-normal tracking-[-0.06em]">
                   Selected Work
                 </h2>
               </div>
-
               <a
                 href="/shop"
                 className="mb-2 text-[10px] tracking-[0.14em] text-[#111] no-underline hover:opacity-50"
@@ -526,40 +489,34 @@ export default async function Home() {
             </div>
 
             {/* Project Cards */}
-
             <div className="grid grid-cols-2 max-md:grid-cols-1">
               {(
                 [
-                  {
-                    id: -1,
-                    title: "Product Archive",
-                    subtitle: "Commerce UI",
-                    description:
-                      "Next.js · React · Responsive UI",
-                    techStack:
-                      "Next.js · React · Responsive UI",
-                    projectUrl: "/shop",
-                    githubUrl: null,
-                    status: "IN PROGRESS",
-                    isFeatured: true,
-                    sortOrder: -2,
-                  },
-
+                  // 1. Trouble Shooting이 Product Archive 위로 올라오도록 배열 순서 변경
                   {
                     id: -2,
                     title: "Trouble Shooting",
                     subtitle: "Board UI",
-                    description:
-                      "Spring Boot · JPA · MySQL",
-                    techStack:
-                      "Spring Boot · JPA · MySQL",
+                    description: "Spring Boot · JPA · MySQL",
+                    techStack: "Spring Boot · JPA · MySQL",
                     projectUrl: "/community",
                     githubUrl: null,
                     status: "COMPLETED",
                     isFeatured: true,
                     sortOrder: -1,
                   },
-
+                  {
+                    id: -1,
+                    title: "Product Archive",
+                    subtitle: "Commerce UI",
+                    description: "Next.js · React · Responsive UI",
+                    techStack: "Next.js · React · Responsive UI",
+                    projectUrl: "/shop",
+                    githubUrl: null,
+                    status: "IN PROGRESS",
+                    isFeatured: true,
+                    sortOrder: -2,
+                  },
                   ...projects,
                 ] as PortfolioProject[]
               ).map((project, index) => {
@@ -569,6 +526,9 @@ export default async function Home() {
                     : project.projectUrl || "#";
 
                 const isExternal = href.startsWith("http");
+                
+                // 트러블 슈팅 돋보이게 하기 위한 상태 변수
+                const isHighlight = project.id === -2;
 
                 return (
                   <a
@@ -576,35 +536,46 @@ export default async function Home() {
                     href={href}
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noreferrer" : undefined}
-                    className="group min-h-[310px] border-b border-r border-black/15 p-7 text-[#111] no-underline max-md:border-r-0 max-sm:min-h-[220px] max-sm:p-5"
+                    className={`group min-h-[310px] border-b p-7 no-underline max-sm:min-h-[220px] max-sm:p-5 transition-colors ${
+                      isHighlight
+                        ? "bg-[#111] text-white border-r-0 hover:bg-[#222]" // 색상 반전 (눈에 띄는 디자인)
+                        : "border-r border-black/15 text-[#111] max-md:border-r-0 hover:bg-[#f9f9f9]" // 기본 스타일
+                    }`}
                   >
                     {/* Card Meta */}
-
-                    <div className="flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] text-[#777]">
+                    <div
+                      className={`flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] ${
+                        isHighlight ? "text-white/60" : "text-[#777]"
+                      }`}
+                    >
                       <span>
                         {String(index + 1).padStart(2, "0")} ·{" "}
                         {project.subtitle?.toUpperCase() || "PROJECT"}
                       </span>
-
-                      <span>
-                        {project.status.replace("_", " ")}
-                      </span>
+                      <span>{project.status.replace("_", " ")}</span>
                     </div>
 
                     {/* Title */}
-
-                    <h3 className="mt-24 text-[30px] tracking-[-0.04em] max-sm:mt-12 max-sm:text-[22px]">
+                    <h3 className="mt-24 flex items-center gap-3 text-[30px] tracking-[-0.04em] max-sm:mt-12 max-sm:text-[22px]">
                       {project.title}
+                      {/* 강렬한 포인트 뱃지 추가 */}
+                      {isHighlight && (
+                        <span className="rounded bg-[#ff3b30] px-2 py-1 text-[9px] font-bold tracking-[0.1em] text-white">
+                          MAIN FOCUS
+                        </span>
+                      )}
                     </h3>
 
                     {/* Tech Stack */}
-
-                    <p className="mt-4 text-[12px] leading-6 text-[#666] max-sm:text-[11px] max-sm:leading-5">
+                    <p
+                      className={`mt-4 text-[12px] leading-6 max-sm:text-[11px] max-sm:leading-5 ${
+                        isHighlight ? "text-white/70" : "text-[#666]"
+                      }`}
+                    >
                       {project.techStack || project.description}
                     </p>
 
                     {/* Link */}
-
                     <div className="mt-8 text-[11px] transition-transform group-hover:translate-x-2 max-sm:mt-6 max-sm:text-[10px]">
                       OPEN PROJECT →
                     </div>

@@ -1,4 +1,4 @@
-package com.project.backend_api.security; // 패키지 경로는 맞게 유지하세요
+package com.project.backend_api.security; 
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
