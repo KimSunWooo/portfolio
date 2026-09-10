@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Link 컴포넌트 추가
 import {
   getAccessToken,
   isAccessTokenValid,
@@ -15,9 +16,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -105,6 +105,23 @@ export default function Login() {
           >
             LOG IN
           </button>
+          
+          {/* 비밀번호 찾기 및 회원가입 링크 영역 추가 */}
+          <div className="mt-4 flex items-center justify-center gap-4 text-[11px] tracking-widest text-[#777]">
+            <Link 
+              href="/forgot-password" 
+              className="transition hover:text-black hover:underline"
+            >
+              FORGOT PASSWORD?
+            </Link>
+            <span className="text-[#ddd]">|</span>
+            <Link 
+              href="/signup" 
+              className="transition hover:text-black hover:underline"
+            >
+              SIGN UP
+            </Link>
+          </div>
         </form>
       </div>
     </div>

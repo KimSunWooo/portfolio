@@ -363,6 +363,60 @@ export async function logoutUser() {
   }
 }
 
+// 1. 인증 코드 발송
+export async function sendPasswordResetCode(email: string) {
+  const response = await fetch(`${API_BASE_URL}/api/users/password/send-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "이메일 발송에 실패했습니다.");
+  }
+
+  return response.text(); // 백엔드에서 내려주는 성공 메시지 반환
+}
+
+// 2. 인증 코드 검증 (선택적)
+export async function verifyPasswordResetCode(email: string, code: string) {
+  const response = await fetch(`${API_BASE_URL}/api/users/password/verify-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, code }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "인증 코드가 일치하지 않습니다.");
+  }
+
+  return response.text();
+}
+
+// 3. 비밀번호 재설정 (최종)
+export async function resetPassword(email: string, code: string, newPassword: string) {
+  const response = await fetch(`${API_BASE_URL}/api/users/password/reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "비밀번호 변경에 실패했습니다.");
+  }
+
+  return response.text();
+}
+
 /* =========================================================================
  * 5. 이력서 (Resume) API
  * ========================================================================= */

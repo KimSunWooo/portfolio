@@ -67,4 +67,8 @@ public class User {
         this.phoneNumber = phoneNumber;
         this.role = role != null ? role : UserRole.ROLE_USER; // 기본값은 일반 유저
     }
+
+    public void updatePassword(String newPassword) {
+        this.password = newPassword;
+    }
 }
