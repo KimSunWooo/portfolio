@@ -1,3 +1,5 @@
+### 테스트관리자 아이디 / 비밀번호 : test@test.com / test147@
+
 # Java / Spring Boot 기반 Web Backend & Full-Stack Portfolio
 
 > **Java · Spring Boot를 중심으로 REST API, 인증/인가, 데이터베이스, 캐싱, Next.js, Docker/AWS까지 서비스 전체 흐름을 구현한 Full-Stack Web Application**
