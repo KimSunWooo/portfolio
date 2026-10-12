@@ -1,3 +1,5 @@
+###20226 14:12 배포환경 점검 중
+
 ### 테스트관리자 아이디 / 비밀번호 : test@test.com / test147@
 
 # Java / Spring Boot 기반 Web Backend & Full-Stack Portfolio
