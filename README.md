@@ -547,7 +547,13 @@ spring.jpa.hibernate.ddl-auto=validate
 
 # 🚀 CI/CD
 
-GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main` 브랜치 push에서만 실행된다. Backend와 Frontend 이미지를 빌드해 Docker Hub에 push한 뒤, EC2에서 `~/portfolio/deploy.sh`를 실행한다. 이번 작업에서는 이 파일을 수정하지 않았고 push도 하지 않았다.
+GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main`에 backend, frontend, `deploy.sh`, `ops`, workflow 변경이 push되거나 `workflow_dispatch`로 실행할 때 동작한다. README만 바꾼 push는 배포하지 않는다. 같은 workflow의 실행은 `concurrency`로 직렬화하고, 진행 중인 배포는 `cancel-in-progress: false`로 취소하지 않는다.
+
+이미지는 `github.sha`와 호환용 `latest`로 빌드한다. EC2는 `~/portfolio-release/<sha>`에 그 커밋의 `deploy.sh`, `ops/lib`, `ops/nginx`를 두고 그 스크립트를 `sha` 태그로 실행한다. `latest`는 배포 대상으로 쓰지 않는다. `.env`와 `.deploy.lock`은 릴리스 폴더가 아니라 `~/portfolio`를 쓴다. Nginx 백업은 `manifest.tsv`에 원본 경로와 백업 경로를 남기고, 복구는 그 백업 디렉터리의 `restore.sh`로 한다. 배포 전에 `bash ops/tests/run-deploy-checks.sh`가 통과해야 한다.
+
+Nginx `/api`는 `/etc/nginx/conf.d/service-url.inc`의 `$service_url`을 사용해야 한다. blue는 호스트 8081, green은 호스트 8082다. 프런트엔드는 호스트 3000 하나라서 교체 구간에 짧은 공백이 있다. 브라우저 API와 Next.js 서버 렌더링은 같은 blue/green 백엔드를 본다.
+
+이 저장소 수정은 로컬 검증까지다. EC2와 GitHub push는 실행하지 않았다. 운영 적용 순서와 복구 방법은 배포 작업 보고를 기준으로 한다.
 
 로컬에서 확인한 명령과 결과는 작업 보고를 기준으로 한다. 빌드 통과를 운영 배포 검증으로 보지 않는다.
 

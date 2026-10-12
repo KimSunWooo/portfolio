@@ -1,14 +1,34 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "main" ] # 🌟 목적 달성: main 브랜치에 푸시될 때만 실행
+    branches: ["main"]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "!**/*.md"
+      - "deploy.sh"
+      - "ops/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
+
+concurrency:
+  group: portfolio-production-deploy
+  cancel-in-progress: false
 
 jobs:
+  verify-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: 배포와 복구 검증
+        run: bash ops/tests/run-deploy-checks.sh
+
   build-and-push:
     runs-on: ubuntu-latest
-    
-    # 백엔드 빌드 테스트 통과를 위한 임시 Redis
     services:
       redis:
         image: redis:latest
@@ -24,7 +44,6 @@ jobs:
       - name: 저장소 코드 가져오기
         uses: actions/checkout@v3
 
-      # 🌟 추가: Docker 빌드 성능과 호환성을 높여주는 Buildx 셋업 (v4 사용 시 권장 표준)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -39,7 +58,9 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/portfolio-backend:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/portfolio-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/portfolio-backend:latest
           network: host
 
       - name: 프론트엔드 도커 이미지 빌드 및 푸시
@@ -47,20 +68,52 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/portfolio-frontend:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/portfolio-frontend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/portfolio-frontend:latest
           build-args: |
             NEXT_PUBLIC_API_URL=https://swportfolioservices.com
 
   deploy:
-    needs: build-and-push
+    needs: [verify-deploy, build-and-push]
     runs-on: ubuntu-latest
     steps:
-      - name: EC2에 SSH 접속하여 배포 스크립트 실행
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: 이 커밋의 배포 스크립트를 EC2에 복사
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy.sh,ops/lib,ops/nginx"
+          target: "portfolio-release/${{ github.sha }}"
+
+      - name: 이 커밋의 deploy.sh 실행
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          command_timeout: 30m
           script: |
-            cd ~/portfolio
-            ./deploy.sh
+            set -Eeuo pipefail
+            SHA="${{ github.sha }}"
+            DIR="$HOME/portfolio-release/${SHA}"
+            cd "$DIR"
+            test -f "$DIR/deploy.sh"
+            test -f "$DIR/ops/lib/slots.sh"
+            test -f "$DIR/ops/lib/frontend_run.py"
+            test -f "$DIR/ops/nginx/rewrite_api_proxy.py"
+            test -f "$DIR/ops/nginx/apply-api-upstream.sh"
+            test -f "$DIR/ops/nginx/recover-service.sh"
+            test ! -e "$DIR/.env"
+            chmod +x "$DIR/deploy.sh" "$DIR/ops/nginx/apply-api-upstream.sh" "$DIR/ops/nginx/recover-service.sh"
+            export PROJECT_DIR="$HOME/portfolio"
+            export ENV_FILE="$PROJECT_DIR/.env"
+            export LOCK_FILE="$PROJECT_DIR/.deploy.lock"
+            "$DIR/deploy.sh" \
+              --backend-image "${{ secrets.DOCKER_USERNAME }}/portfolio-backend:${SHA}" \
+              --frontend-image "${{ secrets.DOCKER_USERNAME }}/portfolio-frontend:${SHA}"

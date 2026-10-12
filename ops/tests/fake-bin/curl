@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import mockstate
+
+
+def urls(argv: list[str]) -> list[str]:
+    found = []
+    skip = False
+    for arg in argv:
+        if skip:
+            skip = False
+            continue
+        if arg in {"-o", "--max-time"}:
+            skip = True
+            continue
+        if arg.startswith("http://") or arg.startswith("https://"):
+            found.append(arg)
+    return found
+
+
+def publisher(state: dict, port: str) -> bool:
+    for container in state["containers"].values():
+        if container.get("status") != "running":
+            continue
+        if container.get("ports", {}).get("8080/tcp") == port:
+            return True
+    return False
+
+
+def main() -> None:
+    argv = sys.argv[1:]
+    mockstate.log(["curl", *argv])
+    url = urls(argv)[-1]
+    state = mockstate.load()
+    stage = mockstate.fail_stage()
+    origin = __import__("os").environ.get("PUBLIC_ORIGIN", "http://public.test")
+    if url.startswith("http://127.0.0.1:3000"):
+        frontend = state["containers"].get("portfolio-frontend")
+        if stage == "frontend_health" or not frontend or frontend.get("status") != "running":
+            raise SystemExit(1)
+        return
+    if "/api/products" in url and url.startswith("http://127.0.0.1:"):
+        port = url.split(":", 2)[2].split("/")[0]
+        initial = str(state.get("initial_port"))
+        if stage == "backend_health" and port != initial:
+            raise SystemExit(1)
+        if not publisher(state, port):
+            raise SystemExit(1)
+        return
+    if url.startswith(origin):
+        frontend = state["containers"].get("portfolio-frontend")
+        if url in {origin, origin + "/"}:
+            if not frontend or frontend.get("status") != "running":
+                raise SystemExit(1)
+            return
+        if "/api/products" in url:
+            hits = int(state.get("public_api_hits", 0)) + 1
+            state["public_api_hits"] = hits
+            mockstate.save(state)
+            if stage == "public_check" or (stage == "after_stop" and hits > 1) or stage == "rollback_nginx":
+                raise SystemExit(1)
+            if not publisher(state, str(state.get("nginx_port"))):
+                raise SystemExit(1)
+            return
+    raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

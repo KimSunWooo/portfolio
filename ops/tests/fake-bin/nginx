@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import mockstate
+
+
+def conf_files() -> list[str]:
+    raw = os.environ.get("NGINX_CONF_FILES", "")
+    return [item for item in raw.split(":") if item]
+
+
+def dump() -> str:
+    parts = []
+    for file in conf_files():
+        parts.append(f"# configuration file {file}:\n")
+        parts.append(Path(file).read_text())
+        parts.append("\n")
+    inc = os.environ["SERVICE_URL_INC"]
+    if Path(inc).is_file():
+        parts.append(f"# configuration file {inc}:\n")
+        parts.append(Path(inc).read_text())
+    return "".join(parts)
+
+
+def main() -> None:
+    argv = sys.argv[1:]
+    mockstate.log(["nginx", *argv])
+    stage = mockstate.fail_stage()
+    if "-T" in argv:
+        text = dump()
+        backup = os.environ.get("BACKUP_DIR", "")
+        if backup and backup in text:
+            print("backup path leaked into nginx -T", file=sys.stderr)
+            raise SystemExit(1)
+        print(text)
+        return
+    if "-t" in argv:
+        state = mockstate.load()
+        seen = int(state.get("nginx_t_seen", 0))
+        state["nginx_t_seen"] = seen + 1
+        mockstate.save(state)
+        if stage == "nginx_test" or (stage == "rollback_nginx" and seen >= 1):
+            print("nginx -t failed", file=sys.stderr)
+            raise SystemExit(1)
+        return
+    if "-s" in argv and "reload" in argv:
+        if stage == "nginx_reload":
+            print("nginx reload failed", file=sys.stderr)
+            raise SystemExit(1)
+        line = Path(os.environ["SERVICE_URL_INC"]).read_text().strip()
+        port = line.rsplit(":", 1)[1].rstrip(";")
+        state = mockstate.load()
+        state["nginx_port"] = port
+        mockstate.save(state)
+        return
+    print(f"unsupported nginx {' '.join(argv)}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import mockstate
+
+
+def fail(message: str, code: int = 1) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(code)
+
+
+def bindings(ports: dict) -> dict:
+    return {
+        container: [{"HostIp": "", "HostPort": host}]
+        for container, host in ports.items()
+    }
+
+
+def inspect_obj(name: str, container: dict) -> dict:
+    ports = container.get("ports", {})
+    return {
+        "Name": f"/{name}",
+        "State": {"Running": container.get("status") == "running"},
+        "Config": {"User": "", "Env": container.get("env", [])},
+        "HostConfig": {
+            "RestartPolicy": {"Name": container.get("restart", "unless-stopped")},
+            "Binds": container.get("mounts", []),
+            "PortBindings": bindings(ports),
+        },
+        "NetworkSettings": {
+            "Networks": {net: {} for net in container.get("networks", [])},
+            "Ports": bindings(ports),
+        },
+        "Mounts": [],
+    }
+
+
+def render_format(fmt: str, name: str, container: dict) -> str:
+    obj = inspect_obj(name, container)
+    if fmt == "{{.State.Running}}":
+        return "true" if obj["State"]["Running"] else "false"
+    if fmt == "{{range .Config.Env}}{{println .}}{{end}}":
+        return "\n".join(obj["Config"]["Env"])
+    if fmt == '{{(index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort}}':
+        hosts = obj["NetworkSettings"]["Ports"].get("8080/tcp") or []
+        if not hosts:
+            fail("no host port")
+        return hosts[0]["HostPort"]
+    fail(f"unsupported format {fmt}")
+
+
+def cmd_inspect(argv: list[str]) -> None:
+    fmt = None
+    args = argv
+    if args and args[0] == "container":
+        args = args[1:]
+    if not args or args[0] != "inspect":
+        fail("inspect parse")
+    rest = args[1:]
+    if rest and rest[0] == "-f":
+        fmt = rest[1]
+        rest = rest[2:]
+    if len(rest) != 1:
+        fail("inspect name")
+    name = rest[0]
+    state = mockstate.load()
+    container = state["containers"].get(name)
+    if container is None:
+        fail(f"No such container: {name}")
+    if fmt:
+        print(render_format(fmt, name, container))
+    else:
+        import json
+        print(json.dumps([inspect_obj(name, container)]))
+
+
+def cmd_pull(image: str) -> None:
+    if mockstate.fail_stage() == "pull":
+        fail(f"pull failed {image}")
+    state = mockstate.load()
+    state.setdefault("pulled", []).append(image)
+    mockstate.save(state)
+
+
+def merge_env(base: list[str], overrides: list[str]) -> list[str]:
+    """Match Docker: replace keys that already exist, append new keys.
+
+    A key introduced by an override is not added to the lookup, so a second
+    override of that same new key is appended. Callers must not rely on this
+    function to hide duplicate INTERNAL_API_URL values.
+    """
+    result = list(base)
+    index: dict[str, int] = {}
+    for position, item in enumerate(result):
+        index[item.split("=", 1)[0]] = position
+    for item in overrides:
+        key = item.split("=", 1)[0]
+        if key in index:
+            result[index[key]] = item
+        else:
+            result.append(item)
+    return result
+
+
+def parse_run(argv: list[str]) -> dict:
+    name = network = image = env_file = restart = None
+    envs: list[str] = []
+    ports: list[str] = []
+    mounts: list[str] = []
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        if token == "-d":
+            i += 1
+        elif token in {"--name", "--restart", "--network", "--env-file", "--user"}:
+            value = argv[i + 1]
+            if token == "--name":
+                name = value
+            elif token == "--restart":
+                restart = value
+            elif token == "--network":
+                network = value
+            elif token == "--env-file":
+                env_file = value
+            i += 2
+        elif token in {"-e", "-p", "-v"}:
+            value = argv[i + 1]
+            if token == "-e":
+                envs.append(value)
+            elif token == "-p":
+                ports.append(value)
+            else:
+                mounts.append(value)
+            i += 2
+        elif token.startswith("-"):
+            fail(f"unsupported docker run flag {token}")
+        else:
+            image = token
+            i += 1
+    if not name or not image:
+        fail("docker run needs name and image")
+    parsed_ports = {}
+    for spec in ports:
+        host_port, container_port = spec.rsplit(":", 1)
+        host_port = host_port.split(":")[-1]
+        parsed_ports[f"{container_port}/tcp"] = host_port
+    file_env: list[str] = []
+    if env_file:
+        for line in Path(env_file).read_text().splitlines():
+            if line.strip() and not line.strip().startswith("#") and "=" in line:
+                file_env.append(line.strip())
+    return {
+        "name": name,
+        "image": image,
+        "restart": restart or "",
+        "networks": [network] if network else [],
+        "env": file_env + envs,
+        "ports": parsed_ports,
+        "mounts": mounts,
+        "status": "running",
+    }
+
+
+def cmd_run(argv: list[str]) -> None:
+    spec = parse_run(argv)
+    stage = mockstate.fail_stage()
+    if stage == "backend_run" and spec["name"].startswith("portfolio-backend"):
+        fail("backend run failed")
+    if stage == "frontend_run" and spec["name"] == "portfolio-frontend":
+        fail("frontend run failed")
+    state = mockstate.load()
+    if spec["name"] in state["containers"]:
+        fail(f'Conflict. The container name "/{spec["name"]}" is already in use')
+    if spec["restart"] != "unless-stopped":
+        fail("restart policy was not explicit")
+    image_env = ((state.get("images") or {}).get(spec["image"]) or {}).get("env") or []
+    spec["env"] = merge_env(list(image_env), spec["env"])
+    state["containers"][spec["name"]] = spec
+    mockstate.save(state)
+    print(spec["name"])
+
+
+def cmd_rename(src: str, dest: str) -> None:
+    state = mockstate.load()
+    if src not in state["containers"] or dest in state["containers"]:
+        fail("rename failed")
+    state["containers"][dest] = state["containers"].pop(src)
+    mockstate.save(state)
+
+
+def cmd_stop(name: str) -> None:
+    state = mockstate.load()
+    if name not in state["containers"]:
+        fail("stop missing")
+    state["containers"][name]["status"] = "exited"
+    mockstate.save(state)
+
+
+def cmd_start(name: str) -> None:
+    if mockstate.fail_stage() == "rollback_frontend" and name == "portfolio-frontend":
+        fail("frontend start failed during rollback")
+    state = mockstate.load()
+    if name not in state["containers"]:
+        fail("start missing")
+    state["containers"][name]["status"] = "running"
+    mockstate.save(state)
+
+
+def cmd_connect(network: str, name: str) -> None:
+    state = mockstate.load()
+    container = state["containers"][name]
+    if network not in container["networks"]:
+        container["networks"].append(network)
+    mockstate.save(state)
+
+
+def main() -> None:
+    argv = sys.argv[1:]
+    mockstate.log(sys.argv)
+    if not argv:
+        fail("docker")
+    if argv[0] == "pull":
+        cmd_pull(argv[1])
+    elif argv[0] == "run":
+        cmd_run(argv[1:])
+    elif argv[0] == "rename":
+        cmd_rename(argv[1], argv[2])
+    elif argv[0] == "stop":
+        cmd_stop(argv[1])
+    elif argv[0] == "start":
+        cmd_start(argv[1])
+    elif argv[0] == "network" and argv[1] == "inspect":
+        state = mockstate.load()
+        if argv[2] not in state.get("networks", []):
+            fail("network missing")
+    elif argv[0] == "network" and argv[1] == "connect":
+        cmd_connect(argv[2], argv[3])
+    elif argv[0] in {"inspect", "container"}:
+        cmd_inspect(argv)
+    elif argv[0] == "rm":
+        fail("docker rm is not allowed", 99)
+    else:
+        fail(f"unsupported docker {' '.join(argv)}")
+
+
+if __name__ == "__main__":
+    main()
