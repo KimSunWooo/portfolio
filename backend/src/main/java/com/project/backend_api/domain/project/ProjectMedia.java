@@ -44,11 +44,12 @@ public class ProjectMedia {
     public static ProjectMedia create(
             Integer projectId,
             MediaType mediaType,
-            String mediaUrl,
-            String caption,
-            String altText,
-            Integer sortOrder
-    ) {
+        String mediaUrl,
+        String caption,
+        String altText,
+        String description,
+        Integer sortOrder
+) {
         ProjectMedia media = new ProjectMedia();
 
         media.projectId = projectId;
@@ -56,6 +57,7 @@ public class ProjectMedia {
         media.mediaUrl = mediaUrl;
         media.caption = caption;
         media.altText = altText;
+        media.description = description;
         media.sortOrder = sortOrder == null ? 0 : sortOrder;
         media.createdAt = LocalDateTime.now();
 
@@ -65,10 +67,12 @@ public class ProjectMedia {
     public void update(
             String caption,
             String altText,
+            String description,
             Integer sortOrder
     ) {
         this.caption = caption;
         this.altText = altText;
+        this.description = description;
         this.sortOrder = sortOrder == null ? 0 : sortOrder;
     }
 }

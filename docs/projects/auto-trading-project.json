@@ -1,0 +1,16 @@
+{
+  "title": "미리매수 — KIS PAPER 자동매매 관리 도구",
+  "subtitle": "Cursor를 활용한 바이브코딩으로 개발한 개인 프로젝트. 사용자가 입력한 조건식을 KIS 모의투자 실행 흐름과 연결한다.",
+  "description": "Cursor를 활용한 바이브코딩으로 개발한 개인 프로젝트다. 종목 추천이 아니라, 사용자가 정의한 조건식을 한국투자증권 모의투자(PAPER) 계좌의 조회와 주문 흐름에 연결하는 관리 도구다.\n\n개발은 Cursor 바이브코딩으로 진행했다. 본인 역할은 요구사항과 안전 조건 정리, 코드와 테스트의 확인, 잘못된 실행 정책의 수정이다. 모든 코드를 수작업으로 작성한 프로젝트로 보지 않는다.\n\n참조 코드(8f76b69)에서 확인한 범위는 사용자별 PAPER 계좌 연결·검증, KIS 시세, 조건식과 자금·위험 검사, 주문·체결·보유 상태, 대시보드다. 기술은 Next.js, React, TypeScript, Drizzle ORM, MySQL, KIS Open API, WebSocket이다.\n\n같은 주문 의도는 intent로 한 번만 남기고, worker lock이 없으면 주문을 막는다. timeout 이후에는 UNKNOWN으로 두고 바로 재시도하지 않는다. 체결 근거와 장부를 대조하며, startup sync가 끝나기 전에는 신규 주문을 막는다. 이 판단은 중복 주문과 미확인 주문을 줄이기 위한 선택이고, 프로세스 밖 장애까지 모두 보장하지는 않는다.\n\n현재 사용자 런타임은 PAPER 중심이다. REAL은 잠금 상태다. 해외 PAPER 실제 주문, AI 연동, 운영 배포, 수익률은 이번 소개의 완료 성과가 아니다. JSON 장부는 레거시·보조이고, PAPER 거래 장부의 기준은 설정에 따라 DB가 될 수 있다. 과거 README의 PASS는 이번 실행에서 다시 검증하지 않았다.",
+  "techStack": "Next.js, React, TypeScript, Drizzle ORM, MySQL, KIS Open API, WebSocket",
+  "projectUrl": null,
+  "githubUrl": "https://github.com/KimSunWooo/Auto-Trading-system",
+  "thumbnail": null,
+  "status": "IN_PROGRESS",
+  "isFeatured": false,
+  "sortOrder": 100,
+  "startDate": null,
+  "endDate": null,
+  "sourceCommit": "8f76b69e0876a8d80f11d91948bd0b7855bf6ee1",
+  "registration": "APPLIED"
+}

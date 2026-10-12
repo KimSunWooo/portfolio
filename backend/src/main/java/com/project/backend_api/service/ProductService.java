@@ -22,6 +22,8 @@ import com.amazonaws.services.s3.model.PutObjectRequest;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +45,8 @@ public class ProductService {
     
     // S3 클라이언트 주입
     private final AmazonS3 amazonS3;
+    private final ProductListCache productListCache;
+    private final AfterCommit afterCommit;
 
     // S3 버킷 이름 주입
     @Value("${cloud.aws.s3.bucket}")
@@ -59,8 +63,8 @@ public class ProductService {
      * category가 전달되면 카테고리 필터링을 적용한다.
      */
     @Cacheable(
-            value = "productList", 
-            key = "(#category != null ? #category : 'ALL') + '_' + (#search != null ? #search : 'NONE')"
+            value = ProductListCache.NAME,
+            key = "T(com.project.backend_api.service.ProductListCache).key(#category, #search)"
     )
     public ProductListWrapper getProducts(String category, String search) {
     boolean hasCategory = category != null && !category.isBlank();
@@ -147,9 +151,11 @@ public class ProductService {
      * SALE / SOLD_OUT / HIDDEN 전부 반환
      */
     public List<Product> getAdminProducts() {
-
         return productRepository
-                .findAllByOrderByIdDesc();
+                .findAllByOrderByIdDesc()
+                .stream()
+                .peek(this::attachColors)
+                .toList();
     }
 
 
@@ -166,7 +172,11 @@ public class ProductService {
             Product product =
                     Product.create(request);
 
-            return productRepository.save(product);
+            Product saved = productRepository.save(product);
+            replaceColors(saved.getId(), request.colors());
+            attachColors(saved);
+            productListCache.evictAfterCommit();
+            return saved;
 
         } catch (IllegalArgumentException e) {
 
@@ -199,6 +209,9 @@ public class ProductService {
         try {
 
             product.update(request);
+            replaceColors(product.getId(), request.colors());
+            attachColors(product);
+            productListCache.evictAfterCommit();
 
         } catch (IllegalArgumentException e) {
 
@@ -226,7 +239,9 @@ public class ProductService {
             );
         }
 
+        productColorRepository.deleteByProductId(id);
         productRepository.deleteById(id);
+        productListCache.evictAfterCommit();
     }
 
 
@@ -240,9 +255,15 @@ public class ProductService {
     public List<ProductImageResponse> getProductImages(
             Integer productId
     ) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                NOT_FOUND,
+                                "상품을 찾을 수 없습니다. id=" + productId
+                        )
+                );
 
-        if (!productRepository.existsById(productId)) {
-
+        if (product.getStatus() == ProductStatus.HIDDEN && !isAdmin()) {
             throw new ResponseStatusException(
                     NOT_FOUND,
                     "상품을 찾을 수 없습니다. id=" + productId
@@ -322,20 +343,11 @@ public class ProductService {
         String imageUrl;
         try {
             imageUrl = saveProductImage(productId, file);
-        } catch (Exception e) {
-            // S3 업로드 실패 시 방어 로직 (수동 롤백)
-            if (product.getThumbnail() == null || product.getThumbnail().isBlank()) {
-                productRepository.delete(product);
-                
-                throw new ResponseStatusException(
-                        INTERNAL_SERVER_ERROR,
-                        "S3 이미지 업로드 실패로 인해 상품 등록이 취소(롤백)되었습니다.", e
-                );
-            }
-            
+        } catch (RuntimeException e) {
             throw new ResponseStatusException(
                     INTERNAL_SERVER_ERROR,
-                    "이미지 업로드에 실패했습니다.", e
+                    "이미지 업로드에 실패했습니다.",
+                    e
             );
         }
 
@@ -361,6 +373,7 @@ public class ProductService {
             product.updateThumbnail(imageUrl);
         }
 
+        productListCache.evictAfterCommit();
         return ProductImageResponse.from(saved);
     }
 
@@ -460,7 +473,7 @@ public class ProductService {
             );
         }
 
-
+        productListCache.evictAfterCommit();
         return ProductImageResponse.from(image);
     }
 
@@ -495,20 +508,18 @@ public class ProductService {
         }
 
 
-        // -----------------------------------------------------
-        // 실제 이미지 파일 삭제 (S3)
-        // -----------------------------------------------------
-
-        deleteProductImageFile(
-                image.getImageUrl()
-        );
-
-
-        // -----------------------------------------------------
-        // DB 데이터 삭제
-        // -----------------------------------------------------
+        String imageUrl = image.getImageUrl();
+        boolean mainImage = image.getImageType() == ImageType.MAIN;
 
         productImageRepository.delete(image);
+
+        if (mainImage) {
+            productRepository.findById(productId)
+                    .ifPresent(product -> product.clearThumbnailIfMatches(imageUrl));
+        }
+
+        productListCache.evictAfterCommit();
+        afterCommit.run(() -> deleteProductImageFile(imageUrl));
     }
 
 
@@ -585,5 +596,45 @@ public class ProductService {
         } catch (Exception e) {
             throw new RuntimeException("상품 이미지(S3) 삭제에 실패했습니다.", e);
         }
+    }
+
+    private void replaceColors(Integer productId, List<String> colors) {
+        if (colors == null) {
+            return;
+        }
+        if (colors.size() > 12) {
+            throw new ResponseStatusException(BAD_REQUEST, "색상은 12개까지 저장할 수 있습니다.");
+        }
+        productColorRepository.deleteByProductId(productId);
+        int sortOrder = 0;
+        for (String color : colors) {
+            if (color == null || color.isBlank()) {
+                continue;
+            }
+            String code = color.trim();
+            if (code.length() > 20) {
+                throw new ResponseStatusException(BAD_REQUEST, "색상 코드는 20자 이하여야 합니다.");
+            }
+            productColorRepository.save(ProductColor.create(productId, code, sortOrder));
+            sortOrder++;
+        }
+    }
+
+    private void attachColors(Product product) {
+        List<String> codes = productColorRepository
+                .findByProductIdOrderBySortOrderAscIdAsc(product.getId())
+                .stream()
+                .map(ProductColor::getColorCode)
+                .toList();
+        product.assignColors(codes);
+    }
+
+    private boolean isAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }

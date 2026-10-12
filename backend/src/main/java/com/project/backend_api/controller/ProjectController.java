@@ -2,6 +2,7 @@ package com.project.backend_api.controller;
 
 import com.project.backend_api.domain.project.Project;
 import com.project.backend_api.dto.project.ProjectMediaResponse;
+import com.project.backend_api.dto.project.ProjectMediaUpdateRequest;
 import com.project.backend_api.dto.project.ProjectRequest;
 import com.project.backend_api.service.ProjectService;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 @RestController
@@ -64,20 +66,26 @@ public class ProjectController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String caption,
             @RequestParam(required = false) String altText,
+            @RequestParam(required = false) String description,
             @RequestParam(defaultValue = "0") Integer sortOrder
     ) {
-        return projectService.addMedia(projectId, file, caption, altText, sortOrder);
+        return projectService.addMedia(projectId, file, caption, altText, description, sortOrder);
     }
 
-    @PutMapping("/admin/projects/{projectId}/media/{mediaId}")
+    @PutMapping(value = "/admin/projects/{projectId}/media/{mediaId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ProjectMediaResponse updateProjectMedia(
             @PathVariable Integer projectId,
             @PathVariable Integer mediaId,
-            @RequestParam(required = false) String caption,
-            @RequestParam(required = false) String altText,
-            @RequestParam(defaultValue = "0") Integer sortOrder
+            @Valid @RequestBody ProjectMediaUpdateRequest request
     ) {
-        return projectService.updateMedia(projectId, mediaId, caption, altText, sortOrder);
+        return projectService.updateMedia(
+                projectId,
+                mediaId,
+                request.caption(),
+                request.altText(),
+                request.description(),
+                request.sortOrder()
+        );
     }
 
     @DeleteMapping("/admin/projects/{projectId}/media/{mediaId}")

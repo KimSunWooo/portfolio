@@ -2,94 +2,129 @@ package com.project.backend_api.service;
 
 import com.project.backend_api.domain.payment.PaymentHistory;
 import com.project.backend_api.dto.payment.PaymentConfirmRequest;
+import com.project.backend_api.dto.payment.PaymentConfirmResponse;
 import com.project.backend_api.repository.PaymentHistoryRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
-    @Value("${toss.secret-key}")
-    private String tossSecretKey;
+    public static final long TEST_AMOUNT = 100L;
+    private static final String CANCEL_REASON = "포트폴리오 테스트 결제 자동 환불 처리";
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final PaymentGateway paymentGateway;
     private final PaymentHistoryRepository paymentHistoryRepository;
+    private final ConcurrentHashMap<String, Object> paymentLocks = new ConcurrentHashMap<>();
 
-    @Transactional 
-    public Map<String, Object> confirmAndRefund(PaymentConfirmRequest request) {
-        String widgetSecretKey = tossSecretKey + ":";
-        String encodedKey = Base64.getEncoder().encodeToString(widgetSecretKey.getBytes(StandardCharsets.UTF_8));
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth(encodedKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    public PaymentConfirmResponse confirmTestPayment(PaymentConfirmRequest request, String userEmail) {
+        if (userEmail == null || userEmail.isBlank() || "anonymousUser".equals(userEmail)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        if (request == null
+                || isBlank(request.getPaymentKey())
+                || isBlank(request.getOrderId())
+                || request.getAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 정보가 올바르지 않습니다.");
+        }
+        if (request.getAmount() != TEST_AMOUNT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "테스트 결제는 100원만 처리할 수 있습니다.");
+        }
 
-        // JWT 토큰에서 현재 유저 이메일 추출
-        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        // ==========================================
-            // [STEP 1] 결제 승인 기록 DB 저장 (INSERT)
-            // ==========================================
-            PaymentHistory payment = PaymentHistory.builder()
-                    .userEmail(currentUserEmail)
-                    .orderId(request.getOrderId())
-                    .paymentKey(request.getPaymentKey())
-                    .amount(request.getAmount())
-                    .status("DONE") 
-                    .build();
-            paymentHistoryRepository.save(payment);
-
-            // ==========================================
-            // [STEP 2] 승인 성공 즉시 결제 취소 (Refund) 요청
-            // ==========================================
-            String cancelReason = "포트폴리오 테스트 결제 자동 환불 처리";
-            Map<String, Object> cancelPayload = new HashMap<>();
-            cancelPayload.put("cancelReason", cancelReason);
-
-            HttpEntity<Map<String, Object>> cancelEntity = new HttpEntity<>(cancelPayload, headers);
-
-            ResponseEntity<Map<String, Object>> cancelResponse = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/payments/" + request.getPaymentKey() + "/cancel",
-                    HttpMethod.POST, cancelEntity,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-            
-            // 💡 [핵심] 덮어쓰지 않고 새로운 ROW를 만들어서 DB에 추가 저장 (INSERT 2번째)
-            PaymentHistory cancelHistory = PaymentHistory.builder()
-                    .userEmail(currentUserEmail)
-                    .orderId(request.getOrderId())
-                    .paymentKey(request.getPaymentKey())
-                    .amount(request.getAmount())
-                    .status("CANCELED") // 취소 상태
-                    .cancelReason(cancelReason)
-                    .canceledAt(LocalDateTime.now()) // 취소 시간 기록
-                    .build();
-            paymentHistoryRepository.save(cancelHistory); // 2번째 줄 생성!
-
-            return cancelResponse.getBody();
+        String paymentKey = request.getPaymentKey().trim();
+        String orderId = request.getOrderId().trim();
+        Object lock = paymentLocks.computeIfAbsent(paymentKey, ignored -> new Object());
+        synchronized (lock) {
+            return confirmLocked(userEmail, paymentKey, orderId);
+        }
     }
 
-    public List<PaymentHistory> getMyPaymentHistory(String status) {
-    // 현재 로그인한 유저 이메일
-    String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-    
-    // 리포지토리에서 상태(DONE/CANCELED)에 맞는 내역 조회
-    return paymentHistoryRepository.findByUserEmailAndStatusOrderByCreatedAtDesc(userEmail, status);
-}
+    private PaymentConfirmResponse confirmLocked(String userEmail, String paymentKey, String orderId) {
+        List<PaymentHistory> histories = paymentHistoryRepository.findByPaymentKeyOrderByIdAsc(paymentKey);
+        boolean otherOwner = histories.stream().anyMatch(history -> !userEmail.equals(history.getUserEmail()));
+        if (otherOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "다른 사용자의 결제입니다.");
+        }
+        boolean orderMismatch = histories.stream().anyMatch(history -> !orderId.equals(history.getOrderId()));
+        if (orderMismatch) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "결제 키와 주문 번호가 일치하지 않습니다.");
+        }
+        boolean alreadyCanceled = histories.stream().anyMatch(history -> "CANCELED".equals(history.getStatus()));
+        if (alreadyCanceled) {
+            return canceled(orderId, "이미 자동 취소된 테스트 결제입니다.");
+        }
+
+        boolean approved = histories.stream().anyMatch(history -> "DONE".equals(history.getStatus()));
+        if (!approved) {
+            PaymentGateway.PaymentApproval approval = paymentGateway.approve(paymentKey, orderId, TEST_AMOUNT);
+            if (!paymentKey.equals(approval.paymentKey())
+                    || !orderId.equals(approval.orderId())
+                    || approval.amount() != TEST_AMOUNT) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "결제사 승인 금액 또는 주문 정보가 요청과 다릅니다.");
+            }
+            paymentHistoryRepository.save(history(userEmail, orderId, paymentKey, "DONE", null, null));
+        }
+
+        try {
+            paymentGateway.cancel(paymentKey, CANCEL_REASON);
+        } catch (PaymentGatewayException exception) {
+            throw new PaymentGatewayException("승인은 기록됐지만 자동 취소에 실패했습니다. 완료로 처리하지 않습니다.", exception);
+        }
+
+        paymentHistoryRepository.save(history(
+                userEmail,
+                orderId,
+                paymentKey,
+                "CANCELED",
+                CANCEL_REASON,
+                LocalDateTime.now()
+        ));
+        return canceled(orderId, "테스트 결제가 승인된 뒤 자동 취소되었습니다.");
+    }
+
+    public List<PaymentHistory> getMyPaymentHistory(String userEmail, String status) {
+        if (userEmail == null || userEmail.isBlank() || "anonymousUser".equals(userEmail)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        if (!"DONE".equals(status) && !"CANCELED".equals(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회할 수 있는 결제 상태가 아닙니다.");
+        }
+        return paymentHistoryRepository.findByUserEmailAndStatusOrderByCreatedAtDesc(userEmail, status);
+    }
+
+    private PaymentConfirmResponse canceled(String orderId, String message) {
+        return new PaymentConfirmResponse("CANCELED", orderId, TEST_AMOUNT, message, false);
+    }
+
+    private PaymentHistory history(
+            String userEmail,
+            String orderId,
+            String paymentKey,
+            String status,
+            String cancelReason,
+            LocalDateTime canceledAt
+    ) {
+        return PaymentHistory.builder()
+                .userEmail(userEmail)
+                .orderId(orderId)
+                .paymentKey(paymentKey)
+                .amount(TEST_AMOUNT)
+                .status(status)
+                .cancelReason(cancelReason)
+                .canceledAt(canceledAt)
+                .build();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
 }

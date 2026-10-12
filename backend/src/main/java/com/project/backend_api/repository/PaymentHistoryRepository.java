@@ -12,6 +12,8 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
     // 1. 마이페이지 - "결제 내역" 탭 (status가 'DONE'인 것만 조회)
     List<PaymentHistory> findByUserEmailAndStatusOrderByCreatedAtDesc(String userEmail, String status);
 
+    List<PaymentHistory> findByPaymentKeyOrderByIdAsc(String paymentKey);
+
     // 2. 단건 조회 (나중에 주문 상세조회용)
     // Optional<PaymentHistory> findByOrderId(String orderId);
 }

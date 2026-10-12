@@ -11,6 +11,24 @@
 
 ---
 
+## 로컬에서 보강한 설명 범위
+
+이 저장소는 이력·프로젝트·기술 기록을 관리하는 콘텐츠 서비스이고, 상품·장바구니·100원 테스트 결제는 인증, 소유권, 재전송, 캐시 최신성, 외부 연동을 보여주는 모듈이다. 이커머스 회사 전용 포트폴리오로 한정하지 않는다.
+
+기본 소개는 백엔드 중심 풀스택이다. 지원 직무에 따라 강조 순서만 바꾼다.
+
+- Backend: `SecurityConfig`의 `/api/admin/**`, `CartService`, `ProductListCache`, `PaymentService`와 `backend/src/test/java`의 단위 테스트
+- Frontend: 인증 복구(`ensureAccessToken`), 로그인 목적지, 검색의 최신 응답, 결제 결과 화면
+- Full-stack: 프로젝트 미디어 JSON 수정이 저장 후 재조회되는지, 결제 승인 실패 시 DONE을 쓰지 않는지
+
+자동매매 프로젝트 소개 원본은 `docs/projects/auto-trading-project.json`이다. Cursor를 활용한 바이브코딩 개인 프로젝트이며, 공유 RDS `projects` id 3에 등록되어 있다. 같은 `github_url`이 있으면 다시 넣지 않는다.
+
+콘텐츠 초안·수정 충돌·변경 이력은 현재 스키마로 기본 경로에 넣지 않았다. 절차는 `docs/follow-up-content-workflow.md`에 있다.
+
+이번 변경의 검증은 로컬 명령이다. `main` push가 실행하는 GitHub Actions 배포는 실행하지 않았고, workflow 파일도 수정하지 않았다.
+
+---
+
 ## 🌐 Project Overview
 
 **Portfolio + Commerce Platform**
@@ -271,13 +289,9 @@ Response MySQL
 
 ### Performance Result
 
-상품 조회 API의 테스트 환경에서 평균 응답 시간이:
+캐시 전후 응답 시간으로 적혀 있던 138ms → 21ms는 측정 원본과 환경이 이 저장소에 남아 있지 않아, 이번 문서의 확정 결과로 사용하지 않는다.
 
-**138ms → 21ms**
-
-로 감소했습니다.
-
-또한 `k6`를 이용하여 다음 조건의 부하 테스트를 구성했습니다.
+k6 스크립트 조건은 아래에 남아 있다. 이번 작업에서 부하 테스트를 다시 실행하지는 않았다.
 
 ```text
 Virtual Users : 50
@@ -531,7 +545,9 @@ spring.jpa.hibernate.ddl-auto=validate
 
 # 🚀 CI/CD
 
-GitHub Actions를 이용하여 `main` 브랜치 Push 이후 Docker Image Build 및 EC2 배포가 수행되도록 구성했습니다.
+GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main` 브랜치 push에서만 실행된다. Backend와 Frontend 이미지를 빌드해 Docker Hub에 push한 뒤, EC2에서 `~/portfolio/deploy.sh`를 실행한다. 이번 작업에서는 이 파일을 수정하지 않았고 push도 하지 않았다.
+
+로컬에서 확인한 명령과 결과는 작업 보고를 기준으로 한다. 빌드 통과를 운영 배포 검증으로 보지 않는다.
 
 ```text
 Git Push main
@@ -634,3 +650,21 @@ export const options = {
 ## 🔗 Repository
 
 **GitHub:** https://github.com/KimSunWooo/portfolio
+
+관련 개인 프로젝트: [미리매수](https://github.com/KimSunWooo/Auto-Trading-system)  
+Cursor를 활용한 바이브코딩으로 개발했다. 포트폴리오 화면 등록 상태는 `docs/projects/auto-trading-project.json`의 `registration`을 본다.
+
+## 대표 수정
+
+### 관리자 API 인가
+
+`/api/admin/products`는 `/api/products/**` 규칙과 일치하지 않아 로그인 사용자에게 열려 있었다. `/api/admin/**`를 `ROLE_ADMIN`으로 막았다. 공개 조회 경로는 그대로다.
+
+### 빈 장바구니와 병합 재전송
+
+상품이 없는 Cart는 INNER JOIN으로 조회되지 않아 다시 담을 때 Cart가 새로 생길 수 있었다. 조회는 LEFT JOIN, 변경은 장바구니 행 잠금으로 나눴다. 같은 `Idempotency-Key`의 재전송은 이 프로세스 안에서만 한 번 더한다. 키가 없거나 서버가 재시작되면 수량이 다시 더해질 수 있다.
+
+### 테스트 결제
+
+승인 응답을 확인하기 전에 DONE을 저장하지 않는다. 금액은 100원만 받고, 승인 뒤에 취소한다. 취소에 실패하면 성공 화면으로 처리하지 않는다. 장바구니는 비우지 않는다. 외부 호출은 운영 키가 아닌 테스트의 FakePaymentGateway로만 검증했다.
+

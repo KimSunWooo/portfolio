@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
-import { getAccessToken, silentRefresh, logoutUser } from "../../lib/api"; 
-
-interface CustomJwtPayload {
-  sub: string;
-  role: string;
-}
+import { ensureAccessToken, logoutUser, isAdminFromToken } from "../../lib/api";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -21,27 +15,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const checkAdminAuth = async () => {
       try {
-        let token = getAccessToken();
+        const token = await ensureAccessToken();
 
-        if (!token) {
-          try {
-            token = await silentRefresh();
-          } catch (error) {
-            router.replace("/login");
+        if (!isAdminFromToken(token)) {
+          if (!token) {
+            router.replace(`/login?next=${encodeURIComponent(pathname)}`);
             return;
           }
+          router.replace("/");
+          return;
         }
 
-        if (!token) throw new Error("권한이 존재하지 않습니다.");
-        
-        const decoded = jwtDecode<CustomJwtPayload>(token);
-        
-        if (decoded.role === "ROLE_ADMIN" || decoded.role === "ADMIN") {
-          setIsAuthorized(true);
-        } else {
-          alert("접근 권한이 없습니다. 관리자만 이용할 수 있습니다.");
-          router.replace("/");
-        }
+        setIsAuthorized(true);
       } catch (error) {
         console.error("비정상적인 경로이거나 인증 오류입니다.", error);
         router.replace("/login");

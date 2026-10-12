@@ -30,4 +30,13 @@ public class ProductColor {
 
     @Column(name = "sort_order")
     private Integer sortOrder;
+
+    public static ProductColor create(Integer productId, String colorCode, int sortOrder) {
+        ProductColor color = new ProductColor();
+        color.productId = productId;
+        color.colorCode = colorCode;
+        color.colorName = colorCode;
+        color.sortOrder = sortOrder;
+        return color;
+    }
 }

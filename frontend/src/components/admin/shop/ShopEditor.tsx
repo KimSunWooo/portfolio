@@ -542,12 +542,7 @@ function ProductForm({
   const [isNew, setIsNew] = useState(product?.isNew ?? false);
   const [isBest, setIsBest] = useState(product?.isBest ?? false);
 
-  const [colors, setColors] = useState<string[]>(() => {
-    if (product?.color) return product.color;
-    if (product) return []; 
-    const shuffled = [...DEFAULT_PALETTES].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, Math.floor(Math.random() * 3) + 1);
-  });
+  const [colors, setColors] = useState<string[]>(() => product?.color ?? []);
   const [newColorHex, setNewColorHex] = useState("#000000");
 
   const [image, setImage] = useState<File | null>(null);
@@ -640,6 +635,7 @@ function ProductForm({
           </FormField>
 
           <FormField label="COLORS (OPTIONAL)">
+            <p className="mb-2 text-[10px] leading-5 text-[#777]">저장하면 product_colors에 기록되고, 비우면 기존 색상을 지웁니다.</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-2">
                 {colors.length === 0 && <span className="py-1 text-[10px] text-[#999]">선택된 색상이 없습니다.</span>}

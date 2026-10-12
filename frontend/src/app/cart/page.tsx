@@ -12,9 +12,11 @@ import {
   updateCartItemQuantity,
   removeCartItem,
   resolveAssetUrl,
-  getAccessToken,
-  silentRefresh,
+  ensureAccessToken,
   isAccessTokenValid,
+  getGuestCart,
+  setGuestCart,
+  isAdminFromToken,
   type CartItemResponse,
 } from "../../lib/api";
 
@@ -37,28 +39,12 @@ export default function CartPage() {
    * 실제 JWT 상태를 우선한다.
    */
   const resolveAuthentication = async (): Promise<boolean> => {
-    let token = getAccessToken();
-
-    // 현재 메모리에 유효한 토큰이 있으면 로그인 상태
-    if (isAccessTokenValid(token)) {
-      return true;
+    const token = await ensureAccessToken();
+    const authenticated = isAccessTokenValid(token);
+    if (authenticated) {
+      useAuthStore.getState().setAuthState(true, isAdminFromToken(token));
     }
-
-    // Zustand에서는 로그인 상태지만 메모리에 토큰이 없거나
-    // 만료된 경우 refresh token으로 Access Token 복구 시도
-    if (isLoggedIn) {
-      token = await silentRefresh();
-
-      if (isAccessTokenValid(token)) {
-        return true;
-      }
-
-      // Refresh에도 실패했다면 실제로는 로그인 상태가 아님
-      setIsLoggedIn(false);
-      return false;
-    }
-
-    return false;
+    return authenticated;
   };
 
   /**
@@ -80,21 +66,7 @@ export default function CartPage() {
         const items = await fetchCartItems();
         setCartItems(items);
       } else {
-        const localCartData = localStorage.getItem("guestCart");
-
-        if (localCartData) {
-          try {
-            setCartItems(JSON.parse(localCartData));
-          } catch (parseError) {
-            console.error("비회원 장바구니 데이터 파싱 실패:", parseError);
-
-            // 잘못된 JSON이 저장되어 있다면 초기화
-            localStorage.removeItem("guestCart");
-            setCartItems([]);
-          }
-        } else {
-          setCartItems([]);
-        }
+        setCartItems(getGuestCart());
       }
     } catch (error: any) {
       console.error("장바구니 조회 실패:", error);
@@ -113,18 +85,7 @@ export default function CartPage() {
       ) {
         setIsLoggedIn(false);
 
-        const localCartData = localStorage.getItem("guestCart");
-
-        if (localCartData) {
-          try {
-            setCartItems(JSON.parse(localCartData));
-          } catch {
-            localStorage.removeItem("guestCart");
-            setCartItems([]);
-          }
-        } else {
-          setCartItems([]);
-        }
+        setCartItems(getGuestCart());
       }
     } finally {
       setLoading(false);
@@ -182,7 +143,7 @@ export default function CartPage() {
 
       setCartItems(updatedItems);
 
-      localStorage.setItem("guestCart", JSON.stringify(updatedItems));
+      setGuestCart(updatedItems);
 
       await refreshCartCount();
     } catch (error: any) {
@@ -250,7 +211,7 @@ export default function CartPage() {
 
       setCartItems(updatedItems);
 
-      localStorage.setItem("guestCart", JSON.stringify(updatedItems));
+      setGuestCart(updatedItems);
 
       await refreshCartCount();
     } catch (error: any) {

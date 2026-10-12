@@ -45,6 +45,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(email)
                 .claim("role", role)
+                .claim("tokenType", "access")
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey) // 알고리즘 생략 가능 (키 길이에 맞춰 자동 선택됨)
@@ -57,10 +58,43 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(email)
+                .claim("tokenType", "refresh")
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public boolean isAccessToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return TokenUse.usableAsAccess(
+                    claims.get("tokenType", String.class),
+                    claims.get("role", String.class)
+            );
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return TokenUse.usableAsRefresh(
+                    claims.get("tokenType", String.class),
+                    claims.get("role", String.class)
+            );
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public String getEmailFromToken(String token) {
@@ -103,6 +137,9 @@ public class JwtTokenProvider {
 
         String email = claims.getSubject();
         String role = claims.get("role", String.class);
+        if (!TokenUse.usableAsAccess(claims.get("tokenType", String.class), role)) {
+            throw new IllegalArgumentException("Access Token이 아닙니다.");
+        }
 
         // Spring Security가 인식할 수 있는 권한 객체로 변환
         List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(role));

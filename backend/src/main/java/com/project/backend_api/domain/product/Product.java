@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -56,6 +57,9 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Transient
+    private List<String> color = List.of();
+
     public static Product create(ProductRequest request) {
         Product product = new Product();
         product.createdAt = LocalDateTime.now();
@@ -101,5 +105,16 @@ public class Product {
     public void updateThumbnail(String thumbnail) {
         this.thumbnail = thumbnail;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void clearThumbnailIfMatches(String imageUrl) {
+        if (imageUrl != null && imageUrl.equals(this.thumbnail)) {
+            this.thumbnail = null;
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    public void assignColors(List<String> color) {
+        this.color = color == null ? List.of() : List.copyOf(color);
     }
 }

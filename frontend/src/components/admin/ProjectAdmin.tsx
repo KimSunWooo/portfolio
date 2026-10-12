@@ -344,14 +344,21 @@ function ProjectMediaItem({ item, projectId, onChanged }: { item: ProjectMedia; 
   const [sortOrder, setSortOrder] = useState(item.sortOrder ?? 0);
   const mediaUrl = resolveAssetUrl(item.mediaUrl);
 
-  async function save() { await updateProjectMedia(projectId, item.id, { caption, description, altText: item.altText, sortOrder }); await onChanged(); }
+  async function save() {
+    try {
+      await updateProjectMedia(projectId, item.id, { caption, description, altText: item.altText, sortOrder });
+      await onChanged();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "미디어 저장에 실패했습니다.");
+    }
+  }
   async function remove() { if (!confirm("해당 미디어를 서버에서 삭제하시겠습니까?")) return; await deleteProjectMedia(projectId, item.id); await onChanged(); }
 
   return (
     <div className="flex flex-col border border-black/20 bg-white">
       <div className="relative flex h-[200px] items-center justify-center border-b border-black/10 bg-gray-100 p-2 md:h-[300px]">
         <span className="absolute left-2 top-2 z-10 bg-black px-2 py-1 text-[8px] tracking-widest text-white md:text-[9px]">{item.mediaType}</span>
-        {item.mediaType === "VIDEO" ? <video src={mediaUrl ?? ""} controls className="h-full w-full object-contain" /> : <img src={mediaUrl ?? ""} alt="media" className="h-full w-full object-contain" />}
+        {item.mediaType === "VIDEO" ? <video src={mediaUrl ?? ""} controls className="h-full w-full object-contain" /> : <img src={mediaUrl ?? ""} alt={item.altText || item.caption || "프로젝트 미디어"} className="h-full w-full object-contain" />}
       </div>
       <div className="grid gap-4 bg-white p-4 md:p-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">

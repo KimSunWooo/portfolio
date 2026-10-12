@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ProductColorRepository extends JpaRepository<ProductColor, Integer> {
     List<ProductColor> findByProductIdOrderBySortOrderAscIdAsc(Integer productId);
+
+    void deleteByProductId(Integer productId);
 }

@@ -53,20 +53,11 @@ public class SecurityConfig {
                 // 💡 누구나 접근 가능한 공개 API (회원가입, 로그인, 상품 목록/상세 조회)
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout", "/api/users/password/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/cart/**", "/api/community/**").permitAll()
-                .requestMatchers("/api/payments/**").permitAll()
-                
-                // 🔒 관리자(ADMIN)만 접근 가능한 API (상품 등록, 수정, 삭제)
-                // 주의: DB와 JWT 토큰에는 "ROLE_ADMIN"이라는 형태로 저장되어 있어야 Spring이 "ADMIN"으로 인식합니다.
-                .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/projects/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/projects/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/projects/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/admin/community/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/admin/community/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/admin/community/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/community/**").permitAll()
+
+                // 실제 관리자 API는 /api/admin/** 이다.
+                // /api/products/** 규칙으로는 /api/admin/products 가 일치하지 않는다.
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
                 .requestMatchers("/actuator/**", "/error").permitAll()
                 

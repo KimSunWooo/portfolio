@@ -35,6 +35,7 @@ public class ProjectService {
     private final ProjectMediaRepository projectMediaRepository;
 
     private final AmazonS3 amazonS3;
+    private final AfterCommit afterCommit;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
@@ -97,6 +98,7 @@ public class ProjectService {
             MultipartFile file,
             String caption,
             String altText,
+            String description,
             Integer sortOrder
     ) {
         getProject(projectId);
@@ -121,6 +123,7 @@ public class ProjectService {
                 mediaUrl,
                 caption,
                 altText,
+                description,
                 sortOrder
         );
 
@@ -135,6 +138,7 @@ public class ProjectService {
             Integer mediaId,
             String caption,
             String altText,
+            String description,
             Integer sortOrder
     ) {
         getProject(projectId);
@@ -158,6 +162,7 @@ public class ProjectService {
         media.update(
                 caption,
                 altText,
+                description,
                 sortOrder
         );
 
@@ -187,9 +192,9 @@ public class ProjectService {
             );
         }
 
-        deletePhysicalFile(media.getMediaUrl());
-
+        String mediaUrl = media.getMediaUrl();
         projectMediaRepository.delete(media);
+        afterCommit.run(() -> deletePhysicalFile(mediaUrl));
     }
 
     private String saveProjectMedia(Integer projectId, MultipartFile file) {

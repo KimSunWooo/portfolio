@@ -13,6 +13,16 @@ import {
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
+function safeNextPath(next: string | null, isAdmin: boolean) {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("://")) {
+    return "/";
+  }
+  if (next.startsWith("/admin") && !isAdmin) {
+    return "/";
+  }
+  return next;
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,7 +63,8 @@ export default function Login() {
         console.error("장바구니 동기화 에러 (로그인은 유지됨):", syncError);
       }
 
-      router.push("/admin/projects");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(safeNextPath(next, isAdmin));
     } catch (error: any) {
       setErrorMessage(error.message);
     }

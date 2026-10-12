@@ -68,7 +68,7 @@ export const isAccessTokenValid = (
 ): boolean => {
   const payload = getAccessTokenPayload(token);
 
-  if (!payload?.exp) {
+  if (!payload?.exp || !payload.role || payload.tokenType === "refresh") {
     return false;
   }
 
@@ -130,7 +130,15 @@ export async function handleResponseError(response: Response) {
 
   try {
     const errorJson = JSON.parse(errorText);
-    errorMessage = errorJson.message || errorMessage;
+    const fieldText = errorJson.fields
+      ? Object.entries(errorJson.fields)
+          .map(([field, message]) => `${field}: ${message}`)
+          .join("\n")
+      : "";
+    errorMessage = errorJson.message || errorJson.error || errorMessage;
+    if (fieldText) {
+      errorMessage = `${errorMessage}\n${fieldText}`;
+    }
   } catch {
     errorMessage = errorText || errorMessage;
   }
@@ -293,15 +301,10 @@ export async function loginUser(credentials: {
   return data;
 }
 
-interface CustomJwtPayload {
-  sub: string;
-  role: string;
-}
+let refreshInFlight: Promise<string | null> | null = null;
 
-export async function silentRefresh() {
+async function requestRefresh(): Promise<string | null> {
   try {
-    console.log("[REFRESH] 요청 시작");
-
     const response = await fetch(
       `${API_BASE_URL}/api/users/refresh`,
       {
@@ -310,44 +313,42 @@ export async function silentRefresh() {
       }
     );
 
-    console.log("[REFRESH] status:", response.status);
-
     if (!response.ok) {
-      const errorText = await response.text();
-
-      console.error(
-        "[REFRESH] 실패:",
-        response.status,
-        errorText
-      );
-
       setAccessToken(null);
       return null;
     }
 
     const data = await response.json();
 
-    console.log(
-      "[REFRESH] Access Token 수신:",
-      !!data.accessToken
-    );
-
-    if (!data.accessToken) {
-      console.error("[REFRESH] Access Token 없음");
-
+    if (!data.accessToken || !isAccessTokenValid(data.accessToken)) {
       setAccessToken(null);
       return null;
     }
 
     setAccessToken(data.accessToken);
-
     return data.accessToken;
   } catch (error) {
     console.error("[REFRESH] 요청 예외:", error);
-
     setAccessToken(null);
     return null;
   }
+}
+
+export function silentRefresh() {
+  if (!refreshInFlight) {
+    refreshInFlight = requestRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+export async function ensureAccessToken(): Promise<string | null> {
+  const current = getAccessToken();
+  if (isAccessTokenValid(current)) {
+    return current;
+  }
+  return silentRefresh();
 }
 
 export async function logoutUser() {
@@ -582,7 +583,11 @@ export async function deleteProduct(productId: number | string) {
 }
 
 export async function fetchProductImages(productId: number | string): Promise<ProductImage[]> {
-  const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images`);
+  const token = getAccessToken();
+  const response = await fetch(`${API_BASE_URL}/api/products/${productId}/images`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    credentials: "include",
+  });
   if (!response.ok) await handleResponseError(response); return response.json();
 }
 
@@ -623,7 +628,7 @@ export interface GuestCartItem {
   productId: number;
   productName: string;
   price: number;
-  thumbnailUrl: string;
+  thumbnailUrl?: string | null;
   quantity: number;
 }
 
@@ -637,6 +642,37 @@ const GUEST_CART_KEY = "guestCart";
 /**
  * 비회원 장바구니 조회
  */
+function isGuestCartItem(value: unknown): value is GuestCartItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const item = value as Partial<GuestCartItem>;
+  const productId = Number(item.productId);
+  const quantity = Number(item.quantity);
+  return Number.isInteger(productId)
+    && productId > 0
+    && Number.isInteger(quantity)
+    && quantity >= 1
+    && quantity <= 99
+    && typeof item.productName === "string"
+    && item.productName.length > 0
+    && typeof item.price === "number";
+}
+
+export function parseGuestCart(value: unknown): GuestCartItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isGuestCartItem).map((item) => ({
+    cartItemId: Number(item.cartItemId) || Date.now(),
+    productId: item.productId,
+    productName: item.productName,
+    price: item.price,
+    thumbnailUrl: item.thumbnailUrl || "",
+    quantity: item.quantity,
+  }));
+}
+
 export const getGuestCart = (): GuestCartItem[] => {
   if (typeof window === "undefined") {
     return [];
@@ -649,7 +685,12 @@ export const getGuestCart = (): GuestCartItem[] => {
   }
 
   try {
-    return JSON.parse(stored);
+    const raw = JSON.parse(stored);
+    const parsed = parseGuestCart(raw);
+    if (!Array.isArray(raw) || parsed.length !== raw.length) {
+      localStorage.setItem(GUEST_CART_KEY, JSON.stringify(parsed));
+    }
+    return parsed;
   } catch (error) {
     console.error("비회원 장바구니 파싱 실패:", error);
     localStorage.removeItem(GUEST_CART_KEY);
@@ -722,6 +763,9 @@ export const addCartItem = async (
   product: any,
   quantity: number
 ): Promise<void> => {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+    throw new Error("수량은 1개 이상 99개 이하여야 합니다.");
+  }
   const token = getAccessToken();
 
   if (isAccessTokenValid(token)) {
@@ -739,15 +783,7 @@ export const addCartItem = async (
     });
 
     if (!response.ok) {
-      const error = new Error(
-        "장바구니 담기에 실패했습니다."
-      ) as Error & {
-        status?: number;
-      };
-
-      error.status = response.status;
-
-      throw error;
+      await handleResponseError(response);
     }
 
     return;
@@ -760,7 +796,11 @@ export const addCartItem = async (
   );
 
   if (existingItemIndex > -1) {
-    cart[existingItemIndex].quantity += quantity;
+    const nextQuantity = cart[existingItemIndex].quantity + quantity;
+    if (nextQuantity > 99) {
+      throw new Error("수량은 99개 이하여야 합니다.");
+    }
+    cart[existingItemIndex].quantity = nextQuantity;
   } else {
     cart.push({
       cartItemId: Date.now(),
@@ -804,15 +844,7 @@ export async function addToCart(
   });
 
   if (!response.ok) {
-    const error = new Error(
-      "장바구니 담기에 실패했습니다."
-    ) as Error & {
-      status?: number;
-    };
-
-    error.status = response.status;
-
-    throw error;
+    await handleResponseError(response);
   }
 
   if (typeof window !== "undefined") {
@@ -848,15 +880,7 @@ export async function updateCartItemQuantity(
   );
 
   if (!response.ok) {
-    const error = new Error(
-      "장바구니 수량 변경에 실패했습니다."
-    ) as Error & {
-      status?: number;
-    };
-
-    error.status = response.status;
-
-    throw error;
+    await handleResponseError(response);
   }
 
   return response.text();
@@ -889,15 +913,7 @@ export async function removeCartItem(cartItemId: number) {
   );
 
   if (!response.ok) {
-    const error = new Error(
-      "장바구니 상품 삭제에 실패했습니다."
-    ) as Error & {
-      status?: number;
-    };
-
-    error.status = response.status;
-
-    throw error;
+    await handleResponseError(response);
   }
 
   return response.text();
@@ -942,9 +958,17 @@ export async function syncLocalCartToServer(
   items: GuestCartItem[]
 ): Promise<void> {
   const token = getAccessToken();
+  const guestItems = parseGuestCart(items);
 
-  if (!isAccessTokenValid(token)) {
+  if (!isAccessTokenValid(token) || guestItems.length === 0) {
     return;
+  }
+
+  const syncKeyName = "guestCartSyncKey";
+  let syncKey = sessionStorage.getItem(syncKeyName);
+  if (!syncKey) {
+    syncKey = crypto.randomUUID();
+    sessionStorage.setItem(syncKeyName, syncKey);
   }
 
   const response = await fetch(
@@ -954,17 +978,21 @@ export async function syncLocalCartToServer(
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        "Idempotency-Key": syncKey,
       },
       credentials: "include",
-      body: JSON.stringify(items),
+      body: JSON.stringify(guestItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      }))),
     }
   );
 
   if (!response.ok) {
-    throw new Error(
-      "장바구니 동기화에 실패했습니다."
-    );
+    await handleResponseError(response);
   }
+
+  sessionStorage.removeItem(syncKeyName);
 }
 
 /* =========================================================================
@@ -989,9 +1017,21 @@ export function getCustomerTier(totalSpent: number) {
  * 결제 (Payment) API
  * ========================================================================= */
 export const confirmPayment = async (paymentData: { paymentKey: string; orderId: string; amount: number }) => {
-  const token = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(paymentData) });
-  if (!response.ok) throw new Error(await response.text()); return response.json();
+  const token = await ensureAccessToken();
+  if (!isAccessTokenValid(token)) {
+    throw new Error("로그인이 필요합니다.");
+  }
+  const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: "include",
+    body: JSON.stringify(paymentData),
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
 };
 
 export interface PaymentHistoryResponse { id: number; orderId: string; paymentKey: string; amount: number; status: string; cancelReason: string | null; createdAt: string; canceledAt: string | null; }

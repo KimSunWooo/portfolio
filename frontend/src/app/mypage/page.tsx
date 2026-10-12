@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
-import { fetchPaymentHistory, type PaymentHistoryResponse, getAccessToken, silentRefresh } from "../../lib/api";
+import { fetchPaymentHistory, type PaymentHistoryResponse, ensureAccessToken, isAccessTokenValid } from "../../lib/api";
 
 export default function MyPage() {
   const [activeTab, setActiveTab] = useState<"DONE" | "CANCELED">("DONE");
@@ -16,24 +16,11 @@ export default function MyPage() {
     const loadHistory = async () => {
       setLoading(true);
       try {
-        // ==========================================
-        // 💡 1. 토큰 복구 로직 추가 (기억 상실증 치료)
-        // ==========================================
-        let token = getAccessToken();
-        if (!token) {
-          try {
-            token = await silentRefresh();
-          } catch (error) {
-            // 복구 실패 시에만 진짜 비회원이거나 세션 만료이므로 쫓아냄
-            alert("로그인이 필요합니다.");
-            router.replace("/login");
-            return; // 💡 이후 로직 실행 방지
-          }
+        const token = await ensureAccessToken();
+        if (!isAccessTokenValid(token)) {
+          router.replace("/login?next=/mypage");
+          return;
         }
-
-        // ==========================================
-        // 💡 2. 복구된 토큰으로 안전하게 데이터 조회
-        // ==========================================
         const data = await fetchPaymentHistory(activeTab);
         setHistories(data);
       } catch (error) {
@@ -68,7 +55,7 @@ export default function MyPage() {
                 activeTab === "DONE" ? "border-b-2 border-black font-bold text-black" : "text-[#999] hover:text-black"
               }`}
             >
-              결제 완료 내역
+              승인 기록
             </button>
             <button
               onClick={() => setActiveTab("CANCELED")}
@@ -76,7 +63,7 @@ export default function MyPage() {
                 activeTab === "CANCELED" ? "border-b-2 border-black font-bold text-black" : "text-[#999] hover:text-black"
               }`}
             >
-              취소/환불 내역
+              자동 취소 내역
             </button>
           </div>
 

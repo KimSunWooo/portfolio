@@ -7,10 +7,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+
+@Validated
 
 @RestController
 @RequestMapping("/api/cart")
@@ -84,14 +87,12 @@ public class CartController {
 
     @PostMapping("/sync")
     public ResponseEntity<Void> syncGuestCart(
-            Authentication authentication, 
-            @RequestBody List<CartRequest> guestCartItems
+            Authentication authentication,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestBody List<@Valid CartRequest> guestCartItems
     ) {
-        // JWT 토큰에서 유저 이메일 추출
-        String email = authentication.getName(); 
-        
-        cartService.syncCart(email, guestCartItems); 
-        
+        String email = authentication.getName();
+        cartService.syncCart(email, guestCartItems, idempotencyKey);
         return ResponseEntity.ok().build();
     }
 }

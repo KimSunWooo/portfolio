@@ -9,6 +9,7 @@ public record ProjectMediaResponse(
         String mediaUrl,
         String caption,
         String altText,
+        String description,
         Integer sortOrder
 ) {
     public static ProjectMediaResponse from(
@@ -21,6 +22,7 @@ public record ProjectMediaResponse(
                 media.getMediaUrl(),
                 media.getCaption(),
                 media.getAltText(),
+                media.getDescription(),
                 media.getSortOrder()
         );
     }

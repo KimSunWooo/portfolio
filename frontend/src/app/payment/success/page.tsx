@@ -1,89 +1,111 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Header from "../../../components/header/Header";
 import Footer from "../../../components/layout/Footer";
-import { confirmPayment, getAccessToken } from "../../../lib/api"; // 경로에 맞게 수정
+import { confirmPayment, ensureAccessToken, isAccessTokenValid } from "../../../lib/api";
+
+const confirmingPayments = new Set<string>();
 
 function PaymentSuccessContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  
-  const [status, setStatus] = useState<"loading" | "success" | "fail">("loading");
-  const [errorMessage, setErrorMessage] = useState("");
+  const paymentKey = searchParams.get("paymentKey");
+  const orderId = searchParams.get("orderId");
+  const amount = searchParams.get("amount");
+  const missingPayment = !paymentKey || !orderId || !amount;
+  const [status, setStatus] = useState<"loading" | "canceled" | "fail">(missingPayment ? "fail" : "loading");
+  const [errorMessage, setErrorMessage] = useState(missingPayment ? "결제 정보가 올바르지 않습니다." : "");
 
   useEffect(() => {
-    // 💡 1. URL에서 토스가 보낸 3가지 핵심 데이터 추출
-    const paymentKey = searchParams.get("paymentKey");
-    const orderId = searchParams.get("orderId");
-    const amount = searchParams.get("amount");
-
     if (!paymentKey || !orderId || !amount) {
-      setStatus("fail");
-      setErrorMessage("결제 정보가 올바르지 않습니다.");
       return;
     }
 
-    // 💡 2. 백엔드에 최종 결제 승인 요청 (이름을 handleConfirm으로 변경하여 충돌 방지)
+    if (confirmingPayments.has(paymentKey)) {
+      return;
+    }
+    confirmingPayments.add(paymentKey);
+    let ignore = false;
+
     const handleConfirm = async () => {
+      const token = await ensureAccessToken();
+      if (!isAccessTokenValid(token)) {
+        if (!ignore) {
+          setStatus("fail");
+          setErrorMessage("로그인이 필요합니다. 인증이 복구된 뒤에만 결제를 확인합니다.");
+        }
+        confirmingPayments.delete(paymentKey);
+        return;
+      }
+
       try {
-        await confirmPayment({
+        const result = await confirmPayment({
           paymentKey,
           orderId,
           amount: Number(amount),
         });
-
-        // 에러 없이 통과했다면 성공 처리 및 프론트엔드 장바구니 초기화
-        window.dispatchEvent(new Event("cartUpdated"));
-        setStatus("success");
-
-      } catch (error: any) {
+        if (ignore) return;
+        if (result?.status === "CANCELED") {
+          setStatus("canceled");
+          return;
+        }
         setStatus("fail");
-        setErrorMessage(error.message);
+        setErrorMessage(result?.message || "결제 상태를 확인하지 못했습니다.");
+      } catch (error: unknown) {
+        if (ignore) return;
+        setStatus("fail");
+        setErrorMessage(error instanceof Error ? error.message : "결제 확인에 실패했습니다.");
+      } finally {
+        confirmingPayments.delete(paymentKey);
       }
     };
 
     handleConfirm();
-  }, [searchParams]);
+    return () => {
+      ignore = true;
+    };
+  }, [paymentKey, orderId, amount]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center bg-[#f9f9f9] px-5 py-20 text-center">
-      <div className="w-full max-w-[500px] bg-white p-10 shadow-sm border border-black/10">
+      <div className="w-full max-w-[500px] border border-black/10 bg-white p-10 shadow-sm">
+        <p className="mb-6 text-[11px] tracking-[0.08em] text-[#777]">100원 테스트 결제</p>
         {status === "loading" && (
           <>
-            <h2 className="mb-4 text-[18px] font-bold">결제 승인 중입니다...</h2>
-            <p className="text-[12px] text-[#777]">창을 닫거나 새로고침하지 마세요.</p>
+            <h2 className="mb-4 text-[18px] font-bold">결제 승인과 자동 취소를 확인하는 중입니다.</h2>
+            <p className="text-[12px] text-[#777]">인증 복구가 끝난 뒤에 한 번만 요청합니다.</p>
           </>
         )}
 
-        {status === "success" && (
+        {status === "canceled" && (
           <>
-            <div className="mb-6 text-[40px]">✔️</div>
-            <h2 className="mb-4 text-[20px] font-bold">결제가 완료되었습니다!</h2>
-            <p className="mb-8 text-[12px] text-[#777]">
-              주문 번호: {searchParams.get("orderId")}
+            <h2 className="mb-4 text-[20px] font-bold">테스트 결제가 승인된 뒤 자동 취소되었습니다.</h2>
+            <p className="mb-3 text-[12px] leading-6 text-[#777]">
+              주문 번호: {orderId}
             </p>
-            <Link 
-              href="/shop" 
+            <p className="mb-8 text-[12px] leading-6 text-[#777]">
+              실결제가 아니며 장바구니는 주문 완료로 비우지 않습니다.
+            </p>
+            <Link
+              href="/mypage"
               className="inline-block bg-black px-8 py-3 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
             >
-              쇼핑 계속하기
+              취소 내역 보기
             </Link>
           </>
         )}
 
         {status === "fail" && (
           <>
-            <div className="mb-6 text-[40px]">❌</div>
-            <h2 className="mb-4 text-[20px] font-bold text-red-500">결제 실패</h2>
-            <p className="mb-8 text-[12px] text-[#777]">{errorMessage}</p>
-            <Link 
-              href="/checkout" 
+            <h2 className="mb-4 text-[20px] font-bold">결제 확인에 실패했습니다.</h2>
+            <p className="mb-8 text-[12px] leading-6 text-[#777]">{errorMessage}</p>
+            <Link
+              href={errorMessage.includes("로그인") ? "/login?next=/payment/success" : "/checkout"}
               className="inline-block border border-black px-8 py-3 text-[12px] tracking-[0.1em] transition hover:bg-black hover:text-white"
             >
-              다시 시도하기
+              {errorMessage.includes("로그인") ? "로그인" : "다시 시도"}
             </Link>
           </>
         )}
@@ -92,7 +114,6 @@ function PaymentSuccessContent() {
   );
 }
 
-// Next.js에서 useSearchParams를 안전하게 사용하기 위해 Suspense로 감쌉니다.
 export default function PaymentSuccessPage() {
   return (
     <>

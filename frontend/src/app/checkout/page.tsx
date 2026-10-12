@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
-import { fetchCartItems, resolveAssetUrl, removeCartItem, type CartItemResponse } from "../../lib/api";
+import { fetchCartItems, resolveAssetUrl, removeCartItem, type CartItemResponse, ensureAccessToken, isAccessTokenValid, getGuestCart } from "../../lib/api";
 import DaumPostcodeEmbed from "react-daum-postcode";
 import { loadTossPayments } from '@tosspayments/payment-sdk'; // 💡 토스 결제 SDK 임포트
 
@@ -13,6 +13,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
 
   // 💡 폼 데이터 상태 관리
   const [customerName, setCustomerName] = useState("");
@@ -32,7 +33,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     const loadOrderItems = async () => {
       try {
-        const items = await fetchCartItems();
+        const token = await ensureAccessToken();
+        const loggedIn = isAccessTokenValid(token);
+        setAuthenticated(loggedIn);
+        const items = loggedIn ? await fetchCartItems() : getGuestCart();
         if (items.length === 0) {
           alert("결제할 상품이 없습니다.");
           router.replace("/cart");
@@ -55,6 +59,10 @@ export default function CheckoutPage() {
   // 💡 주문 제출 시 토스 결제창 호출
   const handlePlaceOrder = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!authenticated) {
+      router.push("/login?next=/checkout");
+      return;
+    }
     if (!zipCode || !address) {
       alert("배송지 주소를 입력해 주세요.");
       return;
@@ -243,11 +251,14 @@ export default function CheckoutPage() {
                 <span>₩{total.toLocaleString()}</span>
               </div>
 
+              <p className="mt-6 text-[11px] leading-6 text-[#777]">
+                이 화면의 결제는 100원 테스트 결제입니다. 승인 뒤 서버가 자동 취소하며, 장바구니를 주문 완료로 비우지 않습니다.
+              </p>
               <button 
                 type="submit" 
-                className="mt-8 w-full bg-black py-4 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+                className="mt-4 w-full bg-black py-4 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
               >
-                PLACE ORDER (100원 결제)
+                {authenticated ? "테스트 결제 100원" : "로그인 후 테스트 결제"}
               </button>
             </div>
           </form>
