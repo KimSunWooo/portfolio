@@ -7,28 +7,112 @@ export PYTHONDONTWRITEBYTECODE=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PATH="$ROOT/ops/tests/fake-bin:$PATH"
 export NGINX_BIN="$ROOT/ops/tests/fake-bin/nginx"
+# Mock checks must not follow an operator's NETWORK or FAIL_STAGE.
+export NETWORK=portfolio_default
+unset FAIL_STAGE
 BACKEND_IMAGE="example/portfolio-backend:abc123"
 FRONTEND_IMAGE="example/portfolio-frontend:abc123"
 FAILURES=0
+FAILED_NAMES=""
 
 ok() { printf 'ok  %s\n' "$1"; }
-bad() { printf 'FAIL %s\n' "$1" >&2; FAILURES=$((FAILURES + 1)); }
+bad() {
+  printf 'FAIL %s\n' "$1" >&2
+  FAILED_NAMES="${FAILED_NAMES} ${1}"
+  FAILURES=$((FAILURES + 1))
+}
+
+# The holder process owns fd 9. A fifo releases it, so no sleep child keeps the lock.
+start_held_lock() {
+  local lockfile="$1"
+  HELD_LOCK_READY="$(mktemp)"
+  HELD_LOCK_RELEASE="$(mktemp -u)"
+  mkfifo "$HELD_LOCK_RELEASE"
+  rm -f "$HELD_LOCK_READY"
+  (
+    exec 9>"$lockfile"
+    flock 9
+    : >"$HELD_LOCK_READY"
+    IFS= read -r _ <"$HELD_LOCK_RELEASE" || true
+  ) &
+  HELD_LOCK_PID=$!
+  local spins=0
+  while [[ ! -f "$HELD_LOCK_READY" ]]; do
+    if ! kill -0 "$HELD_LOCK_PID" 2>/dev/null; then
+      printf 'lock holder exited before ready\n' >&2
+      return 1
+    fi
+    spins=$((spins + 1))
+    if [[ "$spins" -gt 100 ]]; then
+      printf 'lock holder was not ready\n' >&2
+      return 1
+    fi
+    sleep 0.05
+  done
+}
+
+stop_held_lock() {
+  local pid="${HELD_LOCK_PID:-}"
+  if [[ -n "$pid" ]]; then
+    if [[ -p "${HELD_LOCK_RELEASE:-}" ]]; then
+      printf 'release\n' >"$HELD_LOCK_RELEASE" 2>/dev/null || kill "$pid" 2>/dev/null || true
+    else
+      kill "$pid" 2>/dev/null || true
+    fi
+    local spins=0
+    while kill -0 "$pid" 2>/dev/null && [[ "$spins" -lt 40 ]]; do
+      sleep 0.05
+      spins=$((spins + 1))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+    fi
+    wait "$pid" 2>/dev/null || true
+    HELD_LOCK_PID=
+  fi
+  if [[ -n "${HELD_LOCK_RELEASE:-}" ]]; then
+    rm -f "$HELD_LOCK_RELEASE"
+    HELD_LOCK_RELEASE=
+  fi
+  if [[ -n "${HELD_LOCK_READY:-}" ]]; then
+    rm -f "$HELD_LOCK_READY"
+    HELD_LOCK_READY=
+  fi
+}
+
+print_case_diagnostic() {
+  local name="$1" code="$2" log="$3"
+  printf 'diagnostic check=%s exit=%s\n' "$name" "$code" >&2
+  python3 - "$log" <<'PY' >&2
+import re, sys
+secret = re.compile(r"(?i)(password|secret|token|authorization|api[_-]?key)\s*[:=]")
+lines = open(sys.argv[1], errors="replace").read().splitlines()
+for line in lines[-40:]:
+    if secret.search(line):
+        print("[redacted diagnostic line]")
+    else:
+        print(line)
+PY
+}
 
 run_case() {
-  local name="$1" code
+  local name="$1" code log
   shift
+  log="$(mktemp)"
   set +e
   (
     set -e
     "$@"
-  )
+  ) >"$log" 2>&1
   code=$?
   set -e
   if [[ "$code" -eq 0 ]]; then
     ok "$name"
   else
     bad "$name"
+    print_case_diagnostic "$name" "$code" "$log"
   fi
+  rm -f "$log"
 }
 
 write_site() {
@@ -315,13 +399,12 @@ case_reject_latest() {
 
 case_lock() {
   setup aligned 0
-  flock "$LOCK_FILE" sleep 30 &
-  local holder=$!
-  sleep 0.2
+  trap 'stop_held_lock' EXIT
+  start_held_lock "$LOCK_FILE"
   local code=0
   deploy >/tmp/deploy-lock.out 2>&1 || code=$?
-  kill "$holder" 2>/dev/null || true
-  wait "$holder" 2>/dev/null || true
+  stop_held_lock
+  trap - EXIT
   [[ "$code" -ne 0 ]]
   grep -q '잠금' /tmp/deploy-lock.out
   state_py '"example/portfolio-backend:abc123" not in state["pulled"]'
@@ -405,20 +488,19 @@ case_release_paths() {
   mkdir -p "$project/ops/lib" "$project/ops/nginx"
   printf 'echo broken-project-slots\nexit 99\n' >"$project/ops/lib/slots.sh"
   printf 'import sys\nsys.exit(99)\n' >"$project/ops/nginx/rewrite_api_proxy.py"
-  local holder code apply_code sum
+  local code apply_code sum
   sum="$(cksum "$NGINX_SITE")"
-  flock "$project/.deploy.lock" sleep 30 &
-  holder=$!
-  sleep 0.2
+  trap 'stop_held_lock' EXIT
+  start_held_lock "$project/.deploy.lock"
   code=0
   apply_code=0
-  (cd / && env -u PROJECT_DIR -u LOCK_FILE -u ENV_FILE HOME="$home" \
+  (cd / && env -u PROJECT_DIR -u LOCK_FILE -u ENV_FILE HOME="$home" NETWORK=portfolio_default \
     "$release_b/deploy.sh" --backend-image "$BACKEND_IMAGE" --frontend-image "$FRONTEND_IMAGE") \
     >/tmp/deploy-release-lock.out 2>&1 || code=$?
-  (cd /tmp && env -u PROJECT_DIR -u LOCK_FILE -u ENV_FILE HOME="$home" \
+  (cd /tmp && env -u PROJECT_DIR -u LOCK_FILE -u ENV_FILE HOME="$home" NETWORK=portfolio_default \
     "$manual/ops/nginx/apply-api-upstream.sh") >/tmp/apply-release-lock.out 2>&1 || apply_code=$?
-  kill "$holder" 2>/dev/null || true
-  wait "$holder" 2>/dev/null || true
+  stop_held_lock
+  trap - EXIT
   [[ "$code" -ne 0 && "$apply_code" -ne 0 ]]
   grep -q -F "$project/.deploy.lock" /tmp/deploy-release-lock.out
   grep -q -F "$project/.deploy.lock" /tmp/apply-release-lock.out
@@ -722,6 +804,14 @@ required = [
     "script_stop: true",
     "verify-deploy:",
     "ops/tests/run-deploy-checks.sh",
+    "runs-on: ubuntu-24.04",
+    "actions/checkout@v5",
+    "actions/setup-java@v5",
+    'java-version: "21"',
+    "actions/setup-node@v5",
+    'node-version: "22"',
+    "backend-tests:",
+    "frontend-checks:",
     'export PROJECT_DIR="$HOME/portfolio"',
     'export ENV_FILE="$PROJECT_DIR/.env"',
     'export LOCK_FILE="$PROJECT_DIR/.deploy.lock"',
@@ -773,7 +863,7 @@ run_case apply-api-variants case_apply_api_variants
 run_case conflict-preserves-target case_conflict_preserves_target
 
 if [[ "$FAILURES" -ne 0 ]]; then
-  printf '%s check(s) failed\n' "$FAILURES" >&2
+  printf '%s check(s) failed:%s\n' "$FAILURES" "$FAILED_NAMES" >&2
   exit 1
 fi
 printf 'all deploy checks passed\n'

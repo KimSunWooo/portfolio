@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
-import { fetchCartItems, resolveAssetUrl, removeCartItem, type CartItemResponse, ensureAccessToken, isAccessTokenValid, getGuestCart } from "../../lib/api";
-import DaumPostcodeEmbed from "react-daum-postcode";
+import { fetchCartItems, resolveAssetUrl, type CartItemResponse, resolveAuthState, getGuestCart } from "../../lib/api";
+import DaumPostcodeEmbed, { type Address } from "react-daum-postcode";
 import { loadTossPayments } from '@tosspayments/payment-sdk'; // 💡 토스 결제 SDK 임포트
 
 export default function CheckoutPage() {
-  const Postcode = DaumPostcodeEmbed as any;
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +32,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     const loadOrderItems = async () => {
       try {
-        const token = await ensureAccessToken();
-        const loggedIn = isAccessTokenValid(token);
+        const auth = await resolveAuthState();
+        if (auth.phase === "recovery_failed") {
+          alert(auth.message);
+          router.replace("/login?next=/checkout");
+          return;
+        }
+        const loggedIn = auth.phase === "authenticated";
         setAuthenticated(loggedIn);
         const items = loggedIn ? await fetchCartItems() : getGuestCart();
         if (items.length === 0) {
@@ -92,7 +96,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleCompletePost = (data: any) => {
+  const handleCompletePost = (data: Address) => {
     let fullAddress = data.address;
     let extraAddress = "";
 
@@ -276,7 +280,7 @@ export default function CheckoutPage() {
               x
             </button>
             <div className="mt-6 border border-black/10">
-              <Postcode onComplete={handleCompletePost} autoClose={true} />
+              <DaumPostcodeEmbed onComplete={handleCompletePost} autoClose={true} />
             </div>
           </div>
         </div>

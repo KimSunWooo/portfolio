@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>김선우 웹 개발 포트폴리오 2026</title>
+<style>
+  @page { size: A4; margin: 12mm 13mm 16mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Sans CJK KR", "Noto Sans CJK JP", sans-serif;
+    color: #161616;
+    font-size: 10.4pt;
+    line-height: 1.48;
+    background: #fff;
+  }
+  a { color: #111; }
+  .page { break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; }
+  h1 { font-size: 20pt; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 4mm; line-height: 1.2; }
+  h2 { font-size: 13.5pt; font-weight: 700; margin: 0 0 3mm; letter-spacing: -0.02em; }
+  h3 { font-size: 11pt; font-weight: 700; margin: 3.5mm 0 1.5mm; }
+  p { margin: 0 0 2.4mm; }
+  .kicker { font-size: 8.5pt; letter-spacing: 0.14em; color: #555; margin: 0 0 3mm; }
+  .rule { border: 0; border-top: 1px solid #111; margin: 3mm 0; }
+  .muted { color: #444; }
+  .small { font-size: 8.6pt; color: #333; line-height: 1.4; }
+  ul { margin: 0 0 2.4mm; padding-left: 4.2mm; }
+  li { margin: 0 0 1mm; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+  figure { margin: 0; }
+  figure img, .diagram { width: 100%; height: auto; display: block; border: 1px solid #d0d0d0; background: #fff; }
+  figcaption { font-size: 8pt; color: #444; margin-top: 1.2mm; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.6pt; margin: 1mm 0 3mm; }
+  th, td { border-bottom: 1px solid #ccc; text-align: left; vertical-align: top; padding: 1.4mm 1.6mm; }
+  th { border-bottom: 1px solid #111; font-weight: 700; }
+  .tag { display: inline-block; border: 1px solid #111; padding: 0.4mm 1.6mm; font-size: 8pt; margin: 0 1mm 1mm 0; }
+  .note { background: #f3f3f3; padding: 2.4mm 3mm; margin: 2mm 0 3mm; }
+  .cover { min-height: 250mm; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+  .cover::after { position: absolute; right: 0; bottom: 0; margin-top: 0; }
+  .cover h1 { font-size: 34pt; line-height: 1.05; margin-top: 18mm; }
+  code, .path { font-family: "Noto Sans Mono CJK KR", "DejaVu Sans Mono", monospace; font-size: 8pt; }
+  .shot { max-height: 72mm; object-fit: cover; object-position: top; }
+  .shot-sm { max-height: 58mm; object-fit: cover; object-position: top; }
+  .shot-fit { width: 100%; max-height: 64mm; object-fit: contain; object-position: top center; background: #f7f7f7; }
+  body { counter-reset: pg; }
+  .page { counter-increment: pg; }
+  .page::after {
+    content: counter(pg);
+    display: block;
+    text-align: right;
+    font-size: 8.5pt;
+    color: #555;
+    margin-top: 4mm;
+  }
+</style>
+</head>
+<body>
+
+<section class="page cover">
+  <div>
+    <p class="kicker">WEB DEVELOPER PORTFOLIO · 2026</p>
+    <hr class="rule" />
+    <h1>김선우</h1>
+    <p style="font-size:14pt; margin-top:4mm;">Backend / Full-stack Developer</p>
+    <p class="muted" style="max-width:150mm;">Java와 Spring Boot로 API·인증·데이터를 구성하고, Next.js와 배포 환경까지 한 서비스의 요청 흐름을 따라간 작업 기록입니다.</p>
+  </div>
+  <div>
+    <hr class="rule" />
+    <p class="small">기준 시점 2026-10-13 · 포트폴리오 서비스 HEAD 9fbcd64 · 자동매매 HEAD 52d1aaf</p>
+    <p class="small"><a href="https://swportfolioservices.com">https://swportfolioservices.com</a><br /><a href="https://github.com/KimSunWooo">https://github.com/KimSunWooo</a></p>
+    <p class="small">kssgss@gmail.com · 010-7382-4100</p>
+  </div>
+</section>
+
+<section class="page">
+  <p class="kicker">01 · PROFILE</p>
+  <h2>개발자 소개</h2>
+  <p>백엔드 중심의 풀스택 개발을 기본 포지션으로 둡니다. 화면, API, 데이터베이스, 캐시, 배포가 어디서 갈라지는지를 문제 단위로 설명하는 쪽에 무게를 두었습니다.</p>
+  <div class="note">
+    <p class="small" style="margin:0;">경력과 학력은 운영 중인 포트폴리오 서비스의 공개 이력 API에 등록된 내용입니다. 별도 재직 증명으로 대조하지는 않았습니다.</p>
+  </div>
+  <h3>등록된 경력</h3>
+  <p><strong>조이튠 · 웹 개발</strong> · 2022.02 – 2023.12</p>
+  <p class="small">등록 내용: Java, Spring, JavaScript, MySQL, React, MariaDB, Linux. 제약사 맞춤 웹의 로그인·회원·관리자 화면, 스마트 우편함 관리 화면과 서버 점검 자동화.</p>
+  <h3>학력</h3>
+  <p>경기대학교 수학과 학사 · 2016.03 – 2021.08</p>
+  <h3>이 문서에서 보여주는 기술</h3>
+  <p>
+    <span class="tag">Java 21</span><span class="tag">Spring Boot 4.1</span><span class="tag">Spring Security</span><span class="tag">JWT</span>
+    <span class="tag">JPA</span><span class="tag">MySQL</span><span class="tag">Redis</span><span class="tag">Next.js 16</span>
+    <span class="tag">React 19</span><span class="tag">TypeScript</span><span class="tag">Zustand</span><span class="tag">Docker</span>
+    <span class="tag">Nginx</span><span class="tag">AWS EC2 · RDS · S3</span><span class="tag">GitHub Actions</span>
+  </p>
+  <h3>기여를 적는 기준</h3>
+  <ul>
+    <li>공개 저장소의 커밋 작성자는 Git 기록상 KimSunWooo입니다. 줄 단위로 직접 작성 비율을 저장소만으로 확정하지 않습니다.</li>
+    <li>웹 포트폴리오 서비스에서 AI 코딩 도구를 어느 범위까지 썼는지는 기록으로 확정되지 않아 단정하지 않습니다.</li>
+    <li>자동매매와 AI 투자 판단 에이전트는 지원자가 Cursor AI 바이브코딩으로 개발했다고 밝힌 프로젝트입니다. 운영 사이트 프로젝트 카드에도 같은 취지가 있습니다.</li>
+  </ul>
+</section>
+
+<section class="page">
+  <p class="kicker">02 · PROJECTS</p>
+  <h2>2026년 프로젝트 요약</h2>
+  <table>
+    <thead>
+      <tr><th>프로젝트</th><th>역할 관점</th><th>현재 상태</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>웹 포트폴리오 서비스<br /><span class="small">KimSunWooo/portfolio</span></td>
+        <td>Spring Boot API, Next.js, 인증, 장바구니, 캐시, EC2 배포</td>
+        <td>공개 서비스 운영 중. 장바구니 동기화의 DB 멱등은 로컬 작업 트리에만 있음</td>
+      </tr>
+      <tr>
+        <td>KIS 자동매매<br /><span class="small">KimSunWooo/Auto-Trading-system</span></td>
+        <td>Next.js 웹앱, 주문 상태, 멱등성, Worker</td>
+        <td>Cursor 바이브코딩. KIS PAPER에서 개발·검증 중. REAL 주문은 잠금</td>
+      </tr>
+      <tr>
+        <td>AI 투자 판단 에이전트<br /><span class="small">KimSunWooo/Auto_Trading_AI_Agent</span></td>
+        <td>주문 실행과 분리된 판단 API를 의도한 독립 저장소</td>
+        <td>이번 환경에서 저장소 코드를 열지 못함. 구현 완료로 적지 않음</td>
+      </tr>
+      <tr>
+        <td>Python 영상·검출</td>
+        <td>프레임 버퍼, 프로토콜, 파이프라인, HTTP/WebSocket</td>
+        <td>웹 직무의 보조 사례. 모델 성능은 다루지 않음</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>문서에서 구분하는 것</h3>
+  <ul>
+    <li><strong>코드로 확인한 구현</strong>과 <strong>테스트 코드</strong>, <strong>운영 화면에서 본 동작</strong>을 나눕니다.</li>
+    <li>README나 커뮤니티 글의 개선율은 측정 원본이 저장소에 없으면 성과 수치로 쓰지 않습니다.</li>
+    <li>100원 결제와 자동 취소는 테스트 결제입니다. 매출이나 운영 결제 성과가 아닙니다.</li>
+    <li>자동매매의 REAL 매매와 수익률은 다루지 않습니다.</li>
+  </ul>
+  <div class="note">
+    <p class="small" style="margin:0;">분석에 사용한 자동매매 클론은 2026-10-12 커밋 52d1aaf의 shallow clone입니다. 포트폴리오 서비스는 로컬 main 9fbcd64와, 그 위에 있는 미커밋 장바구니 변경을 구분했습니다.</p>
+  </div>
+</section>
+
+<section class="page">
+  <p class="kicker">03 · PORTFOLIO SERVICE</p>
+  <h2>운영 중인 웹 서비스</h2>
+  <p>정적 소개 페이지가 아니라 이력·프로젝트·상품·장바구니·커뮤니티를 API로 읽고 관리자 권한으로 고치는 서비스입니다. 상품 데이터는 인증, 소유권, 캐시, 결제 상태 전이를 다루기 위한 모듈입니다.</p>
+  <div class="grid2">
+    <figure>
+      <img class="shot-sm" src="../assets/screenshots/home.png" alt="메인 히어로" />
+      <figcaption>메인. 공개 서비스 swportfolioservices.com, 2026-10-13 캡처.</figcaption>
+    </figure>
+    <figure>
+      <img class="shot-sm" src="../assets/screenshots/login.png" alt="로그인" />
+      <figcaption>로그인. Access는 응답 본문, Refresh는 HttpOnly 쿠키로 내려갑니다.</figcaption>
+    </figure>
+  </div>
+  <div class="grid2" style="margin-top:3mm;">
+    <figure>
+      <img class="shot-sm" src="../assets/screenshots/shop.png" alt="상품 목록" />
+      <figcaption>상품 목록. 공개 GET /api/products. 캡처 시점 38개.</figcaption>
+    </figure>
+    <figure>
+      <img class="shot-fit" src="../assets/screenshots/home-projects.png" alt="프로젝트 카드" />
+      <figcaption>홈의 프로젝트 카드. 자동매매는 바이브코딩·PAPER·진행 중으로 표시됩니다.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="page">
+  <p class="kicker">03 · ARCHITECTURE</p>
+  <h2>서비스 구성</h2>
+  <figure>
+    <img class="diagram" src="../assets/diagrams/architecture.svg" alt="아키텍처" />
+    <figcaption>브라우저, Next.js, Nginx, Spring Boot, Redis, MySQL, S3. 코드와 배포 스크립트를 기준으로 그린 구성입니다.</figcaption>
+  </figure>
+  <h3>요청이 갈라지는 지점</h3>
+  <ul>
+    <li>브라우저의 API 주소는 <span class="path">NEXT_PUBLIC_API_URL</span>, 서버 렌더의 주소는 <span class="path">INTERNAL_API_URL</span>입니다. <span class="path">frontend/src/lib/api.ts</span></li>
+    <li>배포 시 Nginx <span class="path">/api</span>는 <span class="path">service-url.inc</span>의 upstream으로 프록시합니다. <span class="path">deploy.sh</span>, <span class="path">ops/nginx/rewrite_api_proxy.py</span></li>
+    <li>백엔드와 프론트는 서로 다른 컨테이너로 올리고, 슬롯을 바꿔 Nginx를 reload하는 경로가 <span class="path">deploy.sh</span>에 있습니다. 진행 중 배포는 취소하지 않도록 workflow concurrency가 걸려 있습니다.</li>
+    <li>GitHub Actions는 배포 스크립트 검사, Gradle 테스트, 프론트 lint·타입·테스트·빌드 뒤에 이미지를 푸시하고 EC2에서 해당 커밋의 <span class="path">deploy.sh</span>를 실행합니다.</li>
+  </ul>
+  <p class="small">이번 문서 작업에서 GitHub Actions 배포를 다시 실행하지는 않았습니다. 위 내용은 workflow와 스크립트에 있는 절차입니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">03 · AUTH AND DATA</p>
+  <h2>인증과 데이터 소유권</h2>
+  <figure>
+    <img class="diagram" src="../assets/diagrams/auth-flow.svg" alt="인증 흐름" />
+    <figcaption>Access와 Refresh를 나눈 이유: 짧은 호출 권한과 갱신 수단을 분리하고, 갱신 토큰은 자바스크립트가 읽지 못하게 합니다.</figcaption>
+  </figure>
+  <div class="grid2">
+    <div>
+      <h3>문제</h3>
+      <p>새로고침하면 메모리의 Access Token이 사라집니다. 관리자 화면만 역할을 믿으면 API는 통과할 수 있습니다.</p>
+      <h3>구현</h3>
+      <ul>
+        <li>Access 30분, claim <span class="path">tokenType=access</span>, role 포함. <span class="path">JwtTokenProvider</span></li>
+        <li>Refresh 14일, HttpOnly·Secure·SameSite=Lax. <span class="path">UserController</span></li>
+        <li>필터는 Access만 인증 객체로 넣습니다. Refresh로 관리자 API를 호출하면 통과하지 않습니다.</li>
+        <li><span class="path">/api/admin/**</span> 는 <span class="path">hasRole("ADMIN")</span>. 권한 문자열은 <span class="path">ROLE_ADMIN</span>.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>실패했을 때</h3>
+      <p>쿠키가 없거나 Refresh 검증에 실패하면 401입니다. 프론트는 복구 실패와 비로그인을 구분해 안내합니다. <span class="path">ensureAccessToken</span></p>
+      <h3>검증</h3>
+      <p class="small"><span class="path">TokenUseTest</span>, <span class="path">AdminAccessWebTest</span>가 역할과 Refresh 거부를 검사합니다. 이번 세션에서 Gradle을 다시 실행하지는 않았습니다.</p>
+      <h3>데이터</h3>
+      <p class="small">사용자는 이메일 unique. 장바구니는 사용자당 하나. 상품·이미지·상세는 JPA로 나뉘고, 목록 조회는 SALE 상태만 반환합니다. 장바구니 항목 조회는 소유 이메일을 확인합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <p class="kicker">03 · CACHE, CART, PAYMENT</p>
+  <h2>캐시, 장바구니, 테스트 결제</h2>
+  <figure>
+    <img class="diagram" src="../assets/diagrams/cart-redis.svg" alt="장바구니와 캐시" />
+    <figcaption>비회원 장바구니와 회원 장바구니, 그리고 상품 목록 캐시의 경계.</figcaption>
+  </figure>
+  <h3>Redis를 쓴 이유와 직렬화</h3>
+  <p>상품 목록은 같은 조건으로 반복 조회됩니다. 캐시 이름은 <span class="path">productList</span>, 키는 정규화한 카테고리와 검색어입니다. 제네릭 리스트가 타입 없이 복원되는 문제를 피하려고 응답을 <span class="path">ProductListWrapper</span>로 감싸고, Redis 전용 ObjectMapper에 JavaTimeModule과 타입 정보를 넣었습니다. 상품 변경은 커밋 이후에 캐시를 비웁니다. <span class="path">ProductListCacheTest</span>가 키와 삭제 시점을 검사합니다.</p>
+  <p class="small">비밀번호 재설정 코드는 별도 키 <span class="path">AUTH_CODE:</span> 로 3분만 저장합니다. 상품 캐시와 용도가 다릅니다.</p>
+  <h3>장바구니 동기화 — 커밋된 코드와 작업 트리</h3>
+  <p><strong>main 9fbcd64:</strong> Idempotency-Key가 있으면 그 프로세스 메모리 안에서만 한 번 합산합니다. 프로세스가 바뀌면 같은 키가 다시 더해질 수 있습니다.</p>
+  <p><strong>로컬 미커밋:</strong> <span class="path">cart_sync_requests</span> unique (user_email, operation, request_key)와 본문 해시로 재전송을 거절하거나 같은 요청으로 인정합니다. <span class="path">CartSyncMySqlTest</span>가 있습니다. 운영 DB 반영과 main 커밋은 이 문서 시점에 확인하지 못했습니다. 완료된 운영 기능으로 적지 않습니다.</p>
+  <h3>100원 테스트 결제</h3>
+  <p><span class="path">PaymentService</span>는 금액이 100원이 아니면 거절합니다. 승인 응답이 요청과 같아야 DONE을 기록하고, 이어서 자동 취소합니다. 승인 실패 시 DONE을 쓰지 않습니다. 취소가 실패하면 DONE 행은 남기되 완료 응답으로 끝내지 않습니다. 다른 사용자 결제 키는 403입니다. 화면에도 자동 취소와 장바구니 유지가 적혀 있습니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">03 · FRONTEND AND DEPLOY</p>
+  <h2>화면 연동과 배포에서 고친 문제</h2>
+  <div class="grid2">
+    <figure>
+      <img class="shot" src="../assets/screenshots/cart.png" alt="장바구니" />
+      <figcaption>비회원 장바구니. 상품을 담은 뒤 2026-10-13 캡처. 수량은 이 브라우저의 localStorage입니다.</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/screenshots/checkout.png" alt="체크아웃" />
+      <figcaption>체크아웃. 100원 테스트 결제이며 승인 뒤 자동 취소라고 화면에 표시됩니다.</figcaption>
+    </figure>
+  </div>
+  <h3>문제 1. 컨테이너 안의 localhost</h3>
+  <p>브라우저의 localhost와 Next.js 컨테이너의 localhost는 다른 곳입니다. SSR이 컨테이너 자신을 8080으로 치면 Connection Refused가 납니다. 렌더 위치에 따라 API 주소를 나누고, 배포 스크립트는 SSR이 백엔드 컨테이너로 붙도록 주소를 넘깁니다. 이미지 URL도 브라우저가 해석할 수 있는 공개 주소로 맞춥니다.</p>
+  <h3>문제 2. 새로고침 이후의 로그인과 업로드</h3>
+  <p>Access Token은 메모리에만 있습니다. 새로고침 뒤에는 Refresh 쿠키로 Access를 다시 받고, 그 토큰으로 보호 API를 호출합니다. 관리자 여부는 서버 규칙이 최종입니다. FormData를 보낼 때는 Content-Type을 지워서 브라우저가 boundary를 붙이게 합니다. <span class="path">frontend/src/lib/api.ts</span></p>
+  <h3>문제 3. 커뮤니티에 적힌 수치</h3>
+  <figure>
+    <img class="shot-sm" src="../assets/screenshots/community.png" alt="커뮤니티" />
+    <figcaption>트러블슈팅 글 목록. 제목의 개선율은 글의 주장이고, 측정 원본이 저장소에 없어 이 PDF의 성과 수치로 사용하지 않습니다.</figcaption>
+  </figure>
+</section>
+
+<section class="page">
+  <p class="kicker">04 · AUTO TRADING</p>
+  <h2>KIS PAPER 자동매매 웹 애플리케이션</h2>
+  <div class="note">
+    <p style="margin:0 0 1mm;"><strong>개발 방식: Cursor AI를 활용한 바이브코딩 기반 개인 프로젝트</strong></p>
+    <p style="margin:0;"><strong>현재 상태: KIS PAPER 환경에서 개발 및 검증 진행 중</strong></p>
+  </div>
+  <p>투자 전략 소개가 아니라, 로그인·계좌 연결·조건 입력·주문 상태·백그라운드 루프를 가진 Next.js 웹앱으로 봅니다. 패키지명은 <span class="path">mirae-autobuy</span>, Next.js 16.3.5, React 19, Drizzle ORM, MySQL입니다. 별도 Express 서버는 없고 <span class="path">app/api</span> Route와 <span class="path">src/</span> 런타임이 서버 처리입니다.</p>
+  <h3>바이브코딩에서 확인된 범위</h3>
+  <p>운영 사이트의 프로젝트 카드가 이 저장소를 Cursor 바이브코딩 개인 프로젝트로 소개합니다. 저장소 README 자체에는 “바이브코딩”이라는 문장은 없습니다. 줄 단위로 AI가 생성한 코드와 사람이 고친 코드를 가르는 기록은 이번 분석에서 찾지 못했습니다.</p>
+  <p>코드와 문서에서 확인할 수 있는 작업물은 요구 경계, PAPER/REAL 잠금, 주문 상태 모델, Worker lock, startup sync, 그리고 <span class="path">npm test</span>용 테스트 파일입니다. 검증 문서 <span class="path">docs/VERIFICATION_WORKER_ALLOCATION_2026-10-12.md</span>는 당시 커밋 8f76b69에서 642 pass / 0 fail / 21 skip을 적고 있습니다. 그 명령을 이번 환경에서 다시 실행하지는 않았습니다.</p>
+  <h3>화면과 서버</h3>
+  <ul>
+    <li>로그인·세션: <span class="path">app/login</span>, <span class="path">app/api/auth/*</span>, <span class="path">src/auth/session.ts</span></li>
+    <li>PAPER 계좌 연결·검증: <span class="path">app/mypage</span>, <span class="path">/api/accounts/paper</span></li>
+    <li>대시보드·조건·적립·주문 내역: <span class="path">components/trading-app.tsx</span>와 각 패널</li>
+    <li>시세·잔고 갱신: <span class="path">hooks/use-trading.ts</span></li>
+    <li>기동 시 Worker: <span class="path">instrumentation.ts</span>에서 PAPER 런타임 루프</li>
+  </ul>
+  <p class="small">이 환경에는 자동매매 서버를 띄우지 않았습니다. KIS 주문 API도 호출하지 않았습니다. 대시보드 스크린샷은 없어 아래 요청 문서에 따로 적습니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">04 · ORDER INTEGRITY</p>
+  <h2>주문 상태, 멱등성, 재시작</h2>
+  <figure>
+    <img class="diagram" src="../assets/diagrams/order-states.svg" alt="주문 상태" />
+    <figcaption>의도, 접수, 체결을 같은 완료 상태로 합치지 않습니다. UI 배지는 components/orders-panel.tsx 기준입니다.</figcaption>
+  </figure>
+  <div class="grid2">
+    <div>
+      <h3>중복과 불확실</h3>
+      <ul>
+        <li>주문 의도는 <span class="path">order_intents.intent_key</span> 로 계좌 안에 유일합니다.</li>
+        <li>로컬 주문 ID, 증권사 주문번호, 체결 키도 unique입니다.</li>
+        <li>HTTP 타임아웃이나 제출 후 DB 실패는 <span class="path">unknown</span>입니다. 미확인이 있으면 새 주문을 막는 검사가 테스트에 있습니다.</li>
+        <li>HTTP 헤더 이름의 Idempotency-Key는 없습니다. 런타임의 키는 intent id입니다.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>프로세스와 복구</h3>
+      <ul>
+        <li>Worker lock 파일 기본 TTL은 8초입니다. lock이 없으면 주문 사전 검사가 막습니다. <span class="path">src/runtime/worker-lock.ts</span></li>
+        <li>DB가 장부의 기준이고, 기동 시 KIS의 열린 주문·체결과 로컬 상태를 분류합니다. <span class="path">startup-sync.ts</span></li>
+        <li>REAL 주문은 모드, 허용 플래그, 확인 문구가 맞을 때만 열리도록 테스트가 잠금을 검사합니다. 기본 예시는 PAPER이고 REAL은 README에서 LOCKED입니다.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>화면에 완료라고 쓰지 않는 부분</h3>
+  <p><span class="path">pending</span>은 대기, <span class="path">unknown</span>은 미확인, 체결 수량이 주문 수량보다 적으면 부분체결입니다. 주문번호만 받은 상태를 DB에서는 ACCEPTED로 두고 FILLED와 구분합니다. 탭 이름과 빈 목록 문구는 “체결”에 가깝게 적혀 있어, 대기 주문이 있어도 문구만 보면 체결 내역처럼 읽힐 여지는 있습니다. 배지 값은 미체결과 완료를 나눕니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">04 · VERIFICATION</p>
+  <h2>테스트와 아직 운영이 아닌 범위</h2>
+  <table>
+    <thead>
+      <tr><th>구분</th><th>근거</th><th>이번 문서에서의 의미</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>단위·모의</td>
+        <td>FakeBroker, mock fetch, <span class="path">tsx --test</span> 파일 다수</td>
+        <td>상태 전이, lock, unique, REAL 잠금을 코드로 고정</td>
+      </tr>
+      <tr>
+        <td>검증 문서의 일괄 실행</td>
+        <td>2026-10-12 문서, 커밋 8f76b69, 642 pass</td>
+        <td>그 시점의 기록. HEAD 52d1aaf에서 재실행하지 않음</td>
+      </tr>
+      <tr>
+        <td>PAPER API</td>
+        <td>README와 opt-in 스크립트. 예: 국내 VTS 주문번호 서술</td>
+        <td>클론 안에 실행 로그는 없음. 실전 매매 증거가 아님</td>
+      </tr>
+      <tr>
+        <td>REAL</td>
+        <td>코드 경로는 있고 기본값은 잠금</td>
+        <td>운영한 것으로 적지 않음</td>
+      </tr>
+      <tr>
+        <td>장시간 실행</td>
+        <td>README의 soak·WebSocket 항목은 조건부이거나 미완료 표현</td>
+        <td>완료된 무중단 운영으로 적지 않음</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>면접에서 말할 수 있는 설계</h3>
+  <ul>
+    <li>주문을 내기 전에 의도와 로컬 행을 남기고, 증권사 응답이 애매하면 성공으로 덮지 않습니다.</li>
+    <li>같은 의도가 두 번 주문이 되지 않도록 DB unique와 열린 매수 차단이 같이 있습니다.</li>
+    <li>프로세스가 죽으면 lock TTL이 지나고, 다음 기동은 DB와 증권사 조회로 상태를 다시 분류합니다.</li>
+    <li>AI 제안은 이 저장소에서 주문 자격이 기본 거부입니다. <span class="path">autoOrderEnabled</span> 기본값은 false이고, 활성화 API는 403으로 막혀 있습니다.</li>
+  </ul>
+  <p class="small">긴급 정지 UI는 cancel과 flatten을 함께 호출합니다. README가 말하는 stop과 flatten의 분리와 화면 동작이 완전히 같지는 않습니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">05 · AI AGENT</p>
+  <h2>AI 투자 판단 에이전트</h2>
+  <div class="note">
+    <p style="margin:0 0 1mm;"><strong>개발 방식: Cursor AI를 활용한 바이브코딩 기반 독립형 프로젝트</strong></p>
+    <p style="margin:0;">지원자가 명시한 개발 방식입니다. 저장소 코드를 이번 환경에서 열지 못해, 아래는 생산 측 구현 완료 서술이 아닙니다.</p>
+  </div>
+  <h3>확인하지 못한 것</h3>
+  <p><span class="path">https://github.com/KimSunWooo/Auto_Trading_AI_Agent</span> 는 인증 없는 GitHub API에서 404였습니다. 비공개이거나 이름이 다를 수 있습니다. 이 머신에는 GitHub CLI와 credential helper가 없었습니다. 소스, 테스트, Fail-closed 구현, TradeProposal 생성 코드는 보지 못했습니다. 자동매매와 붙어서 운영 중이라고 적지 않습니다. 실계좌 주문도 적지 않습니다.</p>
+  <h3>공개된 소비 측 계약</h3>
+  <p>자동매매 저장소 <span class="path">docs/AI_CONTRACT.md</span> 는 별도 프로세스가 제안을 만들고, 자동매매가 받아서 주문 여부를 결정하는 경계를 적습니다. 스키마 이름은 <span class="path">ai.trade-proposal.v1</span> 입니다.</p>
+  <ul>
+    <li>제안의 dataMode는 FIXTURE, REPLAY, LIVE_OBSERVATION, LIVE_SHADOW뿐이며, 이 모드들은 주문 자격이 없다고 적혀 있습니다.</li>
+    <li>생산 측이 주문을 표시해도 소비 측이 거절합니다. HOLD 계열 행동은 매수·매도로 바꾸지 않습니다.</li>
+    <li>선호 전송은 REST pull입니다. Push 경로는 없다고 적혀 있습니다.</li>
+    <li>자동 주문 활성화는 기본 거부입니다.</li>
+  </ul>
+  <p>이 계약은 자동매매 저장소에 있는 소비 측 문서입니다. 에이전트 저장소가 같은 계약을 구현했는지는 미검증입니다. 비공개 저장소를 포트폴리오에 넣으려면 공개 범위를 정한 뒤 다시 분석해야 합니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">06 · ADDITIONAL</p>
+  <h2>Python 프로젝트에서 가져온 기술 사례</h2>
+  <p class="small">모델 구조와 정확도는 적지 않습니다. 웹 개발과 닿는 동시성, 통신 계약, 파이프라인만 한 장으로 둡니다. 서로 다른 저장소입니다.</p>
+  <table>
+    <thead>
+      <tr><th>사례</th><th>코드에서 본 것</th><th>상태</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>안전모 동작 프로토타입<br /><span class="small">Motion-detected-system<br />ec0737c</span></td>
+        <td><span class="path">LatestFrameBuffer</span>가 lock 아래 프레임을 최대 1장만 유지하고, 새 프레임이 오면 읽지 않은 프레임을 버립니다. 처리가 느릴 때 큐가 쌓이지 않게 하는 구조입니다.</td>
+        <td>대시보드는 데모 시나리오입니다. 정식 서비스가 아니라 착수 전 프로토타입으로 분류합니다. 객체 기반 착용 검출기는 더미입니다.</td>
+      </tr>
+      <tr>
+        <td>돌봄 UI<br /><span class="small">DolBom · 4d11607</span></td>
+        <td>PyQt 클라이언트와 AI를 분리합니다. 제어는 길이 헤더와 JSON, 영상은 JPEG RTP/UDP 초안입니다. 카메라 역할은 <span class="path">CameraHub</span>가 나눕니다.</td>
+        <td>프로토콜 상태는 draft, 기본은 데모입니다. 병원 연동이나 녹화 완료로 보지 않습니다.</td>
+      </tr>
+      <tr>
+        <td>검출 메인 서버<br /><span class="small">deep-learning-project<br />e6565dd</span></td>
+        <td>카메라, 메인, AI, UI가 WebSocket과 HTTP로 나뉩니다. 프레임은 JSON 헤더와 JPEG입니다. 카메라 ID가 여러 개입니다.</td>
+        <td>DolBom은 환경 변수로 이 서버의 미리보기·결과 소켓을 볼 수 있습니다. 선택 연동 코드이며, 통합 운영 완료로 적지 않습니다.</td>
+      </tr>
+      <tr>
+        <td>차량 번호 파이프라인<br /><span class="small">vehicle_detect_system<br />7e906a2</span></td>
+        <td>검출, 분류, 번호판, OCR을 단계로 잇고 실패 시 빈 OCR 결과를 남깁니다. CLI가 <span class="path">output/results.json</span>을 씁니다.</td>
+        <td>이 저장소 안에 HTTP 인식 서버나 DB 적재는 없습니다.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="page">
+  <p class="kicker">07 · ENGINEERING</p>
+  <h2>문제 해결을 한곳에 모으면</h2>
+  <table>
+    <thead>
+      <tr><th>문제</th><th>선택한 처리</th><th>확인</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SSR과 브라우저의 API 호스트가 다름</td>
+        <td>렌더 위치별 URL, Nginx upstream, 공개 이미지 주소</td>
+        <td>api.ts, deploy.sh. 커뮤니티 글은 당시 장애 기록</td>
+      </tr>
+      <tr>
+        <td>Refresh로 관리자 API가 열릴 수 있음</td>
+        <td>tokenType과 role로 Access만 인증, admin 경로는 서버 역할 검사</td>
+        <td>SecurityConfig, TokenUseTest, AdminAccessWebTest</td>
+      </tr>
+      <tr>
+        <td>목록 캐시가 타입을 잃고, 수정 전에 비워질 수 있음</td>
+        <td>Wrapper, 전용 Jackson, 커밋 후 삭제, TTL 10분</td>
+        <td>RedisConfig, ProductListCache. 속도 수치는 제외</td>
+      </tr>
+      <tr>
+        <td>비회원 장바구니 재전송이 수량을 중복 합산</td>
+        <td>main은 프로세스 내 키. 로컬 작업은 DB unique와 본문 해시</td>
+        <td>후자는 미커밋. 운영 반영은 미확인</td>
+      </tr>
+      <tr>
+        <td>테스트 결제를 성공 주문으로 오해</td>
+        <td>100원만 허용, 승인 실패 시 DONE 없음, 취소 실패는 완료 응답 아님</td>
+        <td>PaymentService, 체크아웃 문구, PaymentServiceTest</td>
+      </tr>
+      <tr>
+        <td>주문 타임아웃을 체결로 기록</td>
+        <td>unknown, unique intent, worker lock, 기동 시 재분류</td>
+        <td>자동매매 소스와 테스트. REAL 운영 증거 없음</td>
+      </tr>
+      <tr>
+        <td>영상 프레임이 처리보다 빨리 쌓임</td>
+        <td>최신 1장만 유지하고 나머지를 drop</td>
+        <td>안전모 프로토타입의 LatestFrameBuffer</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>공통으로 둔 기준은 경계에서 상태를 나누고, 애매한 결과를 성공으로 승격하지 않는 것입니다. 화면 문구와 서버 상태가 어긋나면 서버 상태와 테스트를 우선합니다.</p>
+</section>
+
+<section class="page">
+  <p class="kicker">08 · LINKS</p>
+  <h2>링크와 읽는 순서</h2>
+  <table>
+    <thead>
+      <tr><th>이름</th><th>주소</th><th>볼 내용</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>웹 서비스</td>
+        <td><a href="https://swportfolioservices.com">swportfolioservices.com</a></td>
+        <td>이력, 상품, 장바구니, 커뮤니티</td>
+      </tr>
+      <tr>
+        <td>포트폴리오 저장소</td>
+        <td><a href="https://github.com/KimSunWooo/portfolio">github.com/KimSunWooo/portfolio</a></td>
+        <td>Spring Boot, Next.js, 배포</td>
+      </tr>
+      <tr>
+        <td>자동매매</td>
+        <td><a href="https://github.com/KimSunWooo/Auto-Trading-system">github.com/KimSunWooo/Auto-Trading-system</a></td>
+        <td>PAPER 웹앱, 주문 정합성. 바이브코딩</td>
+      </tr>
+      <tr>
+        <td>안전모 프로토타입</td>
+        <td><a href="https://github.com/KimSunWooo/Motion-detected-system">github.com/KimSunWooo/Motion-detected-system</a></td>
+        <td>최신 프레임 버퍼</td>
+      </tr>
+      <tr>
+        <td>돌봄 UI</td>
+        <td><a href="https://github.com/KimSunWooo/DolBom">github.com/KimSunWooo/DolBom</a></td>
+        <td>UI와 통신 초안</td>
+      </tr>
+      <tr>
+        <td>검출 서버</td>
+        <td><a href="https://github.com/KimSunWooo/deep-learning-project">github.com/KimSunWooo/deep-learning-project</a></td>
+        <td>HTTP·WebSocket 경계</td>
+      </tr>
+      <tr>
+        <td>차량 파이프라인</td>
+        <td><a href="https://github.com/KimSunWooo/vehicle_detect_system">github.com/KimSunWooo/vehicle_detect_system</a></td>
+        <td>단계별 JSON 결과</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>같이 보면 좋은 파일</h3>
+  <ul>
+    <li><span class="path">SecurityConfig</span>, <span class="path">JwtTokenProvider</span>, <span class="path">UserController</span></li>
+    <li><span class="path">ProductListCache</span>, <span class="path">RedisConfig</span>, <span class="path">CartService</span>, <span class="path">PaymentService</span></li>
+    <li><span class="path">frontend/src/lib/api.ts</span>, <span class="path">.github/workflows/deploy.yml</span>, <span class="path">deploy.sh</span></li>
+    <li>자동매매 <span class="path">components/orders-panel.tsx</span>, <span class="path">src/runtime/worker-lock.ts</span>, <span class="path">src/runtime/startup-sync.ts</span>, <span class="path">docs/AI_CONTRACT.md</span></li>
+  </ul>
+  <hr class="rule" />
+  <p>김선우 · Backend / Full-stack · 2026</p>
+  <p class="small">관리자 화면과 자동매매 대시보드, AI 에이전트 저장소는 이번 PDF에 포함하지 않았습니다. 필요한 추가 캡처는 SCREENSHOT_REQUESTS.md에 있습니다.</p>
+</section>
+
+</body>
+</html>

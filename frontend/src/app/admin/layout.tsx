@@ -36,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     checkAdminAuth();
-  }, [router]);
+  }, [pathname, router]);
 
   const handleLogout = async () => {
     await logoutUser();

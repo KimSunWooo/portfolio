@@ -4,10 +4,13 @@ import com.project.backend_api.domain.payment.PaymentHistory;
 import com.project.backend_api.dto.payment.PaymentConfirmRequest;
 import com.project.backend_api.dto.payment.PaymentConfirmResponse;
 import com.project.backend_api.repository.PaymentHistoryRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -15,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 public class PaymentService {
 
     public static final long TEST_AMOUNT = 100L;
@@ -23,9 +25,34 @@ public class PaymentService {
 
     private final PaymentGateway paymentGateway;
     private final PaymentHistoryRepository paymentHistoryRepository;
+    private final TransactionOperations transactions;
     private final ConcurrentHashMap<String, Object> paymentLocks = new ConcurrentHashMap<>();
 
-    @Transactional(noRollbackFor = PaymentGatewayException.class)
+    @Autowired
+    public PaymentService(
+            PaymentGateway paymentGateway,
+            PaymentHistoryRepository paymentHistoryRepository,
+            PlatformTransactionManager transactionManager
+    ) {
+        this(paymentGateway, paymentHistoryRepository, requiresNew(transactionManager));
+    }
+
+    PaymentService(
+            PaymentGateway paymentGateway,
+            PaymentHistoryRepository paymentHistoryRepository,
+            TransactionOperations transactions
+    ) {
+        this.paymentGateway = paymentGateway;
+        this.paymentHistoryRepository = paymentHistoryRepository;
+        this.transactions = transactions;
+    }
+
+    private static TransactionTemplate requiresNew(PlatformTransactionManager transactionManager) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template;
+    }
+
     public PaymentConfirmResponse confirmTestPayment(PaymentConfirmRequest request, String userEmail) {
         if (userEmail == null || userEmail.isBlank() || "anonymousUser".equals(userEmail)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -44,7 +71,20 @@ public class PaymentService {
         String orderId = request.getOrderId().trim();
         Object lock = paymentLocks.computeIfAbsent(paymentKey, ignored -> new Object());
         synchronized (lock) {
-            return confirmLocked(userEmail, paymentKey, orderId);
+            PaymentGatewayException[] cancelFailure = new PaymentGatewayException[1];
+            PaymentConfirmResponse response = transactions.execute(status -> {
+                try {
+                    return confirmLocked(userEmail, paymentKey, orderId);
+                } catch (PaymentGatewayException exception) {
+                    // Cancel failure must keep the DONE row. Approval failure writes nothing.
+                    cancelFailure[0] = exception;
+                    return null;
+                }
+            });
+            if (cancelFailure[0] != null) {
+                throw cancelFailure[0];
+            }
+            return response;
         }
     }
 

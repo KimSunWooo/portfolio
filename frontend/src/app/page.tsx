@@ -7,8 +7,6 @@ import {
   type PortfolioProject,
   type ResumeData,
 } from "../lib/api";
-import Image from "next/image";
-
 export const dynamic = "force-dynamic";
 
 const fallback: ResumeData = {

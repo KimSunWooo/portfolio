@@ -17,7 +17,7 @@ export const useCartStore = create<CartState>()((set) => ({
     try {
       const count = await fetchCartCount();
       set({ cartCount: count });
-    } catch (error) {
+    } catch {
       set({ cartCount: 0 });
     }
   }

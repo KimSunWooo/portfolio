@@ -29,8 +29,8 @@ export default function ProductCard({
       await refreshCartCount(); 
       
       alert("장바구니에 담겼습니다!");
-    } catch (error: any) {
-      alert(error.message || "장바구니 담기에 실패했습니다.");
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "장바구니 담기에 실패했습니다.");
     }
   };
 

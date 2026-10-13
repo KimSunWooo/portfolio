@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "../../components/header/Header";
@@ -12,11 +12,11 @@ import {
   updateCartItemQuantity,
   removeCartItem,
   resolveAssetUrl,
-  ensureAccessToken,
-  isAccessTokenValid,
+  resolveAuthState,
   getGuestCart,
   setGuestCart,
   isAdminFromToken,
+  ApiRequestError,
   type CartItemResponse,
 } from "../../lib/api";
 
@@ -26,6 +26,7 @@ export default function CartPage() {
 
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cartError, setCartError] = useState("");
 
   const router = useRouter();
 
@@ -38,14 +39,13 @@ export default function CartPage() {
    * 따라서 장바구니처럼 권한이 필요한 API를 호출할 때는
    * 실제 JWT 상태를 우선한다.
    */
-  const resolveAuthentication = async (): Promise<boolean> => {
-    const token = await ensureAccessToken();
-    const authenticated = isAccessTokenValid(token);
-    if (authenticated) {
-      useAuthStore.getState().setAuthState(true, isAdminFromToken(token));
+  const resolveAuthentication = useCallback(async () => {
+    const auth = await resolveAuthState();
+    if (auth.phase === "authenticated") {
+      useAuthStore.getState().setAuthState(true, isAdminFromToken(auth.token));
     }
-    return authenticated;
-  };
+    return auth;
+  }, []);
 
   /**
    * 장바구니 조회
@@ -56,45 +56,45 @@ export default function CartPage() {
    * 비회원:
    *   localStorage["guestCart"]
    */
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
+    setCartError("");
+    const auth = await resolveAuthentication();
+    if (auth.phase === "recovery_failed") {
+      setIsLoggedIn(false);
+      setCartItems([]);
+      setCartError(auth.message);
+      setLoading(false);
+      return;
+    }
+    if (auth.phase === "guest") {
+      setCartItems(getGuestCart());
+      setLoading(false);
+      return;
+    }
     try {
-      setLoading(true);
-
-      const authenticated = await resolveAuthentication();
-
-      if (authenticated) {
-        const items = await fetchCartItems();
-        setCartItems(items);
-      } else {
-        setCartItems(getGuestCart());
-      }
-    } catch (error: any) {
+      setCartItems(await fetchCartItems());
+    } catch (error: unknown) {
       console.error("장바구니 조회 실패:", error);
-
-      /**
-       * 서버 API가 인증 문제로 실패한 경우
-       *
-       * 비회원으로 강제 전환시키되,
-       * 로그인 사용자 장바구니를 guestCart로 임의 변환하지 않는다.
-       */
-      if (
-        error?.status === 401 ||
-        error?.status === 403 ||
-        error?.message?.includes("401") ||
-        error?.message?.includes("403")
-      ) {
-        setIsLoggedIn(false);
-
-        setCartItems(getGuestCart());
-      }
+      setIsLoggedIn(false);
+      setCartItems([]);
+      setCartError(error instanceof Error ? error.message : "장바구니를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolveAuthentication, setIsLoggedIn]);
 
   useEffect(() => {
-    loadCart();
-  }, [isLoggedIn]);
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setLoading(true);
+      await loadCart();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, loadCart]);
 
   /**
    * 수량 변경
@@ -112,9 +112,13 @@ export default function CartPage() {
     if (newQuantity < 1) return;
 
     try {
-      const authenticated = await resolveAuthentication();
+      const auth = await resolveAuthentication();
+      if (auth.phase === "recovery_failed") {
+        alert(auth.message);
+        return;
+      }
 
-      if (authenticated) {
+      if (auth.phase === "authenticated") {
         await updateCartItemQuantity(cartItemId, newQuantity);
 
         const updatedItems = cartItems.map((item) =>
@@ -146,9 +150,9 @@ export default function CartPage() {
       setGuestCart(updatedItems);
 
       await refreshCartCount();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("장바구니 수량 변경 실패:", error);
-      alert(error?.message || "수량 변경 중 오류가 발생했습니다.");
+      alert(error instanceof Error ? error.message : "수량 변경 중 오류가 발생했습니다.");
     }
   };
 
@@ -168,9 +172,13 @@ export default function CartPage() {
     if (!confirm("상품을 삭제하시겠습니까?")) return;
 
     try {
-      const authenticated = await resolveAuthentication();
+      const auth = await resolveAuthentication();
+      if (auth.phase === "recovery_failed") {
+        alert(auth.message);
+        return;
+      }
 
-      if (authenticated) {
+      if (auth.phase === "authenticated") {
         /**
          * 로그인 사용자의 경우에만
          * Spring Boot의 DELETE API를 호출한다.
@@ -214,26 +222,12 @@ export default function CartPage() {
       setGuestCart(updatedItems);
 
       await refreshCartCount();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("장바구니 삭제 실패:", error);
-
-      /**
-       * 서버 API에서 인증 오류가 발생한 경우
-       * 로그인 상태를 무효화한다.
-       */
-      if (
-        error?.status === 401 ||
-        error?.status === 403 ||
-        error?.message?.includes("401") ||
-        error?.message?.includes("403")
-      ) {
+      if (error instanceof ApiRequestError && (error.kind === "unauthenticated" || error.kind === "forbidden")) {
         setIsLoggedIn(false);
       }
-
-      alert(
-        "삭제 중 오류가 발생했습니다: " +
-          (error?.message || "알 수 없는 오류")
-      );
+      alert(error instanceof Error ? error.message : "삭제 중 오류가 발생했습니다.");
     }
   };
 
@@ -259,7 +253,7 @@ export default function CartPage() {
           ) : cartItems.length === 0 ? (
             <div className="py-20 text-center">
               <p className="mb-6 text-[12px] tracking-[0.05em] text-[#777]">
-                장바구니에 담긴 상품이 없습니다.
+                {cartError || "장바구니에 담긴 상품이 없습니다."}
               </p>
 
               <Link

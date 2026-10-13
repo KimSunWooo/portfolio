@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   fetchCommunityPosts,
   deleteCommunityPost,
@@ -23,8 +22,7 @@ function formatDate(value: string) {
 }
 
 export default function CommunityBoard() {
-  const router = useRouter();
-  const isAdmin = useAuthStore((state) => state.isAdmin); // 💡 관리자 여부 확인
+  const isAdmin = useAuthStore((state) => state.isAdmin);
 
   const [posts, setPosts] = useState<CommunityPostListItem[]>([]);
   const [category, setCategory] = useState<"ALL" | CommunityCategory>("ALL");
@@ -42,7 +40,24 @@ export default function CommunityBoard() {
   };
 
   useEffect(() => {
-    loadPosts();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setLoading(true);
+      setError("");
+      try {
+        const data = await fetchCommunityPosts(category === "ALL" ? undefined : category);
+        if (!cancelled) setPosts(data);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "목록을 불러오지 못했습니다.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [category]);
 
   const postCount = useMemo(() => posts.length, [posts]);

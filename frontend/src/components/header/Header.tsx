@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useCartStore } from "../../store/useCartStore";
 import {
@@ -14,11 +14,17 @@ import {
   ensureAccessToken,
 } from "../../lib/api";
 
+function subscribeToNothing() {
+  return () => {};
+}
+
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const mounted = useSyncExternalStore(subscribeToNothing, () => true, () => false);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [menuPath, setMenuPath] = useState<string | null>(null);
+  const isMenuOpen = menuPath === pathname;
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   const {
@@ -29,14 +35,6 @@ export default function Header() {
   } = useAuthStore();
 
   const { cartCount, refreshCartCount } = useCartStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
   const initializeAuth = async () => {
@@ -118,7 +116,7 @@ export default function Header() {
         redirectPath = "/shop";
       }
 
-      window.location.href = redirectPath;
+      router.push(redirectPath);
     }
   };
 
@@ -173,7 +171,7 @@ export default function Header() {
             </Link>
 
             <button
-              onClick={() => setIsMenuOpen(true)}
+              onClick={() => setMenuPath(pathname)}
               className="p-1"
               aria-label="Open Menu"
             >
@@ -202,7 +200,7 @@ export default function Header() {
             ? "opacity-100 visible"
             : "opacity-0 invisible"
         }`}
-        onClick={() => setIsMenuOpen(false)}
+        onClick={() => setMenuPath(null)}
       />
 
       <aside
@@ -212,7 +210,7 @@ export default function Header() {
       >
         <div className="flex justify-end mb-8">
           <button
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => setMenuPath(null)}
             className="p-1"
           >
             <svg

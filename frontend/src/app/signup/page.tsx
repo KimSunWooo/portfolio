@@ -38,8 +38,8 @@ export default function SignupPage() {
       alert("회원가입이 완료되었습니다. 로그인해 주세요!");
       router.push("/login");
 
-    } catch (error: any) {
-      alert(error.message || "회원가입 중 오류가 발생했습니다.");
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.");
     }
   };
 

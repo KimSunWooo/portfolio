@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductDetailResponse, resolveAssetUrl } from "../../lib/api"; // 경로를 맞춰주세요
-import { addToCart, getAccessToken } from "../../lib/api";
+import { addToCart, ApiRequestError } from "../../lib/api";
 import { useCartStore } from "../../store/useCartStore";
 
 function formatPrice(price: number) {
@@ -23,39 +23,34 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
   const mainImage = resolveAssetUrl(product.thumbnail) || "/images/no-image.png";
 
   const handleAddToCart = async () => {
-    // 1. 로그인 체크 (토큰이 없으면 로그인 페이지로)
-    if (!getAccessToken()) {
-      alert("로그인이 필요한 서비스입니다.");
-      router.push("/login");
-      return;
-    }
-
     try {
-      // 2. 방금 만든 API 호출
       await addToCart(product.id, quantity);
-      
-      // 3. 확인 후 장바구니로 이동할지 묻기
+      await refreshCartCount();
       if (confirm("장바구니에 상품을 담았습니다. 장바구니로 이동하시겠습니까?")) {
         router.push("/cart");
       }
-    } catch (error: any) {
-      alert(error.message || "장바구니 담기에 실패했습니다.");
+    } catch (error: unknown) {
+      if (error instanceof ApiRequestError && error.kind === "unauthenticated") {
+        alert("로그인이 필요한 서비스입니다.");
+        router.push("/login");
+        return;
+      }
+      alert(error instanceof Error ? error.message : "장바구니 담기에 실패했습니다.");
     }
   };
 
   // 💡 차후 구현하실 '바로 구매' 핸들러 (참고용)
   const handleBuyNow = async () => {
-    if (!getAccessToken()) {
-      alert("로그인이 필요한 서비스입니다.");
-      router.push("/login");
-      return;
-    }
     try {
       await addToCart(product.id, quantity);
-      // TODO: 차후 결제(Order) 페이지로 즉시 이동
-      router.push("/checkout"); 
-    } catch (error: any) {
-      alert(error.message);
+      router.push("/checkout");
+    } catch (error: unknown) {
+      if (error instanceof ApiRequestError && error.kind === "unauthenticated") {
+        alert("로그인이 필요한 서비스입니다.");
+        router.push("/login");
+        return;
+      }
+      alert(error instanceof Error ? error.message : "장바구니 담기에 실패했습니다.");
     }
   };
   

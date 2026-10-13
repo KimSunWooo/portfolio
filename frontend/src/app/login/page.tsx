@@ -65,8 +65,8 @@ export default function Login() {
 
       const next = new URLSearchParams(window.location.search).get("next");
       router.push(safeNextPath(next, isAdmin));
-    } catch (error: any) {
-      setErrorMessage(error.message);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "로그인에 실패했습니다.");
     }
   };
 

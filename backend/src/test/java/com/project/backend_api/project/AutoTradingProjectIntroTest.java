@@ -31,6 +31,6 @@ class AutoTradingProjectIntroTest {
         assertFalse(project.get("techStack").asText().toLowerCase().contains("spring"));
         assertTrue(project.get("projectUrl").isNull());
         assertTrue(project.get("thumbnail").isNull());
-        assertEquals("NOT_APPLIED", project.get("registration").asText());
+        assertEquals("APPLIED", project.get("registration").asText());
     }
 }

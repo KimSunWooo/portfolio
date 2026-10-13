@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import type { ShopMenu } from "@/app/admin/shop/page";
 
 import {
@@ -40,13 +40,19 @@ function DashboardEditor() {
   const [userCount, setUserCount] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      fetchAdminProducts().catch(() => []),
-      fetchAdminUsers(0, 1).catch(() => ({ totalElements: 0 }))
-    ]).then(([products, usersRes]) => {
+    let cancelled = false;
+    void (async () => {
+      const [products, usersRes] = await Promise.all([
+        fetchAdminProducts().catch(() => []),
+        fetchAdminUsers(0, 1).catch(() => ({ content: [], totalPages: 0, totalElements: 0, number: 0 })),
+      ]);
+      if (cancelled) return;
       setProductCount(products.length);
-      setUserCount((usersRes as any).totalElements || 0);
-    });
+      setUserCount(usersRes.totalElements || 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -119,7 +125,14 @@ function ProductsEditor() {
   };
 
   useEffect(() => {
-    loadProducts();
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadProducts();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const isFormOpen = isAdding || editingProduct !== null;
@@ -387,9 +400,9 @@ function UsersEditor() {
     setLoading(true);
     try {
       const data = await fetchAdminUsers(currentPage, 10, searchName, searchTier);
-      setUsers((data as any).content || []);
-      setTotalPages((data as any).totalPages || 0);
-      setTotalElements((data as any).totalElements || 0);
+      setUsers(data.content);
+      setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements);
     } catch (e) {
       console.error("유저 내역 로드 실패:", e);
     } finally {
@@ -397,7 +410,18 @@ function UsersEditor() {
     }
   };
 
-  useEffect(() => { loadUsers(); }, [currentPage]);
+  const loadCurrentUsers = useEffectEvent(() => loadUsers());
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) await loadCurrentUsers();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage]);
 
   const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -552,13 +576,15 @@ function ProductForm({
   const [loadingDetailImages, setLoadingDetailImages] = useState(false);
 
   useEffect(() => {
-    if (!product?.id) {
-      setExistingDetailImages([]);
-      setRemovedDetailImageIds([]);
-      return;
-    }
     let cancelled = false;
-    const loadExistingImages = async () => {
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!product?.id) {
+        setExistingDetailImages([]);
+        setRemovedDetailImageIds([]);
+        return;
+      }
       try {
         setLoadingDetailImages(true);
         const images = await fetchProductImages(product.id);
@@ -570,8 +596,7 @@ function ProductForm({
       } finally {
         if (!cancelled) setLoadingDetailImages(false);
       }
-    };
-    loadExistingImages();
+    })();
     return () => { cancelled = true; };
   }, [product?.id]);
 
@@ -729,13 +754,12 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
 }
 
 function ProductImageInput({ image, currentImage, onChange }: { image: File | null; currentImage?: string | null; onChange: (file: File | null) => void; }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!image) return setPreviewUrl(null);
-    const objectUrl = URL.createObjectURL(image);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [image]);
+  const [preview, setPreview] = useState<{ file: File | null; url: string | null }>({ file: null, url: null });
+  if (image !== preview.file) {
+    if (preview.url) URL.revokeObjectURL(preview.url);
+    setPreview({ file: image, url: image ? URL.createObjectURL(image) : null });
+  }
+  const previewUrl = preview.url;
 
   const displayImage = previewUrl || currentImage || null;
 
@@ -763,12 +787,13 @@ function ProductImageInput({ image, currentImage, onChange }: { image: File | nu
 }
 
 function DetailImagesInput({ images, existingImages, loading, onChange, onRemoveExisting }: { images: File[]; existingImages: ProductImage[]; loading: boolean; onChange: (files: File[]) => void; onRemoveExisting: (imageId: number) => void; }) {
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  useEffect(() => {
-    const urls = images.map((file) => URL.createObjectURL(file));
-    setPreviewUrls(urls);
-    return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [images]);
+  const [storedPreviews, setStoredPreviews] = useState<{ files: File[]; urls: string[] }>({ files: [], urls: [] });
+  const sameFiles = storedPreviews.files.length === images.length && storedPreviews.files.every((file, index) => file === images[index]);
+  if (!sameFiles) {
+    storedPreviews.urls.forEach((url) => URL.revokeObjectURL(url));
+    setStoredPreviews({ files: images, urls: images.map((file) => URL.createObjectURL(file)) });
+  }
+  const previewUrls = storedPreviews.urls;
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);

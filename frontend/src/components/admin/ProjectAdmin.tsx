@@ -40,7 +40,20 @@ export default function ProjectAdmin() {
 
   async function reload() { setItems(await fetchProjects()); }
   
-  useEffect(() => { reload().catch(e => setNotice(e.message)); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const next = await fetchProjects();
+        if (!cancelled) setItems(next);
+      } catch (error: unknown) {
+        if (!cancelled) setNotice(error instanceof Error ? error.message : "요청에 실패했습니다.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   useEffect(() => { 
     if (!notice) return; 
     const t = setTimeout(() => setNotice(null), 2200); 
@@ -182,7 +195,9 @@ function RightSidePanel({ project, run, onClose }: { project: PortfolioProject |
   const [form, setForm] = useState<ProjectRequest>(project ? { ...project } : emptyRequest);
   const [pendingMedia, setPendingMedia] = useState<PendingMediaItem[]>([]);
 
-  const field = (key: keyof ProjectRequest, v: any) => setForm({ ...form, [key]: v });
+  const field = <K extends keyof ProjectRequest>(key: K, value: ProjectRequest[K]) => {
+    setForm({ ...form, [key]: value });
+  };
 
   const handleSubmit = async () => {
     if (!form.title || form.title.trim() === "") return alert("프로젝트 제목을 입력해주세요.");
@@ -277,10 +292,24 @@ function ProjectMediaSection({ projectId, pendingMedia, setPendingMedia }: { pro
   async function reloadMedia() {
     if (!projectId) return; 
     try { setItems(await fetchProjectMedia(projectId)); } 
-    catch (error:any) { setNotice(error.message); }
+    catch (error: unknown) { setNotice(error instanceof Error ? error.message : "요청에 실패했습니다."); }
   }
 
-  useEffect(() => { reloadMedia(); }, [projectId]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!projectId) return;
+      try {
+        const next = await fetchProjectMedia(projectId);
+        if (!cancelled) setItems(next);
+      } catch (error: unknown) {
+        if (!cancelled) setNotice(error instanceof Error ? error.message : "요청에 실패했습니다.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -289,16 +318,16 @@ function ProjectMediaSection({ projectId, pendingMedia, setPendingMedia }: { pro
     if (projectId) {
       setNotice("서버로 미디어 파일을 업로드 중입니다...");
       try {
-        let maxOrder = items.length > 0 ? Math.max(...items.map(i => i.sortOrder ?? 0)) : 0;
+        const maxOrder = items.length > 0 ? Math.max(...items.map(i => i.sortOrder ?? 0)) : 0;
         for (let i = 0; i < selectedFiles.length; i++) {
           await createProjectMedia(projectId, { file: selectedFiles[i], caption: "", description: "", altText: "", sortOrder: maxOrder + i + 1 });
         }
         await reloadMedia();
         setNotice("선택한 미디어가 모두 등록되었습니다.");
         setTimeout(() => setNotice(null), 2000);
-      } catch (error:any) { setNotice(error.message); }
+      } catch (error: unknown) { setNotice(error instanceof Error ? error.message : "요청에 실패했습니다."); }
     } else {
-      let maxOrder = pendingMedia.length > 0 ? Math.max(...pendingMedia.map(i => i.sortOrder ?? 0)) : 0;
+      const maxOrder = pendingMedia.length > 0 ? Math.max(...pendingMedia.map(i => i.sortOrder ?? 0)) : 0;
       const newPendings: PendingMediaItem[] = selectedFiles.map((f, i) => ({
         id: Date.now().toString() + "-" + i, file: f, caption: "", description: "", sortOrder: maxOrder + i + 1, previewUrl: URL.createObjectURL(f)
       }));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   createResumeEducation,
   createResumeExperience,
@@ -70,7 +71,15 @@ export default function ResumeAdmin() {
   const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [profilePreview, setProfilePreview] = useState<{ file: File | null; url: string | null }>({ file: null, url: null });
+  if (profileImage !== profilePreview.file) {
+    if (profilePreview.url) URL.revokeObjectURL(profilePreview.url);
+    setProfilePreview({
+      file: profileImage,
+      url: profileImage ? URL.createObjectURL(profileImage) : null,
+    });
+  }
+  const profileImagePreview = profilePreview.url;
 
   const savedProfileImageUrl = resolveBackendAssetUrl(profile.profileImage);
 
@@ -89,13 +98,6 @@ export default function ResumeAdmin() {
       return false;
     } finally { setLoading(false); }
   }
-
-  useEffect(() => {
-    if (!profileImage) return setProfileImagePreview(null);
-    const url = URL.createObjectURL(profileImage);
-    setProfileImagePreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [profileImage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +158,7 @@ export default function ResumeAdmin() {
             <p className="text-[9px] tracking-[0.16em] text-[#777] sm:text-[10px]">ADMIN · RESUME CMS</p>
             <h1 className="mt-2 text-[clamp(36px,7vw,92px)] font-normal tracking-[-0.06em] sm:mt-3">Edit Resume</h1>
           </div>
-          <a href="/" className="text-[9px] tracking-[0.12em] text-black no-underline sm:text-[10px]">VIEW SITE ↗</a>
+          <Link href="/" className="text-[9px] tracking-[0.12em] text-black no-underline sm:text-[10px]">VIEW SITE ↗</Link>
         </div>
 
         {initialLoadError && !loading && (

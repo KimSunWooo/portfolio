@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="390" viewBox="0 0 920 390">
+<style>
+text { font-family: "Noto Sans CJK KR", "Noto Sans CJK JP", sans-serif; fill:#111; }
+.box { fill:#fff; stroke:#111; stroke-width:1.4; }
+.soft { fill:#f4f4f4; stroke:#222; stroke-width:1.2; }
+.muted { fill:#666; font-size:12px; }
+.title { font-size:15px; font-weight:700; }
+.label { font-size:13px; }
+.small { font-size:11px; fill:#333; }
+</style>
+
+<text class="title" x="24" y="32">주문 의도와 체결을 분리한 상태</text>
+<rect class="box" x="24" y="80" width="150" height="64" rx="2"/><text class="label" x="99" y="108" text-anchor="middle">Intent</text><text class="small" x="99" y="128" text-anchor="middle">intent_key</text>
+<rect class="soft" x="210" y="80" width="160" height="64" rx="2"/><text class="label" x="290" y="108" text-anchor="middle">pending</text><text class="small" x="290" y="128" text-anchor="middle">UI 대기</text>
+<rect class="box" x="406" y="80" width="170" height="64" rx="2"/><text class="label" x="491" y="108" text-anchor="middle">ODNO 접수</text><text class="small" x="491" y="128" text-anchor="middle">DB ACCEPTED</text>
+<rect class="soft" x="612" y="80" width="150" height="64" rx="2"/><text class="label" x="687" y="108" text-anchor="middle">filled</text><text class="small" x="687" y="128" text-anchor="middle">UI 체결</text>
+<rect class="box" x="210" y="200" width="160" height="64" rx="2"/><text class="label" x="290" y="228" text-anchor="middle">unknown</text><text class="small" x="290" y="248" text-anchor="middle">UI 미확인</text>
+<rect class="soft" x="406" y="200" width="170" height="64" rx="2"/><text class="label" x="491" y="228" text-anchor="middle">cancelled</text><text class="small" x="491" y="248" text-anchor="middle">UI 취소</text>
+<rect class="box" x="612" y="200" width="150" height="64" rx="2"/><text class="label" x="687" y="228" text-anchor="middle">거부</text><text class="small" x="687" y="248" text-anchor="middle">그 외 상태</text>
+<line x1="174" y1="112" x2="210" y2="112" stroke="#111"/>
+<line x1="370" y1="112" x2="406" y2="112" stroke="#111"/>
+<line x1="576" y1="112" x2="612" y2="112" stroke="#111"/>
+<line x1="290" y1="144" x2="290" y2="200" stroke="#111"/>
+<text class="small" x="24" y="310">타임아웃·제출 후 DB 기록 실패는 unknown. 접수 번호만으로 체결 완료가 되지 않는다.</text>
+<text class="small" x="24" y="332">같은 계좌의 intent_key, 주문번호, 체결 키에 unique 제약이 있다.</text>
+<text class="small" x="24" y="354">Worker lock을 잡지 않으면 주문을 진행하지 않는다. REAL 주문은 여러 플래그가 모두 있어야 한다.</text>
+
+</svg>

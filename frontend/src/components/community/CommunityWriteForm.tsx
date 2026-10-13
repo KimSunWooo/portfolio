@@ -1,11 +1,12 @@
 "use client";
 
-import { SyntheticEvent, useState, useEffect } from "react";
+import { SyntheticEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   createCommunityPost,
   type CommunityCategory,
+  type CommunityPostCreatePayload,
 } from "../../lib/api";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -13,12 +14,12 @@ export default function CommunityWriteForm() {
   const router = useRouter();
   
   const { isAdmin } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   // 폼 상태들
   const [category, setCategory] = useState<CommunityCategory | "TECH">("TECH");
   const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("ADMIN");
+  const [author] = useState("ADMIN");
   const [isPinned, setIsPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -32,12 +33,11 @@ export default function CommunityWriteForm() {
   const [content, setContent] = useState(""); // 💡 순수 해결 과정만 담기 위한 상태
 
   useEffect(() => {
-    setIsChecking(false);
-    if (!isAdmin) {
+    if (mounted && !isAdmin) {
       alert("관리자만 접근할 수 있는 페이지입니다.");
       router.replace("/community");
     }
-  }, [isAdmin, router]);
+  }, [mounted, isAdmin, router]);
 
   async function handleSubmit(event: SyntheticEvent) {
     event.preventDefault();
@@ -52,7 +52,7 @@ export default function CommunityWriteForm() {
       setSubmitting(true);
       
       // 💡 거대한 문자열 조립을 제거하고 개별 데이터 객체로 구성합니다.
-      const postData: any = {
+      const postData: CommunityPostCreatePayload = {
         category: category as CommunityCategory,
         title: title.trim(),
         content: content.trim(), // '상세 내용 및 해결 과정' 순수 텍스트만 전송
@@ -81,7 +81,7 @@ export default function CommunityWriteForm() {
     }
   }
 
-  if (isChecking || !isAdmin) {
+  if (!mounted || !isAdmin) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-[12px] tracking-[0.08em] text-[#999]">AUTHORIZATION CHECK...</p>

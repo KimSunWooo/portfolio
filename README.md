@@ -27,7 +27,7 @@
 
 콘텐츠 초안·수정 충돌·변경 이력은 현재 스키마로 기본 경로에 넣지 않았다. 절차는 `docs/follow-up-content-workflow.md`에 있다.
 
-이번 변경의 검증은 로컬 명령이다. `main` push가 실행하는 GitHub Actions 배포는 실행하지 않았고, workflow 파일도 수정하지 않았다.
+시연용 관리자 계정은 `test@test.com` / `test147@`이고, 결제는 100원 테스트 결제다. 이 두 가지는 시연 설계라서 일반 실결제로 바꾸지 않는다.
 
 ---
 
@@ -547,15 +547,17 @@ spring.jpa.hibernate.ddl-auto=validate
 
 # 🚀 CI/CD
 
-GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main`에 backend, frontend, `deploy.sh`, `ops`, workflow 변경이 push되거나 `workflow_dispatch`로 실행할 때 동작한다. README만 바꾼 push는 배포하지 않는다. 같은 workflow의 실행은 `concurrency`로 직렬화하고, 진행 중인 배포는 `cancel-in-progress: false`로 취소하지 않는다.
+GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main`에 backend, frontend, `deploy.sh`, `ops`, workflow 변경이 push되거나 `workflow_dispatch`로 실행할 때 동작한다. Markdown만 바꾼 push는 배포하지 않는다. 같은 workflow의 실행은 `concurrency`로 직렬화하고, 진행 중인 배포는 `cancel-in-progress: false`로 취소하지 않는다.
 
-이미지는 `github.sha`와 호환용 `latest`로 빌드한다. EC2는 `~/portfolio-release/<sha>`에 그 커밋의 `deploy.sh`, `ops/lib`, `ops/nginx`를 두고 그 스크립트를 `sha` 태그로 실행한다. `latest`는 배포 대상으로 쓰지 않는다. `.env`와 `.deploy.lock`은 릴리스 폴더가 아니라 `~/portfolio`를 쓴다. Nginx 백업은 `manifest.tsv`에 원본 경로와 백업 경로를 남기고, 복구는 그 백업 디렉터리의 `restore.sh`로 한다. 배포 전에 `bash ops/tests/run-deploy-checks.sh`가 통과해야 한다.
+Runner는 `ubuntu-24.04`다. `actions/checkout@v5`, `actions/setup-java@v5`, `actions/setup-node@v5`, Docker Buildx/login/build-push의 Node 24용 안정 버전을 쓴다. Java는 Temurin 21, 프런트 검사는 Node 22다. 이 Node 버전은 Actions job의 검사용이고, 운영 프런트 이미지의 `node:20-alpine`과는 따로다. EC2 OS는 이 경고 때문에 바꾸지 않는다.
+
+`verify-deploy`, `backend-tests`, `frontend-checks`가 모두 통과해야 `build-and-push`가 실행된다. `deploy`는 그 이미지 빌드가 성공한 뒤에만 실행된다. 하나라도 실패하면 이미지 push와 EC2 배포는 시작되지 않는다. 백엔드 이미지 빌드 자체는 계속 `./gradlew clean build -x test`다. 업무 테스트는 이미지 빌드 안이 아니라 `backend-tests` job에서 `./gradlew test`로 실행한다. 그 테스트는 운영 RDS, Redis, S3, 메일, 결제에 연결하지 않고 Testcontainers MySQL과 Redis, Fake 결제 게이트웨이를 쓴다.
+
+이미지는 `github.sha`와 호환용 `latest`로 빌드한다. EC2는 `~/portfolio-release/<sha>`에 그 커밋의 `deploy.sh`, `ops/lib`, `ops/nginx`를 두고 그 스크립트를 `sha` 태그로 실행한다. `latest`는 배포 대상으로 쓰지 않는다. `.env`와 `.deploy.lock`은 릴리스 폴더가 아니라 `~/portfolio`를 쓴다. Nginx 백업은 `manifest.tsv`에 원본 경로와 백업 경로를 남기고, 복구는 그 백업 디렉터리의 `restore.sh`로 한다.
 
 Nginx `/api`는 `/etc/nginx/conf.d/service-url.inc`의 `$service_url`을 사용해야 한다. blue는 호스트 8081, green은 호스트 8082다. 프런트엔드는 호스트 3000 하나라서 교체 구간에 짧은 공백이 있다. 브라우저 API와 Next.js 서버 렌더링은 같은 blue/green 백엔드를 본다.
 
-이 저장소 수정은 로컬 검증까지다. EC2와 GitHub push는 실행하지 않았다. 운영 적용 순서와 복구 방법은 배포 작업 보고를 기준으로 한다.
-
-로컬에서 확인한 명령과 결과는 작업 보고를 기준으로 한다. 빌드 통과를 운영 배포 검증으로 보지 않는다.
+이 workflow 수정은 작업 트리에만 있다. push하지 않았고 GitHub Actions도 이 개정으로 실행하지 않았다. 로컬 명령 통과를 운영 배포 완료로 보지 않는다.
 
 ```text
 Git Push main
@@ -579,7 +581,7 @@ Container Deployment
 
 민감한 Docker Hub / AWS / EC2 관련 정보는 GitHub Secrets를 통해 관리합니다.
 
-CI 과정에서는 Backend의 Redis 의존성을 검증하기 위해 Redis Service Container를 함께 사용합니다.
+이미지 빌드 job에는 Redis 서비스 컨테이너를 두지 않는다. Redis가 필요한 검증은 `backend-tests`의 Testcontainers가 격리된 Redis를 띄운다.
 
 ---
 
@@ -597,6 +599,8 @@ Docker Compose
 ```
 
 Production Database는 AWS RDS를 사용하며 Redis Endpoint 역시 환경변수를 통해 주입할 수 있도록 구성했습니다.
+
+운영 백엔드 이미지는 Amazon Corretto 21이다. 운영 프런트 이미지는 빌드와 실행 모두 `node:20-alpine`이다. Node 20 지원 종료 이후의 이미지 교체는 이 변경에 포함하지 않았다. 이미지 런타임을 바꾸려면 별도로 빌드와 화면 동작을 확인해야 한다.
 
 ---
 
@@ -662,17 +666,35 @@ export const options = {
 관련 개인 프로젝트: [미리매수](https://github.com/KimSunWooo/Auto-Trading-system)  
 Cursor를 활용한 바이브코딩으로 개발했다. 포트폴리오 화면 등록 상태는 `docs/projects/auto-trading-project.json`의 `registration`을 본다.
 
+## 로컬 검증
+
+아래 명령은 이 작업 트리에서 확인하는 방법이다. GitHub Actions 성공이나 운영 반영은 push와 운영 DB 적용 이후에만 말할 수 있다.
+
+```bash
+bash ops/tests/run-deploy-checks.sh
+bash -n deploy.sh ops/nginx/apply-api-upstream.sh ops/nginx/recover-service.sh ops/lib/slots.sh ops/tests/run-deploy-checks.sh
+cd backend && ./gradlew test --no-daemon
+cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+git diff --check
+```
+
+백엔드 테스트는 격리된 MySQL과 Redis를 띄운다. 운영 RDS, Redis, S3, 메일, 결제에는 연결하지 않는다. 프런트 인증 테스트는 `frontend/src/lib/authSession.test.mts`다.
+
+2026-10-13 작업 트리에서 로컬로 확인한 결과는 다음과 같다. 배포 모의 검사 27개는 연속 두 번 통과했고, 검사가 만든 flock 프로세스는 남지 않았다. 수정한 셸의 `bash -n`과 workflow YAML 파싱은 통과했다. `./gradlew test`는 32개 통과했다. 프런트 lint는 오류 0건과 `<img>` 경고 16건, `tsc --noEmit`은 통과, 인증 테스트는 7개 통과, `next build`는 정적 페이지 54개를 만들었다. `git diff --check`도 통과했다. GitHub Actions, EC2, 운영 컨테이너, 운영 DB 마이그레이션은 실행하지 않았다.
+
 ## 대표 수정
 
 ### 관리자 API 인가
 
-`/api/admin/products`는 `/api/products/**` 규칙과 일치하지 않아 로그인 사용자에게 열려 있었다. `/api/admin/**`를 `ROLE_ADMIN`으로 막았다. 공개 조회 경로는 그대로다.
+`/api/admin/products`는 `/api/products/**` 규칙과 일치하지 않아 로그인 사용자에게 열려 있었다. `/api/admin/**`를 `ROLE_ADMIN`으로 막았다. 공개 조회 경로는 그대로다. Access Token으로 만든 인증 정보는 `SecurityContext`와 요청에 함께 저장한다. Refresh Token은 Access Token으로 쓰지 않는다.
 
 ### 빈 장바구니와 병합 재전송
 
-상품이 없는 Cart는 INNER JOIN으로 조회되지 않아 다시 담을 때 Cart가 새로 생길 수 있었다. 조회는 LEFT JOIN, 변경은 장바구니 행 잠금으로 나눴다. 같은 `Idempotency-Key`의 재전송은 이 프로세스 안에서만 한 번 더한다. 키가 없거나 서버가 재시작되면 수량이 다시 더해질 수 있다.
+상품이 없는 Cart는 INNER JOIN으로 조회되지 않아 다시 담을 때 Cart가 새로 생길 수 있었다. 조회는 LEFT JOIN, 변경은 장바구니 행 잠금으로 나눴다. 같은 사용자, 같은 작업, 같은 `Idempotency-Key`의 병합은 `cart_sync_requests`의 UNIQUE 제약과 같은 DB 트랜잭션에서 한 번만 수량을 더한다. 같은 키에 다른 내용이 오면 409다. 트랜잭션이 롤백되면 그 키로 다시 시도할 수 있다. 키가 없으면 매번 병합한다. 프로세스 메모리에만 두던 완료 기록은 쓰지 않으므로 재시작 뒤에도 같은 키는 다시 더하지 않는다.
+
+운영 `ddl-auto`는 `validate`다. `CartSyncRequest`가 들어 있는 이미지를 올리기 전에 `backend/src/main/resources/db/migration/V1__cart_sync_requests.sql`을 운영 DB에 한 번 적용해야 한다. 이 파일은 기존 `carts`, `cart_items`를 바꾸지 않는다. 되돌릴 때는 `cart_sync_requests`만 삭제하고 이전 이미지로 돌아간다. 이 마이그레이션은 운영 DB에 실행하지 않았다. 테이블이 없는 상태에서 새 이미지를 배포 가능하다고 보지 않는다.
 
 ### 테스트 결제
 
-승인 응답을 확인하기 전에 DONE을 저장하지 않는다. 금액은 100원만 받고, 승인 뒤에 취소한다. 취소에 실패하면 성공 화면으로 처리하지 않는다. 장바구니는 비우지 않는다. 외부 호출은 운영 키가 아닌 테스트의 FakePaymentGateway로만 검증했다.
+승인 응답을 확인하기 전에 DONE을 저장하지 않는다. 금액은 100원만 받고, 승인 뒤에 취소한다. 취소에 실패하면 성공 화면으로 처리하지 않는다. 장바구니는 비우지 않는다. 같은 프로세스 안에서는 승인 트랜잭션이 끝난 뒤에 잠금을 풀어 중복 승인을 막는다. 인스턴스가 둘 이상이면 그 잠금만으로는 중복 승인을 막지 못한다. 외부 호출은 운영 키가 아닌 테스트의 FakePaymentGateway로만 검증했다. 실제 결제 API에는 연결하지 않는다.
 

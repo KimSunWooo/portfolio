@@ -39,8 +39,8 @@ export default function ForgotPassword() {
       
       setSuccessMessage("이메일로 인증 코드가 발송되었습니다.");
       setStep(2); // 인증코드 입력 단계로 이동
-    } catch (error: any) {
-      setErrorMessage(error.message);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "요청에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -59,8 +59,8 @@ export default function ForgotPassword() {
 
       setSuccessMessage("인증이 완료되었습니다. 새 비밀번호를 입력해주세요.");
       setStep(3); // 새 비밀번호 입력 단계로 이동
-    } catch (error: any) {
-      setErrorMessage(error.message);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "요청에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +79,8 @@ export default function ForgotPassword() {
 
       alert("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.");
       router.push("/login"); // 완료 후 로그인 페이지로 이동
-    } catch (error: any) {
-      setErrorMessage(error.message);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "요청에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }

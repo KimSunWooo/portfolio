@@ -10,10 +10,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,7 +45,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         gateway = new FakePaymentGateway();
-        paymentService = new PaymentService(gateway, paymentHistoryRepository);
+        paymentService = new PaymentService(gateway, paymentHistoryRepository, directTransactions());
         lenient().when(paymentHistoryRepository.findByPaymentKeyOrderByIdAsc("pay-1")).thenAnswer(invocation -> List.copyOf(saved));
         lenient().when(paymentHistoryRepository.save(any())).thenAnswer(invocation -> {
             PaymentHistory history = invocation.getArgument(0);
@@ -84,6 +91,48 @@ class PaymentServiceTest {
     }
 
     @Test
+    void secondConfirmCannotApproveWhileTheFirstCommitIsStillRunning() throws Exception {
+        CountDownLatch commitStarted = new CountDownLatch(1);
+        CountDownLatch releaseCommit = new CountDownLatch(1);
+        TransactionOperations gating = new TransactionOperations() {
+            @Override
+            public <T> T execute(org.springframework.transaction.support.TransactionCallback<T> action) {
+                T result = action.doInTransaction(new SimpleTransactionStatus());
+                commitStarted.countDown();
+                try {
+                    if (!releaseCommit.await(5, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("commit was not released");
+                    }
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(exception);
+                }
+                return result;
+            }
+        };
+        PaymentService service = new PaymentService(gateway, paymentHistoryRepository, gating);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> service.confirmTestPayment(request(100L), "buyer@example.com"));
+            if (!commitStarted.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("first confirm did not reach commit");
+            }
+            assertEquals(1, gateway.approvals);
+            Future<?> second = pool.submit(() -> service.confirmTestPayment(request(100L), "buyer@example.com"));
+            Thread.sleep(200);
+            assertFalse(second.isDone());
+            assertEquals(1, gateway.approvals);
+            releaseCommit.countDown();
+            first.get(5, TimeUnit.SECONDS);
+            second.get(5, TimeUnit.SECONDS);
+            assertEquals(1, gateway.approvals);
+        } finally {
+            releaseCommit.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
     void cancelFailureKeepsDoneAndDoesNotReportSuccess() {
         gateway.failCancel = true;
 
@@ -92,6 +141,15 @@ class PaymentServiceTest {
         ArgumentCaptor<PaymentHistory> captor = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(paymentHistoryRepository, times(1)).save(captor.capture());
         assertEquals("DONE", captor.getValue().getStatus());
+    }
+
+    private static TransactionOperations directTransactions() {
+        return new TransactionOperations() {
+            @Override
+            public <T> T execute(org.springframework.transaction.support.TransactionCallback<T> action) {
+                return action.doInTransaction(new SimpleTransactionStatus());
+            }
+        };
     }
 
     private PaymentConfirmRequest request(long amount) {

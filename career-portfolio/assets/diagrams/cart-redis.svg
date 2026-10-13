@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="400" viewBox="0 0 920 400">
+<style>
+text { font-family: "Noto Sans CJK KR", "Noto Sans CJK JP", sans-serif; fill:#111; }
+.box { fill:#fff; stroke:#111; stroke-width:1.4; }
+.soft { fill:#f4f4f4; stroke:#222; stroke-width:1.2; }
+.muted { fill:#666; font-size:12px; }
+.title { font-size:15px; font-weight:700; }
+.label { font-size:13px; }
+.small { font-size:11px; fill:#333; }
+</style>
+
+<text class="title" x="24" y="32">장바구니와 상품 목록 캐시</text>
+<rect class="box" x="24" y="64" width="280" height="120" rx="2"/>
+<text class="label" x="164" y="92" text-anchor="middle">비회원</text>
+<text class="small" x="164" y="116" text-anchor="middle">localStorage guestCart</text>
+<text class="small" x="164" y="136" text-anchor="middle">서버 계정과 분리</text>
+<text class="small" x="164" y="156" text-anchor="middle">로그인 시 /api/cart/sync</text>
+<rect class="soft" x="330" y="64" width="270" height="120" rx="2"/>
+<text class="label" x="465" y="92" text-anchor="middle">회원 장바구니</text>
+<text class="small" x="465" y="116" text-anchor="middle">carts 1:1 users</text>
+<text class="small" x="465" y="136" text-anchor="middle">cart_items → products</text>
+<text class="small" x="465" y="156" text-anchor="middle">같은 상품은 수량 합산</text>
+<rect class="box" x="626" y="64" width="270" height="120" rx="2"/>
+<text class="label" x="761" y="92" text-anchor="middle">동기화 중복</text>
+<text class="small" x="761" y="116" text-anchor="middle">main: 프로세스 메모리 키</text>
+<text class="small" x="761" y="136" text-anchor="middle">로컬 미커밋: DB unique</text>
+<text class="small" x="761" y="156" text-anchor="middle">다른 본문은 409</text>
+<rect class="soft" x="24" y="220" width="872" height="150" rx="2"/>
+<text class="label" x="460" y="250" text-anchor="middle">상품 목록 캐시 productList</text>
+<text class="small" x="460" y="276" text-anchor="middle">키: 카테고리_검색어 · 없으면 ALL_NONE · TTL 10분 · null 캐시 안 함</text>
+<text class="small" x="460" y="300" text-anchor="middle">값: ProductListWrapper + GenericJackson2JsonRedisSerializer</text>
+<text class="small" x="460" y="324" text-anchor="middle">상품 변경은 트랜잭션 커밋 이후 캐시 전체 삭제</text>
+<text class="small" x="460" y="348" text-anchor="middle">응답 시간 개선율은 측정 원본이 없어 적지 않음</text>
+
+</svg>

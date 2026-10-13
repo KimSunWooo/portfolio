@@ -3,15 +3,20 @@
 import Link from "next/link";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
+let clientOrderNumber = "";
+
+function readOrderNumber() {
+  if (!clientOrderNumber) {
+    clientOrderNumber = `ORD-${Math.floor(Math.random() * 1000000000)}`;
+  }
+  return clientOrderNumber;
+}
 
 export default function OrderSuccessPage() {
-  const [orderNumber, setOrderNumber] = useState("");
-
-  useEffect(() => {
-    // 실감나는 가짜 주문번호 생성 (예: ORD-1698234912)
-    setOrderNumber(`ORD-${Math.floor(Math.random() * 1000000000)}`);
-  }, []);
+  const orderNumber = useSyncExternalStore(emptySubscribe, readOrderNumber, () => "");
 
   return (
     <>

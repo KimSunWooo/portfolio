@@ -2,6 +2,7 @@ package com.project.backend_api.service;
 
 import com.project.backend_api.domain.cart.Cart;
 import com.project.backend_api.domain.cart.CartItem;
+import com.project.backend_api.domain.cart.CartSyncRequest;
 import com.project.backend_api.domain.product.Product;
 import com.project.backend_api.domain.product.ProductStatus;
 import com.project.backend_api.domain.user.User;
@@ -9,22 +10,32 @@ import com.project.backend_api.dto.cart.CartItemResponse;
 import com.project.backend_api.dto.cart.CartRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
+import com.project.backend_api.repository.CartSyncRequestRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CartService {
 
@@ -34,13 +45,49 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final CartSyncRequestRepository cartSyncRequestRepository;
+    private final TransactionOperations syncTransactions;
 
-    /**
-     * 단일 프로세스에서만 같은 Idempotency-Key의 재전송을 한 번으로 처리한다.
-     * DB에 키를 저장하지 않으므로 재시작이나 다른 인스턴스에서는 다시 더해질 수 있다.
-     */
-    private final Set<String> completedSyncKeys = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<String, Object> syncLocks = new ConcurrentHashMap<>();
+    @Autowired
+    public CartService(
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            UserRepository userRepository,
+            ProductRepository productRepository,
+            CartSyncRequestRepository cartSyncRequestRepository,
+            PlatformTransactionManager transactionManager
+    ) {
+        this(
+                cartRepository,
+                cartItemRepository,
+                userRepository,
+                productRepository,
+                cartSyncRequestRepository,
+                requiresNew(transactionManager)
+        );
+    }
+
+    CartService(
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            UserRepository userRepository,
+            ProductRepository productRepository,
+            CartSyncRequestRepository cartSyncRequestRepository,
+            TransactionOperations syncTransactions
+    ) {
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.userRepository = userRepository;
+        this.productRepository = productRepository;
+        this.cartSyncRequestRepository = cartSyncRequestRepository;
+        this.syncTransactions = syncTransactions;
+    }
+
+    private static TransactionTemplate requiresNew(PlatformTransactionManager transactionManager) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template;
+    }
 
     public List<CartItemResponse> getCartItems(String email) {
         Cart cart = cartRepository.findByUserEmailWithProducts(email).orElse(null);
@@ -88,35 +135,72 @@ public class CartService {
 
     /**
      * 비회원 장바구니를 회원 장바구니에 더한다.
-     * 같은 Idempotency-Key는 이 프로세스 안에서 다시 더하지 않는다.
+     * 같은 사용자, CART_SYNC, Idempotency-Key는 한 트랜잭션에서 한 번만 반영된다.
      * 키가 없으면 재전송 시 수량이 다시 더해진다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void syncCart(String email, List<CartRequest> guestCartItems, String idempotencyKey) {
         if (guestCartItems == null || guestCartItems.isEmpty()) {
             return;
         }
 
-        String scopedKey = scopeKey(email, idempotencyKey);
-        if (scopedKey == null) {
-            mergeGuestItems(email, guestCartItems);
+        Map<Integer, Integer> quantities = normalize(guestCartItems);
+        String requestKey = requestKey(idempotencyKey);
+        if (requestKey == null) {
+            syncTransactions.executeWithoutResult(status -> mergeQuantities(email, quantities));
             return;
         }
 
-        Object lock = syncLocks.computeIfAbsent(scopedKey, ignored -> new Object());
-        synchronized (lock) {
-            if (completedSyncKeys.contains(scopedKey)) {
-                return;
-            }
-            mergeGuestItems(email, guestCartItems);
-            if (completedSyncKeys.size() > 1000) {
-                completedSyncKeys.clear();
-            }
-            completedSyncKeys.add(scopedKey);
+        String requestHash = hashQuantities(quantities);
+        try {
+            syncTransactions.executeWithoutResult(status -> {
+                if (!claimSync(email, requestKey, requestHash)) {
+                    return;
+                }
+                mergeQuantities(email, quantities);
+            });
+        } catch (DataIntegrityViolationException exception) {
+            replayOrReject(email, requestKey, requestHash);
         }
     }
 
-    private void mergeGuestItems(String email, List<CartRequest> guestCartItems) {
+    private boolean claimSync(String email, String requestKey, String requestHash) {
+        Optional<CartSyncRequest> existing = cartSyncRequestRepository
+                .findByUserEmailAndOperationAndRequestKey(email, CartSyncRequest.CART_SYNC, requestKey);
+        if (existing.isPresent()) {
+            acceptSameContent(existing.get(), requestHash);
+            return false;
+        }
+        cartSyncRequestRepository.saveAndFlush(CartSyncRequest.builder()
+                .userEmail(email)
+                .operation(CartSyncRequest.CART_SYNC)
+                .requestKey(requestKey)
+                .requestHash(requestHash)
+                .createdAt(LocalDateTime.now())
+                .build());
+        return true;
+    }
+
+    private void replayOrReject(String email, String requestKey, String requestHash) {
+        CartSyncRequest existing = syncTransactions.execute(status -> cartSyncRequestRepository
+                .findByUserEmailAndOperationAndRequestKey(email, CartSyncRequest.CART_SYNC, requestKey)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "같은 Idempotency-Key를 저장하지 못했습니다."
+                )));
+        acceptSameContent(existing, requestHash);
+    }
+
+    private void acceptSameContent(CartSyncRequest existing, String requestHash) {
+        if (!requestHash.equals(existing.getRequestHash())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "같은 Idempotency-Key에 다른 장바구니 내용이 있습니다."
+            );
+        }
+    }
+
+    private Map<Integer, Integer> normalize(List<CartRequest> guestCartItems) {
         Map<Integer, Integer> quantities = new LinkedHashMap<>();
         for (CartRequest item : guestCartItems) {
             if (item == null || item.getProductId() == null) {
@@ -125,7 +209,10 @@ public class CartService {
             requireQuantity(item.getQuantity());
             quantities.merge(item.getProductId(), item.getQuantity(), Integer::sum);
         }
+        return quantities;
+    }
 
+    private void mergeQuantities(String email, Map<Integer, Integer> quantities) {
         Cart cart = lockOrCreateCart(email);
         for (Map.Entry<Integer, Integer> entry : quantities.entrySet()) {
             Product product = requireSaleProduct(entry.getKey());
@@ -136,6 +223,21 @@ public class CartService {
                             existingItem -> addQuantity(existingItem, quantity),
                             () -> saveNewItem(cart, product, quantity)
                     );
+        }
+    }
+
+    private String hashQuantities(Map<Integer, Integer> quantities) {
+        String canonical = quantities.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .reduce((left, right) -> left + "," + right)
+                .orElse("");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", exception);
         }
     }
 
@@ -191,7 +293,7 @@ public class CartService {
         }
     }
 
-    private String scopeKey(String email, String idempotencyKey) {
+    private String requestKey(String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             return null;
         }
@@ -199,6 +301,6 @@ public class CartService {
         if (trimmed.length() > 80) {
             throw new IllegalArgumentException("Idempotency-Key가 너무 깁니다.");
         }
-        return email + ":" + trimmed;
+        return trimmed;
     }
 }
