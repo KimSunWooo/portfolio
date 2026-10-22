@@ -1,13 +1,9 @@
--- V1. Apply this file to the production database before starting a backend
--- image that maps CartSyncRequest. spring.jpa.hibernate.ddl-auto stays validate.
+-- V1. Flyway applies this on the production profile before Hibernate validate.
+-- It creates cart_sync_requests only. Existing rows are not read or updated.
 --
--- Order: this is the first versioned migration. Apply V1 only once.
--- Existing rows in users, carts, cart_items, products, and payment_histories
--- are not read or updated.
---
--- Recovery before the new image is kept: DROP TABLE cart_sync_requests;
--- If the new image is already running, roll it back to the previous image
--- after dropping the table. Do not drop carts or cart_items.
+-- Recovery before this migration is kept: stop the new backend, then
+-- DROP TABLE cart_sync_requests; and DROP TABLE flyway_schema_history;
+-- Do not drop carts or cart_items.
 
 CREATE TABLE cart_sync_requests (
     id BIGINT NOT NULL AUTO_INCREMENT,

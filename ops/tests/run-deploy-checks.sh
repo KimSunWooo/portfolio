@@ -288,6 +288,9 @@ case_backend_health() {
   state_py '"portfolio-backend-blue" not in state["containers"]'
   state_py 'has_name("portfolio-backend-blue-failed")'
   grep -q 'set $service_url http://127.0.0.1:8082;' "$SERVICE_URL_INC"
+  grep -q 'Schema-validation: missing table \[cart_sync_requests\]' /tmp/deploy-backend.out
+  grep -q 'DB_PASSWORD=<redacted>' /tmp/deploy-backend.out
+  ! grep -q 'super-secret-value' /tmp/deploy-backend.out
   assert_no_rm
 }
 

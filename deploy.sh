@@ -72,6 +72,22 @@ wait_http() {
   return 1
 }
 
+redact_text() {
+  sed -E \
+    -e 's/(password|secret|token|authorization|api[_-]?key)[[:space:]]*[:=][[:space:]]*[^[:space:]&]+/\1=<redacted>/Ig'
+}
+
+report_backend_failure() {
+  local name="$1" url="$2" running
+  echo "deploy: backend health failed container=${name} url=${url}" >&2
+  running="$(docker container inspect -f '{{.State.Running}}' "$name" 2>/dev/null || echo unknown)"
+  echo "deploy: backend running=${running}" >&2
+  echo "deploy: backend logs" >&2
+  if ! docker logs --tail 80 "$name" 2>&1 | redact_text >&2; then
+    echo "deploy: backend logs를 읽지 못했습니다. 컨테이너는 삭제하지 않습니다." >&2
+  fi
+}
+
 container_exists() {
   docker container inspect "$1" >/dev/null 2>&1
 }
@@ -249,7 +265,10 @@ docker run -d \
   -p "${target_port}:8080" \
   "$BACKEND_IMAGE"
 PHASE="backend"
-wait_http "http://127.0.0.1:${target_port}${HEALTH_PATH}" || die "새 백엔드 준비 확인에 실패했습니다. 기존 서비스는 유지됩니다."
+if ! wait_http "http://127.0.0.1:${target_port}${HEALTH_PATH}"; then
+  report_backend_failure "$NEW_BACKEND" "http://127.0.0.1:${target_port}${HEALTH_PATH}"
+  die "새 백엔드 준비 확인에 실패했습니다. 기존 서비스는 유지됩니다."
+fi
 
 container_exists "$FRONTEND_NAME" || die "프런트엔드 컨테이너가 없습니다: $FRONTEND_NAME"
 pending_previous="${FRONTEND_NAME}-previous"

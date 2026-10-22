@@ -239,6 +239,13 @@ def main() -> None:
         cmd_connect(argv[2], argv[3])
     elif argv[0] in {"inspect", "container"}:
         cmd_inspect(argv)
+    elif argv[0] == "logs":
+        name = argv[-1]
+        if mockstate.fail_stage() == "backend_health" and name.startswith("portfolio-backend"):
+            print("Schema-validation: missing table [cart_sync_requests]")
+            print("DB_PASSWORD=super-secret-value")
+        else:
+            print(f"logs {name}")
     elif argv[0] == "rm":
         fail("docker rm is not allowed", 99)
     else:
