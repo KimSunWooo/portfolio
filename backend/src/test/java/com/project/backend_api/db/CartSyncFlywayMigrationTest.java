@@ -28,11 +28,16 @@ class CartSyncFlywayMigrationTest {
         String base = Files.readString(Path.of("src/main/resources/application.properties"));
         assertTrue(prod.contains("spring.jpa.hibernate.ddl-auto=validate"));
         assertTrue(prod.contains("spring.flyway.enabled=true"));
+        assertTrue(prod.contains("spring.flyway.baseline-on-migrate=true"));
+        assertTrue(prod.contains("spring.flyway.baseline-version=0"));
         assertTrue(base.contains("spring.flyway.enabled=false"));
 
         Flyway flyway = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("0")
+                .baselineDescription("Existing schema created outside Flyway")
                 .load();
         flyway.migrate();
         flyway.migrate();
@@ -43,6 +48,12 @@ class CartSyncFlywayMigrationTest {
             assertTrue(tableExists(connection, "flyway_schema_history"));
             assertFalse(tableExists(connection, "carts"));
             assertEquals(1, appliedMigrations(connection));
+            try (ResultSet rows = connection.createStatement().executeQuery(
+                    "SELECT script FROM flyway_schema_history WHERE success = 1")) {
+                assertTrue(rows.next());
+                assertEquals("V1__cart_sync_requests.sql", rows.getString(1));
+                assertFalse(rows.next());
+            }
         }
     }
 

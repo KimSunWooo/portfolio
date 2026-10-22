@@ -11,7 +11,7 @@ CREATE TABLE cart_sync_requests (
     operation VARCHAR(32) NOT NULL,
     request_key VARCHAR(80) NOT NULL,
     request_hash VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL,
+    created_at DATETIME(6) NOT NULL, -- Hibernate LocalDateTime expects fractional seconds
     PRIMARY KEY (id),
     CONSTRAINT uk_cart_sync_user_op_key UNIQUE (user_email, operation, request_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
