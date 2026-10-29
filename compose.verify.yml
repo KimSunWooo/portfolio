@@ -1,0 +1,20 @@
+# Isolated MySQL and Redis for local verification. No production volumes.
+services:
+  verify-mysql:
+    image: mysql:8.4
+    container_name: portfolio-verify-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: verify-db
+      MYSQL_DATABASE: portfolio_verify
+    ports:
+      - "127.0.0.1:3307:3306"
+    tmpfs:
+      - /var/lib/mysql
+    restart: unless-stopped
+
+  verify-redis:
+    image: redis:7-alpine
+    container_name: portfolio-verify-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+    restart: unless-stopped

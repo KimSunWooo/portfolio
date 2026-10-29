@@ -4,6 +4,7 @@ import com.project.backend_api.domain.cart.Cart;
 import com.project.backend_api.domain.cart.CartItem;
 import com.project.backend_api.domain.cart.CartSyncRequest;
 import com.project.backend_api.domain.product.Product;
+import com.project.backend_api.domain.product.ProductColor;
 import com.project.backend_api.domain.product.ProductStatus;
 import com.project.backend_api.domain.user.User;
 import com.project.backend_api.dto.cart.CartItemResponse;
@@ -11,6 +12,7 @@ import com.project.backend_api.dto.cart.CartRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
 import com.project.backend_api.repository.CartSyncRequestRepository;
+import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +48,7 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final ProductColorRepository productColorRepository;
     private final CartSyncRequestRepository cartSyncRequestRepository;
     private final TransactionOperations syncTransactions;
 
@@ -54,6 +58,7 @@ public class CartService {
             CartItemRepository cartItemRepository,
             UserRepository userRepository,
             ProductRepository productRepository,
+            ProductColorRepository productColorRepository,
             CartSyncRequestRepository cartSyncRequestRepository,
             PlatformTransactionManager transactionManager
     ) {
@@ -62,6 +67,7 @@ public class CartService {
                 cartItemRepository,
                 userRepository,
                 productRepository,
+                productColorRepository,
                 cartSyncRequestRepository,
                 requiresNew(transactionManager)
         );
@@ -72,6 +78,7 @@ public class CartService {
             CartItemRepository cartItemRepository,
             UserRepository userRepository,
             ProductRepository productRepository,
+            ProductColorRepository productColorRepository,
             CartSyncRequestRepository cartSyncRequestRepository,
             TransactionOperations syncTransactions
     ) {
@@ -79,6 +86,7 @@ public class CartService {
         this.cartItemRepository = cartItemRepository;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
+        this.productColorRepository = productColorRepository;
         this.cartSyncRequestRepository = cartSyncRequestRepository;
         this.syncTransactions = syncTransactions;
     }
@@ -103,6 +111,8 @@ public class CartService {
                         .price(item.getProduct().getPrice())
                         .thumbnailUrl(item.getProduct().getThumbnail())
                         .quantity(item.getQuantity())
+                        .colorId(item.getColor() == null ? null : item.getColor().getId())
+                        .colorName(item.getColor() == null ? null : item.getColor().getColorName())
                         .build())
                 .toList();
     }
@@ -111,13 +121,9 @@ public class CartService {
     public void addCartItem(String email, CartRequest request) {
         requireQuantity(request.getQuantity());
         Product product = requireSaleProduct(request.getProductId());
+        ProductColor color = resolveColor(product, request.getColorId());
         Cart cart = lockOrCreateCart(email);
-
-        cartItemRepository.findByCart_IdAndProduct_Id(cart.getId(), product.getId())
-                .ifPresentOrElse(
-                        cartItem -> addQuantity(cartItem, request.getQuantity()),
-                        () -> saveNewItem(cart, product, request.getQuantity())
-                );
+        mergeLine(cart, product, color, request.getQuantity());
     }
 
     @Transactional
@@ -144,7 +150,7 @@ public class CartService {
             return;
         }
 
-        Map<Integer, Integer> quantities = normalize(guestCartItems);
+        Map<LineKey, Integer> quantities = normalize(guestCartItems);
         String requestKey = requestKey(idempotencyKey);
         if (requestKey == null) {
             syncTransactions.executeWithoutResult(status -> mergeQuantities(email, quantities));
@@ -200,36 +206,85 @@ public class CartService {
         }
     }
 
-    private Map<Integer, Integer> normalize(List<CartRequest> guestCartItems) {
-        Map<Integer, Integer> quantities = new LinkedHashMap<>();
+    private Map<LineKey, Integer> normalize(List<CartRequest> guestCartItems) {
+        Map<LineKey, Integer> quantities = new LinkedHashMap<>();
         for (CartRequest item : guestCartItems) {
             if (item == null || item.getProductId() == null) {
                 throw new IllegalArgumentException("상품 ID는 필수입니다.");
             }
             requireQuantity(item.getQuantity());
-            quantities.merge(item.getProductId(), item.getQuantity(), Integer::sum);
+            quantities.merge(new LineKey(item.getProductId(), item.getColorId()), item.getQuantity(), Integer::sum);
         }
         return quantities;
     }
 
-    private void mergeQuantities(String email, Map<Integer, Integer> quantities) {
+    private void mergeQuantities(String email, Map<LineKey, Integer> quantities) {
         Cart cart = lockOrCreateCart(email);
-        for (Map.Entry<Integer, Integer> entry : quantities.entrySet()) {
-            Product product = requireSaleProduct(entry.getKey());
-            int quantity = entry.getValue();
-            requireQuantity(quantity);
-            cartItemRepository.findByCart_IdAndProduct_Id(cart.getId(), product.getId())
-                    .ifPresentOrElse(
-                            existingItem -> addQuantity(existingItem, quantity),
-                            () -> saveNewItem(cart, product, quantity)
-                    );
+        List<String> blocked = new ArrayList<>();
+        for (Map.Entry<LineKey, Integer> entry : quantities.entrySet()) {
+            Product product = requireSaleProduct(entry.getKey().productId());
+            ProductColor color = resolveColor(product, entry.getKey().colorId());
+            int current = findLine(cart.getId(), product.getId(), color)
+                    .map(CartItem::getQuantity)
+                    .orElse(0);
+            if ((long) current + entry.getValue() > MAX_QUANTITY) {
+                blocked.add(lineLabel(product, color));
+            }
+        }
+        if (!blocked.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "다음 상품은 합산하면 99개를 초과하여 병합하지 않았습니다. 수량을 조정한 뒤 다시 시도해 주세요: "
+                            + String.join(", ", blocked));
+        }
+        for (Map.Entry<LineKey, Integer> entry : quantities.entrySet()) {
+            Product product = requireSaleProduct(entry.getKey().productId());
+            ProductColor color = resolveColor(product, entry.getKey().colorId());
+            mergeLine(cart, product, color, entry.getValue());
         }
     }
 
-    private String hashQuantities(Map<Integer, Integer> quantities) {
+    private void mergeLine(Cart cart, Product product, ProductColor color, int quantity) {
+        findLine(cart.getId(), product.getId(), color)
+                .ifPresentOrElse(
+                        existingItem -> addQuantity(existingItem, product, color, quantity),
+                        () -> saveNewItem(cart, product, color, quantity)
+                );
+    }
+
+    private Optional<CartItem> findLine(Long cartId, Integer productId, ProductColor color) {
+        if (color == null) {
+            return cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(cartId, productId);
+        }
+        return cartItemRepository.findByCart_IdAndProduct_IdAndColor_Id(cartId, productId, color.getId());
+    }
+
+    private ProductColor resolveColor(Product product, Integer colorId) {
+        if (colorId == null) {
+            return null;
+        }
+        return productColorRepository.findByIdAndProductId(colorId, product.getId())
+                .orElseThrow(() -> new IllegalArgumentException("이 상품에서 선택할 수 없는 색상입니다."));
+    }
+
+    private String hashQuantities(Map<LineKey, Integer> quantities) {
         String canonical = quantities.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .sorted((left, right) -> {
+                    int byProduct = left.getKey().productId().compareTo(right.getKey().productId());
+                    if (byProduct != 0) {
+                        return byProduct;
+                    }
+                    return Integer.compare(
+                            left.getKey().colorId() == null ? -1 : left.getKey().colorId(),
+                            right.getKey().colorId() == null ? -1 : right.getKey().colorId()
+                    );
+                })
+                .map(entry -> {
+                    LineKey key = entry.getKey();
+                    if (key.colorId() == null) {
+                        return key.productId() + ":" + entry.getValue();
+                    }
+                    return key.productId() + ":" + key.colorId() + ":" + entry.getValue();
+                })
                 .reduce((left, right) -> left + "," + right)
                 .orElse("");
         try {
@@ -270,21 +325,34 @@ public class CartService {
         return cartItem;
     }
 
-    private void addQuantity(CartItem cartItem, int quantity) {
+    private void addQuantity(CartItem cartItem, Product product, ProductColor color, int quantity) {
         long next = (long) cartItem.getQuantity() + quantity;
         if (next > MAX_QUANTITY) {
-            throw new IllegalArgumentException("수량은 99개 이하여야 합니다.");
+            throw new IllegalArgumentException(product.getName() + " (" + optionLabel(color)
+                    + ")의 수량이 99개를 초과합니다. 기존 수량은 유지됩니다.");
         }
         cartItem.addQuantity(quantity);
     }
 
-    private void saveNewItem(Cart cart, Product product, int quantity) {
+    private static String lineLabel(Product product, ProductColor color) {
+        return product.getName() + " (" + optionLabel(color) + ")";
+    }
+
+    private static String optionLabel(ProductColor color) {
+        return color == null ? "색상 없음" : color.getColorName();
+    }
+
+    private void saveNewItem(Cart cart, Product product, ProductColor color, int quantity) {
         CartItem newItem = CartItem.builder()
                 .cart(cart)
                 .product(product)
+                .color(color)
                 .quantity(quantity)
                 .build();
         cartItemRepository.save(newItem);
+    }
+
+    private record LineKey(Integer productId, Integer colorId) {
     }
 
     private void requireQuantity(int quantity) {

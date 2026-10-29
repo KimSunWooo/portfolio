@@ -1,0 +1,35 @@
+# Optional isolated brokers. They do not replace portfolio-verify-mysql or portfolio-verify-redis.
+# Start with: docker compose -f compose.messaging.yml up -d
+# Stop only these: docker compose -f compose.messaging.yml down
+services:
+  verify-rabbitmq:
+    image: rabbitmq:4.1-management
+    container_name: portfolio-verify-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: verify
+      RABBITMQ_DEFAULT_PASS: verify-mq
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    restart: unless-stopped
+
+  verify-kafka:
+    image: apache/kafka:4.1.0
+    container_name: portfolio-verify-kafka
+    ports:
+      - "127.0.0.1:9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://verify-kafka:9092,EXTERNAL://127.0.0.1:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@verify-kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: portfolio-verify-kafka-01
+    restart: unless-stopped

@@ -19,6 +19,7 @@ import javax.crypto.SecretKey;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -53,16 +54,38 @@ public class JwtTokenProvider {
     }
 
     public String createRefreshToken(String email) {
+        return createRefreshToken(email, UUID.randomUUID().toString());
+    }
+
+    public String createRefreshToken(String email, String sessionId) {
+        return createRefreshToken(email, sessionId, 0);
+    }
+
+    public String createRefreshToken(String email, String sessionId, int sessionEpoch) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + refreshTokenValidityInMilliseconds);
 
         return Jwts.builder()
                 .subject(email)
+                .id(sessionId)
                 .claim("tokenType", "refresh")
+                .claim("sessionEpoch", sessionEpoch)
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public Integer getSessionEpoch(String token) {
+        Object value = parseClaims(token).get("sessionEpoch");
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return null;
+    }
+
+    public String getSessionId(String token) {
+        return parseClaims(token).getId();
     }
 
     public boolean isAccessToken(String token) {

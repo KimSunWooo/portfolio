@@ -15,6 +15,7 @@ import {
   resolveAuthState,
   getGuestCart,
   setGuestCart,
+  syncLocalCartToServer,
   isAdminFromToken,
   ApiRequestError,
   type CartItemResponse,
@@ -25,8 +26,11 @@ export default function CartPage() {
   const { isLoggedIn, setIsLoggedIn } = useAuthStore();
 
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
+  const [pendingItems, setPendingItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [cartError, setCartError] = useState("");
+  const [mergeNotice, setMergeNotice] = useState("");
+  const [merging, setMerging] = useState(false);
 
   const router = useRouter();
 
@@ -60,28 +64,34 @@ export default function CartPage() {
     setCartError("");
     const auth = await resolveAuthentication();
     if (auth.phase === "recovery_failed") {
-      setIsLoggedIn(false);
       setCartItems([]);
+      setPendingItems(getGuestCart());
       setCartError(auth.message);
       setLoading(false);
       return;
     }
     if (auth.phase === "guest") {
       setCartItems(getGuestCart());
+      setPendingItems([]);
       setLoading(false);
       return;
     }
+    const notice = sessionStorage.getItem("cartMergeNotice");
+    if (notice) {
+      sessionStorage.removeItem("cartMergeNotice");
+      setMergeNotice(notice);
+    }
+    setPendingItems(getGuestCart());
     try {
       setCartItems(await fetchCartItems());
     } catch (error: unknown) {
       console.error("장바구니 조회 실패:", error);
-      setIsLoggedIn(false);
       setCartItems([]);
       setCartError(error instanceof Error ? error.message : "장바구니를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [resolveAuthentication, setIsLoggedIn]);
+  }, [resolveAuthentication]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,12 +119,16 @@ export default function CartPage() {
     cartItemId: number,
     newQuantity: number
   ) => {
-    if (newQuantity < 1) return;
+    if (!Number.isInteger(newQuantity) || newQuantity < 1 || newQuantity > 99) return;
 
     try {
+      const wasLoggedIn = useAuthStore.getState().isLoggedIn;
       const auth = await resolveAuthentication();
       if (auth.phase === "recovery_failed") {
         alert(auth.message);
+        return;
+      }
+      if (wasLoggedIn && auth.phase !== "authenticated") {
         return;
       }
 
@@ -172,9 +186,13 @@ export default function CartPage() {
     if (!confirm("상품을 삭제하시겠습니까?")) return;
 
     try {
+      const wasLoggedIn = useAuthStore.getState().isLoggedIn;
       const auth = await resolveAuthentication();
       if (auth.phase === "recovery_failed") {
         alert(auth.message);
+        return;
+      }
+      if (wasLoggedIn && auth.phase !== "authenticated") {
         return;
       }
 
@@ -231,6 +249,36 @@ export default function CartPage() {
     }
   };
 
+  const changePendingQuantity = async (cartItemId: number, newQuantity: number) => {
+    if (!Number.isInteger(newQuantity) || newQuantity < 1 || newQuantity > 99) return;
+    const updated = pendingItems.map((item) =>
+      item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item
+    );
+    setPendingItems(updated);
+    setGuestCart(updated);
+    await refreshCartCount();
+  };
+
+  const retryMerge = async () => {
+    if (merging) return;
+    setMerging(true);
+    setMergeNotice("");
+    try {
+      await syncLocalCartToServer(getGuestCart());
+      localStorage.removeItem("guestCart");
+      setPendingItems([]);
+      setMergeNotice("브라우저의 장바구니를 서버에 합쳤습니다.");
+      setCartItems(await fetchCartItems());
+      await refreshCartCount();
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : "장바구니를 서버에 합치지 못했습니다.";
+      setPendingItems(getGuestCart());
+      setMergeNotice(`${detail} 이 브라우저의 장바구니는 그대로 두었습니다.`);
+    } finally {
+      setMerging(false);
+    }
+  };
+
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -246,11 +294,18 @@ export default function CartPage() {
             CART
           </h1>
 
+          {mergeNotice && (
+            <p className="mb-6 text-center text-[12px] leading-6 text-[#333]">{mergeNotice}</p>
+          )}
+          {cartError && (cartItems.length > 0 || pendingItems.length > 0) && (
+            <p className="mb-6 text-center text-[12px] leading-6 text-[#333]">{cartError}</p>
+          )}
+
           {loading ? (
             <div className="py-20 text-center text-[11px] tracking-[0.1em] text-[#999]">
               LOADING...
             </div>
-          ) : cartItems.length === 0 ? (
+          ) : cartItems.length === 0 && pendingItems.length === 0 ? (
             <div className="py-20 text-center">
               <p className="mb-6 text-[12px] tracking-[0.05em] text-[#777]">
                 {cartError || "장바구니에 담긴 상품이 없습니다."}
@@ -265,7 +320,7 @@ export default function CartPage() {
             </div>
           ) : (
             <>
-              <div className="border-t border-black">
+              {cartItems.length > 0 && <div className="border-t border-black">
                 {cartItems.map((item) => (
                   <div
                     key={item.cartItemId}
@@ -299,20 +354,23 @@ export default function CartPage() {
                       </Link>
 
                       <p className="mt-2 text-[11px] text-[#777]">
-                        ₩{item.price.toLocaleString()}
+                        {item.colorName ? `${item.colorName} · ` : ""}₩{item.price.toLocaleString()}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-6 max-sm:w-full max-sm:justify-between">
                       <div className="flex h-9 items-center border border-black/20">
                         <button
+                          type="button"
+                          aria-label={`${item.productName} 수량 줄이기`}
+                          disabled={item.quantity <= 1}
                           onClick={() =>
                             handleQuantityChange(
                               item.cartItemId,
                               item.quantity - 1
                             )
                           }
-                          className="w-8 text-[#777] hover:text-black"
+                          className="w-8 text-[#777] hover:text-black disabled:text-[#ccc]"
                         >
                           -
                         </button>
@@ -322,13 +380,16 @@ export default function CartPage() {
                         </span>
 
                         <button
+                          type="button"
+                          aria-label={`${item.productName} 수량 늘리기`}
+                          disabled={item.quantity >= 99}
                           onClick={() =>
                             handleQuantityChange(
                               item.cartItemId,
                               item.quantity + 1
                             )
                           }
-                          className="w-8 text-[#777] hover:text-black"
+                          className="w-8 text-[#777] hover:text-black disabled:text-[#ccc]"
                         >
                           +
                         </button>
@@ -339,6 +400,8 @@ export default function CartPage() {
                       </div>
 
                       <button
+                        type="button"
+                        aria-label={`${item.productName} 삭제`}
                         onClick={() => handleRemove(item.cartItemId)}
                         className="text-[18px] text-[#aaa] hover:text-black"
                       >
@@ -347,9 +410,38 @@ export default function CartPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </div>}
 
-              <div className="mt-10 bg-[#f5f4f2] p-8">
+              {pendingItems.length > 0 && (
+                <section className="mt-8 border border-black/20 p-5">
+                  <h2 className="text-[12px] tracking-[0.08em]">아직 서버에 합치지 못한 장바구니</h2>
+                  <p className="mt-2 text-[11px] leading-5 text-[#666]">
+                    로그인은 유지됩니다. 수량을 조정한 뒤 다시 합칠 수 있습니다.
+                  </p>
+                  <div className="mt-4 border-t border-black/10">
+                    {pendingItems.map((item) => (
+                      <div key={`pending-${item.cartItemId}`} className="flex items-center justify-between gap-4 border-b border-black/10 py-4">
+                        <div>
+                          <p className="text-[13px]">{item.productName}</p>
+                          <p className="mt-1 text-[11px] text-[#777]">
+                            {item.colorName ? `${item.colorName} · ` : "색상 없음 · "}수량 {item.quantity}
+                          </p>
+                        </div>
+                        <div className="flex h-9 items-center border border-black/20">
+                          <button type="button" aria-label={`${item.productName} 미병합 수량 줄이기`} disabled={item.quantity <= 1} onClick={() => changePendingQuantity(item.cartItemId, item.quantity - 1)} className="w-8 text-[#777] disabled:text-[#ccc]">-</button>
+                          <span className="w-8 text-center text-[11px]">{item.quantity}</span>
+                          <button type="button" aria-label={`${item.productName} 미병합 수량 늘리기`} disabled={item.quantity >= 99} onClick={() => changePendingQuantity(item.cartItemId, item.quantity + 1)} className="w-8 text-[#777] disabled:text-[#ccc]">+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={retryMerge} disabled={merging || Boolean(cartError)} className="mt-4 h-10 border border-black px-4 text-[11px] tracking-[0.08em] disabled:text-[#aaa]">
+                    {merging ? "합치는 중" : "다시 합치기"}
+                  </button>
+                </section>
+              )}
+
+              {cartItems.length > 0 && <div className="mt-10 bg-[#f5f4f2] p-8">
                 <div className="flex justify-between border-b border-black/10 pb-4 text-[12px] tracking-[0.1em] text-[#555]">
                   <span>SUBTOTAL</span>
                   <span>₩{totalPrice.toLocaleString()}</span>
@@ -366,7 +458,7 @@ export default function CartPage() {
                 >
                   PROCEED TO CHECKOUT
                 </button>
-              </div>
+              </div>}
             </>
           )}
         </div>

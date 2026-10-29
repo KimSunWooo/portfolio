@@ -60,7 +60,10 @@ export default function Login() {
 
         await useCartStore.getState().refreshCartCount();
       } catch (syncError) {
-        console.error("장바구니 동기화 에러 (로그인은 유지됨):", syncError);
+        const detail = syncError instanceof Error ? syncError.message : "장바구니를 서버에 합치지 못했습니다.";
+        const notice = `로그인은 되었습니다. ${detail} 이 브라우저의 장바구니는 그대로 두었습니다. 장바구니에서 수량을 조정한 뒤 다시 합칠 수 있습니다.`;
+        sessionStorage.setItem("cartMergeNotice", notice);
+        alert(notice);
       }
 
       const next = new URLSearchParams(window.location.search).get("next");

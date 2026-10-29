@@ -37,7 +37,7 @@ export default function ForgotPassword() {
       // 💡 api.ts의 함수 호출 (Base URL 적용됨)
       await sendPasswordResetCode(email);
       
-      setSuccessMessage("이메일로 인증 코드가 발송되었습니다.");
+      setSuccessMessage("계정이 있으면 이메일로 인증 코드를 보냈습니다.");
       setStep(2); // 인증코드 입력 단계로 이동
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "요청에 실패했습니다.");
@@ -75,10 +75,9 @@ export default function ForgotPassword() {
 
     try {
       // 💡 api.ts의 함수 호출
-      await resetPassword(email, code, newPassword);
-
-      alert("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.");
-      router.push("/login"); // 완료 후 로그인 페이지로 이동
+      const result = await resetPassword(email, code, newPassword);
+      alert(result.message);
+      router.push("/login");
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "요청에 실패했습니다.");
     } finally {

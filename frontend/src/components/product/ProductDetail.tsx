@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ProductDetailResponse, resolveAssetUrl } from "../../lib/api"; // 경로를 맞춰주세요
-import { addToCart, ApiRequestError } from "../../lib/api";
+import { ProductDetailResponse, resolveAssetUrl, addCartItem } from "../../lib/api";
 import { useCartStore } from "../../store/useCartStore";
 
 function formatPrice(price: number) {
@@ -14,6 +13,7 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
   const { refreshCartCount } = useCartStore();
   const [selectedColor, setSelectedColor] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [pending, setPending] = useState<"cart" | "buy" | null>(null);
   const router = useRouter();
   
   // 가격이 숫자 타입으로 내려오므로 계산이 훨씬 간단해졌습니다.
@@ -22,35 +22,42 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
   // S3 썸네일 URL 매핑
   const mainImage = resolveAssetUrl(product.thumbnail) || "/images/no-image.png";
 
+  const selectedOption = product.colors?.[selectedColor] ?? null;
+
+  const addCurrent = async () => {
+    await addCartItem(
+      product,
+      quantity,
+      selectedOption ? { id: selectedOption.id, name: selectedOption.colorName } : null,
+    );
+    await refreshCartCount();
+  };
+
   const handleAddToCart = async () => {
+    if (pending) return;
+    setPending("cart");
     try {
-      await addToCart(product.id, quantity);
-      await refreshCartCount();
+      await addCurrent();
       if (confirm("장바구니에 상품을 담았습니다. 장바구니로 이동하시겠습니까?")) {
         router.push("/cart");
       }
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.kind === "unauthenticated") {
-        alert("로그인이 필요한 서비스입니다.");
-        router.push("/login");
-        return;
-      }
       alert(error instanceof Error ? error.message : "장바구니 담기에 실패했습니다.");
+    } finally {
+      setPending(null);
     }
   };
 
-  // 💡 차후 구현하실 '바로 구매' 핸들러 (참고용)
   const handleBuyNow = async () => {
+    if (pending) return;
+    setPending("buy");
     try {
-      await addToCart(product.id, quantity);
+      await addCurrent();
       router.push("/checkout");
     } catch (error: unknown) {
-      if (error instanceof ApiRequestError && error.kind === "unauthenticated") {
-        alert("로그인이 필요한 서비스입니다.");
-        router.push("/login");
-        return;
-      }
       alert(error instanceof Error ? error.message : "장바구니 담기에 실패했습니다.");
+    } finally {
+      setPending(null);
     }
   };
   
@@ -125,9 +132,9 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
             <div className="flex items-center justify-between border-b border-black/10 py-6">
               <span className="text-[11px] tracking-[0.08em]">QUANTITY</span>
               <div className="flex h-9 items-center border border-black/20">
-                <button type="button" className="h-full w-9 text-[15px]" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="수량 줄이기">−</button>
+                <button type="button" className="h-full w-9 text-[15px] disabled:text-[#ccc]" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="수량 줄이기" disabled={quantity <= 1}>−</button>
                 <span className="grid h-full min-w-9 place-items-center border-x border-black/10 text-[11px]">{quantity}</span>
-                <button type="button" className="h-full w-9 text-[15px]" onClick={() => setQuantity((value) => value + 1)} aria-label="수량 늘리기">+</button>
+                <button type="button" className="h-full w-9 text-[15px] disabled:text-[#ccc]" onClick={() => setQuantity((value) => Math.min(99, value + 1))} aria-label="수량 늘리기" disabled={quantity >= 99}>+</button>
               </div>
             </div>
 
@@ -136,24 +143,22 @@ export default function ProductDetail({ product }: { product: ProductDetailRespo
               <strong className="text-[16px] font-medium">{formatPrice(totalPrice)}</strong>
             </div>
 
-            <div className="flex items-center ...">
-              <button onClick={() => setQuantity(prev => Math.max(1, prev - 1))}>-</button>
-              <span>{quantity}</span>
-              <button onClick={() => setQuantity(prev => prev + 1)}>+</button>
-            </div>
-
             <div className="mt-8 flex gap-3">
-              <button 
-                onClick={handleAddToCart} 
-                className="flex-1 border border-black px-6 py-4 text-[10px] tracking-[0.1em] hover:bg-black hover:text-white transition"
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={pending !== null}
+                className="flex-1 border border-black px-6 py-4 text-[10px] tracking-[0.1em] hover:bg-black hover:text-white transition disabled:opacity-50"
               >
-                ADD TO CART
+                {pending === "cart" ? "ADDING" : "ADD TO CART"}
               </button>
-              <button 
-                onClick={handleBuyNow} 
-                className="flex-1 bg-black px-6 py-4 text-[10px] tracking-[0.1em] text-white hover:bg-[#333] transition"
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={pending !== null}
+                className="flex-1 bg-black px-6 py-4 text-[10px] tracking-[0.1em] text-white hover:bg-[#333] transition disabled:opacity-50"
               >
-                BUY NOW
+                {pending === "buy" ? "ADDING" : "BUY NOW"}
               </button>
             </div>
 

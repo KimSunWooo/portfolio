@@ -53,6 +53,7 @@ public class SecurityConfig {
                 // 💡 누구나 접근 가능한 공개 API (회원가입, 로그인, 상품 목록/상세 조회)
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout", "/api/users/password/**").permitAll()
+                .requestMatchers("/api/verify/mailbox", "/api/verify/fail-next-revoke", "/api/verify/fail-next-product").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/community/**").permitAll()
 
                 // 실제 관리자 API는 /api/admin/** 이다.
@@ -65,7 +66,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             // 4. 커스텀 필터 등록
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(cookieRequestOriginFilter(), JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -73,6 +75,11 @@ public class SecurityConfig {
     // 💡 2. CORS 허용 규칙 상세 설정 (새로 추가된 메서드)
     @Value("${app.cors.allowed-origins:https://swportfolioservices.com}")
     private String allowedOrigins;
+
+    @Bean
+    public CookieRequestOriginFilter cookieRequestOriginFilter() {
+        return new CookieRequestOriginFilter(allowedOrigins);
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

@@ -14,4 +14,6 @@ public class CartItemResponse {
     private int price;
     private String thumbnailUrl;
     private int quantity;
+    private Integer colorId;
+    private String colorName;
 }

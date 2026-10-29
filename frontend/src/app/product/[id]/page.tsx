@@ -3,8 +3,7 @@ import Header from "../../../components/header/Header";
 import Footer from "../../../components/layout/Footer";
 import ProductDetail from "../../../components/product/ProductDetail";
 import ProductSection from "../../../components/home/ProductSection";
-// 💡 fetchProduct 대신 getProductById를 import 합니다.
-import { getProductById, fetchProducts, type ProductListResponse } from "../../../lib/api";
+import { ApiRequestError, getProductById, fetchProducts, type ProductListResponse } from "../../../lib/api";
 
 export async function generateStaticParams() {
   try {
@@ -23,8 +22,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     // 💡 getProductById 로 함수명 변경
     product = await getProductById(id);
   } catch (error) {
-    console.error(`[ProductDetail Error] 상품 ID ${id} 로드 실패:`, error);
-    notFound();
+    if (error instanceof ApiRequestError && error.status === 404) {
+      notFound();
+    }
+    throw error;
   }
 
   let recommendations: ProductListResponse[] = []; 

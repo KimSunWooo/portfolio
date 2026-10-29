@@ -6,9 +6,12 @@ import com.project.backend_api.dto.product.ProductImageResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
 import com.project.backend_api.dto.product.ProductListWrapper;
 import com.project.backend_api.dto.product.ProductRequest;
+import com.project.backend_api.analytics.ProductDetailReadPublisher;
 import com.project.backend_api.repository.*;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.ObjectProvider;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.util.List;
@@ -47,6 +52,7 @@ public class ProductService {
     private final AmazonS3 amazonS3;
     private final ProductListCache productListCache;
     private final AfterCommit afterCommit;
+    private final ObjectProvider<ProductDetailReadPublisher> productDetailReads;
 
     // S3 버킷 이름 주입
     @Value("${cloud.aws.s3.bucket}")
@@ -132,12 +138,34 @@ public class ProductService {
                 productColorRepository
                         .findByProductIdOrderBySortOrderAscIdAsc(id);
 
-        return ProductDetailResponse.of(
+        ProductDetailResponse response = ProductDetailResponse.of(
                 product,
                 detail,
                 images,
                 colors
         );
+        publishDetailRead(id);
+        return response;
+    }
+
+    private void publishDetailRead(Integer id) {
+        Runnable publish = () -> {
+            try {
+                productDetailReads.ifAvailable(publisher -> publisher.publish(id));
+            } catch (RuntimeException ignored) {
+                // A statistics outage must not turn a successful read into an error.
+            }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publish.run();
+            }
+        });
     }
 
 

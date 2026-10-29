@@ -158,6 +158,15 @@ class ProdProfileExistingSchemaStartupTest {
                 assertEquals("SQL", rows.getString(2));
                 assertEquals("V1__cart_sync_requests.sql", rows.getString(3));
                 assertTrue(rows.getBoolean(4));
+                assertTrue(rows.next());
+                assertEquals("2", rows.getString(1));
+                assertEquals("JDBC", rows.getString(2));
+                assertTrue(rows.next());
+                assertEquals("3", rows.getString(1));
+                assertEquals("JDBC", rows.getString(2));
+                assertTrue(rows.next());
+                assertEquals("4", rows.getString(1));
+                assertEquals("JDBC", rows.getString(2));
                 assertFalse(rows.next());
             }
             assertEquals(productsBefore, FlywaySchemaFixture.columnSnapshot(connection, "products"));

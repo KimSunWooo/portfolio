@@ -39,8 +39,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname, router]);
 
   const handleLogout = async () => {
-    await logoutUser();
-    alert("로그아웃 되었습니다.");
+    const result = await logoutUser();
+    if (result === "revoked") {
+      alert("로그아웃되었습니다.");
+    } else if (result === "local_only") {
+      alert("이 브라우저의 로그인 정보는 지웠지만 서버 세션은 확인하지 못했습니다.");
+    } else {
+      alert("이 브라우저에서는 로그아웃했지만 서버 세션 정리가 끝나지 않았습니다. 다시 로그인해 주세요.");
+    }
     router.push("/");
   };
 
@@ -77,6 +83,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
             <Link href="/admin/shop" className={`transition hover:text-white ${isActive("/admin/shop") ? "text-white font-bold" : ""}`}>
               SHOP
+            </Link>
+            <Link href="/admin/purchases" className={`transition hover:text-white ${isActive("/admin/purchases") ? "text-white font-bold" : ""}`}>
+              PURCHASES
             </Link>
           </nav>
 

@@ -65,3 +65,16 @@
 - Redis 85% 개선, 138ms → 21ms: 커뮤니티 제목 또는 과거 README 흔적. 측정 원본이 없어 성과로 쓰지 않음. README도 그 수치를 확정 결과로 쓰지 말라고 적혀 있음.
 - 관리자 CRUD 화면: 코드는 `/api/admin/**`가 있으나 로그인 캡처를 하지 않음.
 - 실거래, 수익률, 장애 제로, 전체 코드를 단독 작성: 근거 없음.
+
+## 2026-10-29 작업 트리 추가
+
+기준은 `main` `0b385f525261763ef9b3752f7472f22903862438`다. 작업 브랜치는 `portfolio-flow-consistency`이고 커밋·push·배포는 하지 않았다. 위 2026-10-13 표는 당시 기록으로 둔다.
+
+- 목록과 상세 담기는 `addCartItem`으로 같다. 비회원은 `guestCart`, 로그인 사용자는 `POST /api/cart`다. 색상은 선택 필드로 전달하고, 색이 없는 기존 줄은 `color_id`가 비어 있다.
+- 저장 수량이 1~99 밖이면 항목을 삭제하지 않고 범위 안으로 맞춘다. `frontend/src/lib/guestCart.test.mts`.
+- 상품 404만 `notFound()`다. 그 외 조회 실패는 `frontend/src/app/product/[id]/error.tsx`다.
+- Refresh는 계정당 하나다. Redis Lua가 현재 세션과 10초 유예를 원자적으로 회전하고, 폐기 경계는 DB `users.session_epoch`다. Redis 삭제가 실패해도 이전 세대는 거절된다. `RefreshSessionRedisTest`, `SessionLifecycleMySqlTest`. Access Token은 만료 전까지 유효하다. 구버전 인스턴스는 이 세대를 보지 않는다.
+- 비밀번호 코드는 `SecureRandom`이고, 계정이 없어도 같은 안내를 반환한다. 발송은 시간당 5회를 넘기면 거절한다.
+- `V1__cart_sync_requests.sql`은 수정하지 않았다. `V2__AddCartItemColor`는 `cart_items`가 있고 `color_id`가 없을 때만 컬럼을 추가한다. 빈 DB에서는 기록만 남긴다.
+- 인증 수명주기 수정 뒤 `backend ./gradlew test`는 50건, 실패 0이다. 프론트 테스트·타입·lint·빌드 결과는 같은 작업의 최종 확인에 적는다. 브라우저 로그인 흐름, 부하, 운영 배포는 실행하지 않았다.
+- 관리자 주문 표는 샘플이고, 상점 설정 저장 버튼은 저장하지 않는다고 알린다.

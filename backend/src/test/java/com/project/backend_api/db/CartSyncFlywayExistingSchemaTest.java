@@ -60,10 +60,37 @@ class CartSyncFlywayExistingSchemaTest {
         assertFalse(tableExists("flyway_schema_history"));
         assertFalse(tableExists("cart_sync_requests"));
 
-        configured(true, "1").migrate();
+        FlywayException partial = assertThrows(FlywayException.class, () -> configured(true, "1").migrate());
+        assertTrue(messageOf(partial).contains("partial schema"), messageOf(partial));
         assertFalse(tableExists("cart_sync_requests"));
-        assertEquals(List.of("1|BASELINE"), history());
+        assertFalse(history().contains("1|SQL"));
         dropHistory();
+        try (org.hibernate.SessionFactory factory = FlywaySchemaFixture.sessionFactory(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(),
+                "create", FlywaySchemaFixture.CURRENT_ENTITIES)) {
+            assertNotNull(factory);
+        }
+        try (Connection connection = connect()) {
+            FlywaySchemaFixture.execute(connection, """
+                    INSERT INTO users (order_count, session_epoch, total_spent, name, email, password, role)
+                    VALUES (0, 7, 0, 'member', 'member@example.com', 'stored-password', 'ROLE_USER')
+                    """);
+            FlywaySchemaFixture.execute(connection,
+                    "INSERT INTO products (name, price) VALUES ('synthetic-product', 1234)");
+            FlywaySchemaFixture.execute(connection, """
+                    INSERT INTO carts (user_id)
+                    SELECT id FROM users WHERE email = 'member@example.com'
+                    """);
+            FlywaySchemaFixture.execute(connection, """
+                    INSERT INTO cart_items (product_id, quantity, cart_id)
+                    SELECT products.id, 2, carts.id FROM products JOIN carts
+                    WHERE products.name = 'synthetic-product'
+                    """);
+            FlywaySchemaFixture.execute(connection, "ALTER TABLE cart_items DROP FOREIGN KEY FK1ih6sbv2ngh9gcehrrbw99e6r");
+            FlywaySchemaFixture.execute(connection, "ALTER TABLE cart_items DROP COLUMN color_id");
+            FlywaySchemaFixture.execute(connection, "ALTER TABLE users DROP COLUMN session_epoch");
+            FlywaySchemaFixture.execute(connection, "DROP TABLE cart_sync_requests");
+        }
 
         List<String> legacyColumns = columnSnapshot("legacy_orders");
         MigrateResult first = configured(true, "0").migrate();
@@ -71,11 +98,33 @@ class CartSyncFlywayExistingSchemaTest {
         assertTrue(tableExists("cart_sync_requests"));
         assertEquals(List.of(
                 "0|BASELINE",
-                "1|SQL"
+                "1|SQL",
+                "2|JDBC",
+                "3|JDBC",
+                "4|JDBC",
+                "5|SQL"
         ), history());
+        assertTrue(tableExists("password_change_outbox"));
+        assertTrue(tableExists("mock_purchase_orders"));
         assertEquals("V1__cart_sync_requests.sql", scriptForVersion("1"));
         assertNotNull(checksumForVersion("1"));
         assertCartSyncColumns();
+        assertTrue(columnSnapshot("cart_items").stream().anyMatch(column -> column.startsWith("color_id|") && column.contains("|YES|")));
+        assertTrue(columnSnapshot("users").stream().anyMatch(column -> column.startsWith("session_epoch|") && column.contains("|NO|")));
+        try (Connection connection = connect();
+             ResultSet epoch = connection.createStatement().executeQuery("SELECT session_epoch FROM users WHERE id = 1")) {
+            assertTrue(epoch.next());
+            assertEquals(0, epoch.getInt(1));
+        }
+        try (Connection connection = connect();
+             ResultSet rows = connection.createStatement().executeQuery("""
+                     SELECT quantity, color_id FROM cart_items
+                     WHERE cart_id = (SELECT id FROM carts LIMIT 1)
+                     """)) {
+            assertTrue(rows.next());
+            assertEquals(2, rows.getInt(1));
+            assertEquals(null, rows.getObject(2));
+        }
         assertEquals("synthetic-keep", legacyNote());
         assertEquals(legacyColumns, columnSnapshot("legacy_orders"));
         assertEquals(databaseOf("legacy_orders"), databaseOf("cart_sync_requests"));
@@ -161,6 +210,18 @@ class CartSyncFlywayExistingSchemaTest {
             int checksum = rows.getInt(1);
             return rows.wasNull() ? null : checksum;
         }
+    }
+
+    private static String messageOf(Throwable error) {
+        StringBuilder message = new StringBuilder();
+        Throwable current = error;
+        while (current != null) {
+            if (current.getMessage() != null) {
+                message.append(current.getMessage()).append('\n');
+            }
+            current = current.getCause();
+        }
+        return message.toString();
     }
 
     private static String legacyNote() throws Exception {

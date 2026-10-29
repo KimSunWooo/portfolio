@@ -179,6 +179,61 @@ test("a cart change is not resent after an authentication failure", async () => 
   assert.deepEqual(calls, ["http://api.test/api/cart", "http://api.test/api/users/refresh"]);
 });
 
+test("a refresh that finishes after logout does not restore the session or the cart", async () => {
+  local.setItem("guestCart", JSON.stringify([{ productId: 7, productName: "Lip", price: 1000, quantity: 1 }]));
+  const gate: { release: ((response: Response) => void) | null } = { release: null };
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/api/users/refresh")) {
+      return new Promise<Response>((resolve) => {
+        gate.release = resolve;
+      });
+    }
+    if (url.endsWith("/api/users/logout")) {
+      return Response.json({ status: "revoked" });
+    }
+    throw new Error(`unexpected ${url}`);
+  }) as typeof fetch;
+
+  const pending = api.resolveAuthState();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const logout = await api.logoutUser();
+  if (!gate.release) {
+    throw new Error("refresh did not start");
+  }
+  gate.release(Response.json({ accessToken: validToken }));
+  const auth = await pending;
+
+  assert.equal(logout, "revoked");
+  assert.equal(auth.phase, "guest");
+  assert.equal(api.getAccessToken(), null);
+  assert.equal(api.getAuthPhase(), "guest");
+  assert.equal(local.getItem("guestCart")?.includes("Lip"), true);
+});
+
+test("an incomplete logout is not reported as a completed server logout", async () => {
+  local.setItem("guestCart", JSON.stringify([{ productId: 7, productName: "Lip", price: 1000, quantity: 1 }]));
+  globalThis.fetch = (async () => new Response("{}", { status: 503 })) as typeof fetch;
+  const logout = await api.logoutUser();
+  assert.equal(logout, "incomplete");
+  assert.equal(api.getAuthPhase(), "recovery_failed");
+  assert.equal(api.getAccessToken(), null);
+  assert.equal(local.getItem("guestCart")?.includes("Lip"), true);
+});
+
+test("password cleanup failure stays distinct from a rejected change", async () => {
+  globalThis.fetch = (async () => new Response(
+    "비밀번호는 변경되었습니다. 이전 로그인은 더 이상 갱신할 수 없습니다. 다시 로그인해 주세요.",
+    { status: 503 }
+  )) as typeof fetch;
+  const incomplete = await api.resetPassword("member@example.test", "000000", "next-password");
+  assert.equal(incomplete.status, "cleanup_incomplete");
+  assert.match(incomplete.message, /비밀번호는 변경되었습니다/);
+
+  globalThis.fetch = (async () => new Response("인증 코드가 일치하지 않거나 만료되었습니다.", { status: 400 })) as typeof fetch;
+  await assert.rejects(() => api.resetPassword("member@example.test", "000000", "next-password"));
+});
+
 test("the same merge payload reuses one idempotency key", () => {
   const items = [{ productId: 7, quantity: 2 }];
   const first = api.guestCartSyncKey(items);
@@ -187,4 +242,8 @@ test("the same merge payload reuses one idempotency key", () => {
   assert.equal(first, second);
   assert.notEqual(first, changed);
   assert.equal(api.guestCartSyncKey([{ productId: 7, quantity: 3 }]), changed);
+  assert.notEqual(
+    api.guestCartSyncKey([{ productId: 7, quantity: 2, colorId: 1 }]),
+    api.guestCartSyncKey([{ productId: 7, quantity: 2, colorId: 2 }])
+  );
 });
