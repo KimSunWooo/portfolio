@@ -7,6 +7,8 @@ import com.project.backend_api.dto.product.ProductListWrapper;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.service.ProductService;
 import com.project.backend_api.dto.product.ProductImageResponse;
+import com.project.backend_api.observability.ProductListObservation;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
@@ -22,6 +24,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ObjectProvider<ProductListObservation> productListObservations;
 
     // =========================
     // Public (일반 유저용 퍼블릭 조회)
@@ -33,8 +36,8 @@ public class ProductController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search
     ) {
-        // 🌟 서비스에서 반환된 포장지(Wrapper)에서 .getProducts()로 알맹이(List)만 꺼내서 프론트로 보냅니다.
-        return productService.getProducts(category, search).getProducts(); 
+        productListObservations.ifAvailable(ProductListObservation::recordHttpListRequest);
+        return productService.getProducts(category, search).getProducts();
     }
 
     // 👉 GET /api/products/{id}

@@ -7,6 +7,7 @@ import com.project.backend_api.dto.product.ProductListResponse;
 import com.project.backend_api.dto.product.ProductListWrapper;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.analytics.ProductDetailReadPublisher;
+import com.project.backend_api.observability.ProductListObservation;
 import com.project.backend_api.repository.*;
 
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,7 @@ public class ProductService {
     private final ProductListCache productListCache;
     private final AfterCommit afterCommit;
     private final ObjectProvider<ProductDetailReadPublisher> productDetailReads;
+    private final ObjectProvider<ProductListObservation> productListObservations;
 
     // S3 버킷 이름 주입
     @Value("${cloud.aws.s3.bucket}")
@@ -74,6 +76,7 @@ public class ProductService {
             condition = "@productListCacheGate.enabled()"
     )
     public ProductListWrapper getProducts(String category, String search) {
+        productListObservations.ifAvailable(ProductListObservation::recordServiceEntry);
     boolean hasCategory = category != null && !category.isBlank();
     boolean hasSearch = search != null && !search.isBlank();
 

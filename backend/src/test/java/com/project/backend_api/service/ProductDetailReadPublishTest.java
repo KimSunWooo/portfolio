@@ -1,6 +1,7 @@
 package com.project.backend_api.service;
 
 import com.project.backend_api.analytics.ProductDetailReadPublisher;
+import com.project.backend_api.observability.ProductListObservation;
 import com.project.backend_api.domain.product.Product;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.repository.ProductColorRepository;
@@ -68,7 +69,21 @@ class ProductDetailReadPublishTest {
                 mock(com.amazonaws.services.s3.AmazonS3.class),
                 mock(ProductListCache.class),
                 mock(AfterCommit.class),
-                available(publisher));
+                available(publisher),
+                absentObservation());
+    }
+
+    private static ObjectProvider<ProductListObservation> absentObservation() {
+        return new ObjectProvider<>() {
+            @Override
+            public ProductListObservation getObject() {
+                throw new IllegalStateException("observation disabled");
+            }
+
+            @Override
+            public void ifAvailable(Consumer<ProductListObservation> dependencyConsumer) {
+            }
+        };
     }
 
     private static ObjectProvider<ProductDetailReadPublisher> available(ProductDetailReadPublisher publisher) {

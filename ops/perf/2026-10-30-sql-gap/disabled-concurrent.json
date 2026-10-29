@@ -1,0 +1,51 @@
+{
+  "label": "disabled-concurrent",
+  "base_url": "http://127.0.0.1:18080",
+  "request_path": "/api/products",
+  "vus": 10,
+  "duration": "30s",
+  "sleep_seconds": 0.5,
+  "expected_count": 1,
+  "requests": 600,
+  "throughput_rps": 19.785878572148654,
+  "http_error_rate": 0,
+  "check_rate": 1,
+  "p50_ms": 4.707172,
+  "p95_ms": 6.480516649999974,
+  "p99_ms": 13.04329411,
+  "sql": {
+    "product_list_selects": 550,
+    "other_statements": 2907,
+    "product_list_digests": [
+      {
+        "count": 550,
+        "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+      }
+    ],
+    "other_digest_sample": [
+      {
+        "count": 1187,
+        "digest": "SET `autocommit` = ?"
+      },
+      {
+        "count": 594,
+        "digest": "SET SESSION TRANSACTION READ WRITE"
+      },
+      {
+        "count": 584,
+        "digest": "COMMIT"
+      },
+      {
+        "count": 541,
+        "digest": "SET SESSION TRANSACTION READ ONLY"
+      },
+      {
+        "count": 1,
+        "digest": "SELECT @@`version_comment` LIMIT ?"
+      }
+    ],
+    "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+  },
+  "sql_per_request": 0.9166666666666666,
+  "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity."
+}

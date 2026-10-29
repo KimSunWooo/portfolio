@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
                 .requestMatchers("/actuator/**", "/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/internal/product-list-observation").permitAll()
                 
                 // 그 외의 모든 요청은 로그인(인증)된 유저만 접근 가능
                 .anyRequest().authenticated()

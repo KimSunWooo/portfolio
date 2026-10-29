@@ -17,7 +17,7 @@
 | 메일 발송 완료와 발행 확인이 같다 | 과거 기록으로 현재 상태와 불일치 | Outbox `PUBLISHED`는 publisher confirm이다. 메일 행은 소비자 쪽 `SENT`다 |
 | Access Token은 로그아웃 즉시 폐기된다 | 과거 기록으로 현재 상태와 불일치 | 코드상 Access는 30분(`JwtTokenProvider`). 폐기는 Refresh와 `users.session_epoch` |
 | 결제 중복 승인을 모든 인스턴스에서 막는다 | 구현 확인, 실행 검증 없음 | 같은 프로세스의 `paymentKey` 잠금과 이력 조회. 프로세스 사이 잠금은 없다 |
-| 캐시 적용으로 138ms가 21ms가 됐다 | 근거 부족 | 과거 수치의 원본은 없다. 순차 관측은 `ops/perf/2026-10-29-product-list.json`이다. 같은 날 캐시 비활성과 워밍을 교차한 관측은 `ops/perf/2026-10-29-cache-ab/summary.json`이며, 격리 결과를 운영 처리량으로 확대하지 않는다 |
+| 캐시 적용으로 138ms가 21ms가 됐다 | 근거 부족 | 과거 수치의 원본은 없다. 순차 관측은 `ops/perf/2026-10-29-product-list.json`이다. 캐시 비활성과 워밍을 교차한 digest 관측은 `ops/perf/2026-10-29-cache-ab/summary.json`이며 SELECT는 594·595·591과 0·0·0이다. 2026-10-30 로컬 후속 계측에서는 애플리케이션 카운터가 요청과 맞고, 동시 부하의 digest만 적게 집계됐다. 그 파일은 원격에 없고 격리 결과를 운영 처리량으로 확대하지 않는다 |
 | 2026-10-13 문서의 “push하지 않았다”가 현재 상태다 | 과거 기록으로 현재 상태와 불일치 | 그 문장은 `docs/incidents/2026-10-13-backend-readiness.md`의 시점이다. 2026-10-29 `3226b10` 실행은 배포 job까지 성공했다 |
 
 ## 구매 분석

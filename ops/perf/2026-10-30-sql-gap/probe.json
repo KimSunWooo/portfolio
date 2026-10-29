@@ -1,0 +1,207 @@
+{
+  "experiment": "application counters versus digest delta",
+  "replaces_prior_result": false,
+  "prior_result": "ops/perf/2026-10-29-cache-ab/summary.json",
+  "head": "f1e5fdc9252eb80ce851eec13ee258c04d9c25aa",
+  "steps": [
+    {
+      "name": "cache-disabled-sequential-20",
+      "requests_sent": 20,
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "application_delta": {
+        "httpListRequests": 20,
+        "serviceEntries": 20,
+        "productListSelects": 20,
+        "otherProductTableStatements": 0
+      },
+      "digest": {
+        "product_list_selects": 20,
+        "other_statements": 101,
+        "product_list_digests": [
+          {
+            "count": 20,
+            "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+          }
+        ],
+        "other_digest_sample": [
+          {
+            "count": 40,
+            "digest": "SET `autocommit` = ?"
+          },
+          {
+            "count": 20,
+            "digest": "COMMIT"
+          },
+          {
+            "count": 20,
+            "digest": "SET SESSION TRANSACTION READ ONLY"
+          },
+          {
+            "count": 20,
+            "digest": "SET SESSION TRANSACTION READ WRITE"
+          },
+          {
+            "count": 1,
+            "digest": "SELECT @@`version_comment` LIMIT ?"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "order": "warmup completed, counters read, 20 GET /api/products completed, counters read"
+    },
+    {
+      "name": "cache-disabled-concurrent",
+      "result": {
+        "label": "disabled-concurrent",
+        "base_url": "http://127.0.0.1:18080",
+        "request_path": "/api/products",
+        "vus": 10,
+        "duration": "30s",
+        "sleep_seconds": 0.5,
+        "expected_count": 1,
+        "requests": 600,
+        "throughput_rps": 19.785878572148654,
+        "http_error_rate": 0,
+        "check_rate": 1,
+        "p50_ms": 4.707172,
+        "p95_ms": 6.480516649999974,
+        "p99_ms": 13.04329411,
+        "sql": {
+          "product_list_selects": 550,
+          "other_statements": 2907,
+          "product_list_digests": [
+            {
+              "count": 550,
+              "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+            }
+          ],
+          "other_digest_sample": [
+            {
+              "count": 1187,
+              "digest": "SET `autocommit` = ?"
+            },
+            {
+              "count": 594,
+              "digest": "SET SESSION TRANSACTION READ WRITE"
+            },
+            {
+              "count": 584,
+              "digest": "COMMIT"
+            },
+            {
+              "count": 541,
+              "digest": "SET SESSION TRANSACTION READ ONLY"
+            },
+            {
+              "count": 1,
+              "digest": "SELECT @@`version_comment` LIMIT ?"
+            }
+          ],
+          "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+        },
+        "sql_per_request": 0.9166666666666666,
+        "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+        "application_delta": {
+          "httpListRequests": 600,
+          "serviceEntries": 600,
+          "productListSelects": 600,
+          "otherProductTableStatements": 0
+        },
+        "digest_status_after": {
+          "status": "Performance_schema_digest_lost\t0\nPerformance_schema_nested_statement_lost\t0",
+          "prepared_statements_mentioning_products": ""
+        },
+        "note": "Same VU, duration, and sleep as the 2026-10-29 disabled windows, but this JVM registers a statement inspector. Not a latency rerun."
+      }
+    },
+    {
+      "name": "cache-enabled-one-miss-then-five-hits",
+      "miss_application_delta": {
+        "httpListRequests": 1,
+        "serviceEntries": 1,
+        "productListSelects": 1,
+        "otherProductTableStatements": 0
+      },
+      "miss_digest": {
+        "product_list_selects": 1,
+        "other_statements": 6,
+        "product_list_digests": [
+          {
+            "count": 1,
+            "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+          }
+        ],
+        "other_digest_sample": [
+          {
+            "count": 2,
+            "digest": "SET `autocommit` = ?"
+          },
+          {
+            "count": 1,
+            "digest": "COMMIT"
+          },
+          {
+            "count": 1,
+            "digest": "SET SESSION TRANSACTION READ ONLY"
+          },
+          {
+            "count": 1,
+            "digest": "SET SESSION TRANSACTION READ WRITE"
+          },
+          {
+            "count": 1,
+            "digest": "SELECT @@`version_comment` LIMIT ?"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "hit_application_delta": {
+        "httpListRequests": 5,
+        "serviceEntries": 0,
+        "productListSelects": 0,
+        "otherProductTableStatements": 0
+      },
+      "hit_digest": {
+        "product_list_selects": 0,
+        "other_statements": 1,
+        "product_list_digests": [],
+        "other_digest_sample": [
+          {
+            "count": 1,
+            "digest": "SELECT @@`version_comment` LIMIT ?"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "order": "detail warmup, productList keys deleted, counters read, one list GET, counters read, five list GETs, counters read"
+    }
+  ],
+  "sale_count": 1,
+  "interpretation": {
+    "sequential": "20 HTTP list entries, 20 service entries, 20 inspector SELECT counts, and 20 digest SELECT counts.",
+    "concurrent": "600 HTTP list entries, 600 service entries, and 600 inspector SELECT counts. The digest delta recorded 550. Performance_schema_digest_lost was 0 and prepared_statements_instances had no products statement. The missing 50 were not reassigned.",
+    "cache_hit": "Five warmed list requests incremented HTTP only. Service entries and product-list SELECT counts stayed 0. The one other digest was SELECT @@version_comment, which is the collector connection, not the application.",
+    "prior_experiment": "ops/perf/2026-10-29-cache-ab digest counts 594, 595, and 591 are unchanged. This file does not replace them."
+  }
+}
