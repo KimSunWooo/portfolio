@@ -1,0 +1,48 @@
+{
+  "base_url": "http://127.0.0.1:18080",
+  "path": "/api/products",
+  "redis_keys_removed_before_first_miss": 1,
+  "first_miss": {
+    "status": 200,
+    "latency_ms": 12.16,
+    "body_bytes": 8139,
+    "body_sha256": "96f8b6f446f1478a9fbc74b463bb65a60c8517520f1e9431bbf2dc6c22939f38",
+    "mysql_questions_delta": 10
+  },
+  "first_hit": {
+    "status": 200,
+    "latency_ms": 3.28,
+    "body_bytes": 8139,
+    "body_sha256": "96f8b6f446f1478a9fbc74b463bb65a60c8517520f1e9431bbf2dc6c22939f38",
+    "mysql_questions_delta": 4
+  },
+  "second_miss": {
+    "status": 200,
+    "latency_ms": 8.35,
+    "body_bytes": 8139,
+    "body_sha256": "96f8b6f446f1478a9fbc74b463bb65a60c8517520f1e9431bbf2dc6c22939f38",
+    "mysql_questions_delta": 10
+  },
+  "second_hit": {
+    "status": 200,
+    "latency_ms": 3.03,
+    "body_bytes": 8139,
+    "body_sha256": "96f8b6f446f1478a9fbc74b463bb65a60c8517520f1e9431bbf2dc6c22939f38",
+    "mysql_questions_delta": 4
+  },
+  "warm_burst_after_second_hit": {
+    "requests": 100,
+    "errors": 0,
+    "error_rate": 0.0,
+    "elapsed_seconds": 0.138,
+    "throughput_rps": 722.88,
+    "p50_ms": 1.34,
+    "p95_ms": 1.65,
+    "max_ms": 3.11,
+    "first_ms": 3.11,
+    "identical_bodies": true,
+    "body_bytes": 8139
+  },
+  "bodies_match": true,
+  "note": "One unmeasured request runs first so JVM startup is not counted as a cache miss. Each miss follows a Redis flush. Requests are sequential in one process, not 50 virtual users. MySQL Questions counts every server question, not only the product SELECT."
+}

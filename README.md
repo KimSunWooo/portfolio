@@ -1,709 +1,173 @@
-# Java / Spring Boot 기반 Web Backend & Full-Stack Portfolio
+# 콘텐츠를 보여주고, 장바구니와 테스트 결제로 상태를 맞춰 본 서비스
 
-> **Java · Spring Boot를 중심으로 REST API, 인증/인가, 데이터베이스, 캐싱, Next.js, Docker/AWS까지 서비스 전체 흐름을 구현한 Full-Stack Web Application**
+방문자가 경력·프로젝트·글을 읽고, 상품을 담아 보고, 관리자가 그 데이터를 고치는 개인 프로젝트입니다. 상품·장바구니·100원 테스트 결제는 이커머스 회사를 위한 제품이 아니라, 인증·소유권·재전송·캐시를 코드로 확인해 본 모듈입니다.
 
-기존 웹 서비스 개발 및 유지보수 경험을 바탕으로,
-**기획 → DB 설계 → Backend API → Frontend → 인증/인가 → 성능 최적화 → Docker → AWS → CI/CD**까지 하나의 서비스 흐름으로 직접 구현한 개인 프로젝트입니다.
+## 서비스 소개
 
-단순한 기능 구현보다 실제 개발 과정에서 발생할 수 있는 **인증 오류, SSR/CSR 환경 차이, 캐시 직렬화 문제, Multipart 처리, Docker 네트워크 문제, 불필요한 API 요청** 등을 직접 분석하고 해결하는 데 집중했습니다.
+사용하는 사람은 세 종류입니다.
 
----
+- 방문자는 홈, 프로젝트, 커뮤니티, 상품 목록과 상세를 로그인 없이 봅니다.
+- 회원은 비회원 장바구니를 서버 장바구니와 합치고, 100원 승인 뒤 자동 취소되는 테스트 결제를 진행합니다.
+- 관리자는 이력·프로젝트·상품을 수정하고, 구매 분석 화면을 봅니다. 분석 API는 관리자 권한이 필요합니다.
 
-## 로컬에서 보강한 설명 범위
+주요 흐름은 공개 조회, 브라우저 로컬 장바구니, 로그인 후 한 번의 병합, 테스트 결제입니다. 결제 성공이 구매 분석 테이블을 채우지는 않습니다. 그 구분은 [구현 범위](#구현-범위검증한계)에 있습니다.
 
-이 저장소는 이력·프로젝트·기술 기록을 관리하는 콘텐츠 서비스이고, 상품·장바구니·100원 테스트 결제는 인증, 소유권, 재전송, 캐시 최신성, 외부 연동을 보여주는 모듈이다. 이커머스 회사 전용 포트폴리오로 한정하지 않는다.
+## 대표 화면과 실행 링크
 
-기본 소개는 백엔드 중심 풀스택이다. 지원 직무에 따라 강조 순서만 바꾼다.
+공개 사이트는 [https://swportfolioservices.com](https://swportfolioservices.com)입니다. 2026-10-29에 `/`, `/shop`, `/admin/shop`이 HTTP 200이었습니다. 이것은 페이지가 응답했다는 확인이고, 관리자 데이터나 결제까지 동작했다는 뜻은 아닙니다.
 
-- Backend: `SecurityConfig`의 `/api/admin/**`, `CartService`, `ProductListCache`, `PaymentService`와 `backend/src/test/java`의 단위 테스트
-- Frontend: 인증 복구(`ensureAccessToken`), 로그인 목적지, 검색의 최신 응답, 결제 결과 화면
-- Full-stack: 프로젝트 미디어 JSON 수정이 저장 후 재조회되는지, 결제 승인 실패 시 DONE을 쓰지 않는지
+| 화면 | 경로 |
+| --- | --- |
+| 홈 | [/](https://swportfolioservices.com/) |
+| 상품 | [/shop](https://swportfolioservices.com/shop) |
+| 커뮤니티 | [/community](https://swportfolioservices.com/community) |
+| 로그인 | [/login](https://swportfolioservices.com/login) |
+| 관리자 상품 | [/admin/shop](https://swportfolioservices.com/admin/shop) |
 
-자동매매 프로젝트 소개 원본은 `docs/projects/auto-trading-project.json`이다. Cursor를 활용한 바이브코딩 개인 프로젝트이며, 공유 RDS `projects` id 3에 등록되어 있다. 같은 `github_url`이 있으면 다시 넣지 않는다.
+관리자 화면 주소는 열려 있어도 상품·이력·구매 분석 API는 관리자 Access Token이 있어야 합니다. 계정과 비밀번호는 이 저장소에 없습니다.
 
-콘텐츠 초안·수정 충돌·변경 이력은 현재 스키마로 기본 경로에 넣지 않았다. 절차는 `docs/follow-up-content-workflow.md`에 있다.
+저장소에 있는 화면 캡처:
 
-시연용 관리자 계정은 저장소에 적지 않는다. 비밀번호는 별도로 전달하고, 이 문서나 커밋에 다시 넣지 않는다. 결제는 100원 승인 후 자동 취소하는 데모이며 일반 실결제로 바꾸지 않는다.
+![홈](career-portfolio/assets/screenshots/home.png)
+![상품 목록](career-portfolio/assets/screenshots/shop.png)
+![상품 상세](career-portfolio/assets/screenshots/product.png)
+![장바구니](career-portfolio/assets/screenshots/cart.png)
 
-### 구매 분석 대시보드 (DB 집계)
+## 구현 범위와 개발 방식
 
-관리자 `/admin/shop` DASHBOARD와 `/admin/purchases`는 `purchase_orders` / `purchase_lines`(Flyway V6)를 조회·집계한다. 프론트 하드코딩·메모리 MOCK·임의 API 응답으로 차트를 만들지 않는다.
+이 저장소에서 다룬 범위는 Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway, Redis 캐시, Docker 이미지, GitHub Actions와 배포 스크립트입니다. 기능 구현과 리팩터링에는 Cursor를 썼고, 요구의 범위와 테스트로 결과를 걸러 냈습니다. 저장소의 모든 줄을 한 사람이 처음부터 손으로만 썼다거나, 이 서비스를 실무 운영 환경으로 맡았다고 보지 않습니다.
 
-- **실제 DB 조회 기반:** 차트·카드·표는 `/api/admin/purchase-analytics`가 DB에서 집계한 값이다.
-- **실제 결제 연동 완료가 아님:** 결제 성공(`payment_histories`)이 `purchase_*`로 자동 적재되는 파이프라인은 아직 없다. LIVE 행은 스키마·필터만 준비되어 있다.
-- **시연 DEMO:** `backend/scripts/seed-demo-purchases.sh`로 명시 삽입한다. 앱 기동 시 자동 시드하지 않는다. `clear-demo-purchases.sh`는 DEMO/`demo-purchase-*`만 삭제하며 LIVE를 건드리지 않는다.
-- **범위 구분:** DEMO `purchase_orders` 시드 행은 12건이다. PAID 줄이 있는 주문은 11건(환불 전용 `20251021-1` 제외)이다. 집계 API 최대 조회 기간은 366일이라 시드 전 구간을 한 번에 조회하지 못할 수 있다. 캘린더 `2026-10-01`~`2026-10-31` DEMO PAID는 주문 2 · 수량 6 · 상품 판매금액 72_500(= Verify Shade 36_000 + Demo Fact A 28_000 + Demo Lip B 8_500)이다. UI 기본 기간은 Asia/Seoul 기준 최근 30일이며, 데이터를 보이게 기간을 몰래 바꾸지 않는다.
+개인 프로젝트에서 문제를 정의하고, AI로 만든 구현을 검토·수정하고, 실패 상황을 테스트로 확인했습니다. 그 경험은 실무 코드와 운영 기준을 읽고 맞추기 위한 기반입니다. 즉시 대규모 운영을 맡을 수 있다거나, 장애가 무손실로 복구된다고 말하지 않습니다.
 
-로컬·검증 DB에 V6·시드를 적용했다고 해서 GitHub 커밋·Actions·운영 배포가 끝난 것은 아니다.
+## 핵심 문제 해결
 
----
+### 장바구니 병합의 멱등성
 
-## 🌐 Project Overview
+수정 전에는 완료 기록이 프로세스 메모리에 있었고, DB 커밋 전에 그 기록을 넣으면 실패한 재시도를 건너뛸 수 있었습니다. 빈 장바구니는 조회에서 빠지기도 했습니다.
 
-**Portfolio + Commerce Platform**
+같은 병합을 새로고침하거나 응답을 못 받고 다시 보내면 수량이 두 번 더해집니다. 사용자는 담은 개수와 다른 장바구니를 봅니다.
 
-정적인 포트폴리오 페이지가 아닌, Spring Boot REST API와 MySQL을 기반으로 데이터를 관리하고 Next.js에서 동적으로 렌더링하는 웹 서비스입니다.
+원인은 재전송과 첫 요청을 구분하지 못한 것입니다. 메모리 잠금만 쓰면 재시작과 다른 인스턴스를 넘지 못합니다.
 
-여기에 실제 서비스 구조를 경험하기 위해 **상품 조회, 장바구니, 주문/결제 관련 기능**을 추가하여 Commerce Platform 형태로 확장했습니다.
+검토한 방법은 클라이언트만 막는 방법, 메모리 잠금, DB UNIQUE였습니다. 재시작 뒤에도 같은 요청을 한 번만 반영하려면 병합과 완료 기록이 같은 트랜잭션이어야 해서 DB UNIQUE를 골랐습니다.
 
-### 핵심 구현
+구현은 `cart_sync_requests`의 사용자, 작업 종류, 요청 키 UNIQUE입니다. 본문 해시는 정렬한 `상품:수량` 또는 `상품:색상:수량`의 SHA-256입니다. 같은 키와 같은 해시는 수량을 다시 더하지 않고, 같은 키의 다른 해시는 409입니다. 키가 없으면 매번 더합니다. 합이 99를 넘는 줄이 있으면 그 병합 전체를 롤백해서 일부만 반영하지 않습니다. 색이 없는 줄과 다른 색은 다른 줄입니다. 일반 옵션 모델은 아닙니다. 프런트는 같은 fingerprint의 재시도에 sessionStorage의 같은 키를 쓰고, 성공한 뒤에만 그 키를 지웁니다. 실패하면 로컬 장바구니는 지우는 코드 경로에 들어가지 않습니다.
 
-* Spring Boot REST API
-* Spring Security + JWT 인증/인가
-* MySQL + JPA 기반 데이터 관리
-* Redis Cache를 활용한 상품 조회 성능 개선
-* Next.js App Router 기반 SSR / CSR
-* 관리자 Dashboard
-* 이미지 / 영상 Multipart Upload
-* AWS RDS / S3
-* Docker / Docker Compose
-* GitHub Actions 기반 CI/CD
-* k6 기반 API 부하 테스트
+막는 테스트는 `CartSyncMySqlTest`입니다. 같은 키의 재전송과 새 서비스 인스턴스, 동시 요청 한 번 반영, 상한 초과 롤백 후 수량 조정 재시도, 다른 본문 409, 다른 사용자 거부입니다. 프런트 키 재사용은 `frontend/src/lib/authSession.test.mts`입니다. 운영 DB에 테이블이 생긴 시점과 화면에서 다시 누른 동작은 이 테스트와 별개입니다.
 
----
+한계는 키를 보내지 않으면 재전송을 막지 못한다는 점과, 성공 응답을 받은 뒤 로컬 삭제가 실패하는 경우까지 한 트랜잭션으로 묶지 않았다는 점입니다.
 
-## 🎯 What I Focused On
+### 인증 복구와 로그아웃 경쟁
 
-이 프로젝트에서 단순히 여러 기술을 사용하는 것보다 다음과 같은 **실제 개발 문제를 해결하는 경험**에 집중했습니다.
+수정 전에는 만료 Access Token으로 장바구니를 호출하면 갱신 없이 실패하거나, 로그인 사용자를 비회원 장바구니로 내릴 수 있었습니다. 늦은 Refresh가 로그아웃 뒤에 세션을 다시 만들 여지도 있었습니다.
 
-### 1. Backend
+로그아웃을 누르는 동안 갱신 응답이 도착하면, 사용자는 나간 뒤에도 로그인 상태로 보일 수 있습니다. 쿠키가 남아 있으면 서버가 이미 버린 세션과 브라우저 표시가 달라집니다.
 
-* REST API 설계
-* Spring Security 기반 인증/인가
-* JWT Stateless Authentication
-* JPA / Hibernate 기반 데이터 접근
-* 관리자 Role 기반 API 접근 제어
-* Multipart 파일 업로드
+원인은 요청마다 따로 갱신하고, Refresh 폐기와 브라우저 상태를 한 세대로 맞추지 못한 것입니다.
 
-### 2. Performance
+검토한 방법은 Access Token 즉시 폐기 목록과, Refresh만 세대 번호로 버리는 방법이었습니다. Access를 서버에 저장하면 요청마다 조회가 필요해서, Refresh와 DB 세대만 폐기하고 Access는 만료까지 두었습니다. 그 선택을 완전한 즉시 로그아웃이라고 부르지 않습니다.
 
-* 상품 목록 API Redis Cache 적용
-* Cache Key 설계
-* Redis Serialization / Deserialization 문제 해결
-* k6 기반 부하 테스트
-* Cache 적용 전후 성능 비교
+구현은 프런트의 `authGeneration`입니다. 로그아웃이 세대를 올리면 그 전에 시작한 Refresh 결과는 버립니다. 갱신 Promise는 하나이고, 403에는 다시 갱신하지 않습니다. 변경 요청은 인증 실패 뒤 자동으로 다시 보내지 않습니다. 서버는 `users.session_epoch`를 올리고 Redis의 현재 세션과 10초 유예를 지웁니다. Redis 삭제가 실패해도 올라간 세대의 Refresh는 거절되며, 그 결과를 로그아웃 완료로 반환하지 않습니다. 쿠키가 있어도 세대나 세션이 다르면 Refresh는 거절됩니다. Access Token 유효 시간은 코드에서 30분입니다. `jwt.expiration=86400000` 설정은 이 발급 코드가 읽지 않습니다.
 
-### 3. Full-Stack Integration
+단위·통합 테스트는 `SessionLifecycleMySqlTest`의 로그아웃과 Refresh 경쟁, Redis 정리 실패 뒤에도 Refresh 거부, `RefreshSessionRedisTest`의 유예와 폐기, `authSession.test.mts`의 늦은 Refresh와 비회원 장바구니 오인 방지입니다. 이 조사에서 실제 브라우저로 로그아웃 클릭을 다시 하지는 않았습니다.
 
-* Next.js SSR / CSR과 Spring Boot API 연동
-* Browser와 Docker Container의 네트워크 환경 차이 해결
-* Public API / Internal API Endpoint 분리
-* 인증 Token Source 통일
-* 페이지별 API Lifecycle 분리
+한계는 이미 발급된 Access Token이 만료 전까지 관리자 API를 포함한 인증 API에 쓰인다는 점입니다. 롤백한 구버전이 `session_epoch`를 보지 않으면 그 인스턴스의 Refresh 폐기는 달라집니다. 구버전 이미지를 이 조사에서 다시 실행하지는 않았습니다.
 
-### 4. Deployment
+### 배포 실패와 복구
 
-* Frontend / Backend Dockerization
-* Docker Compose
-* AWS EC2 / RDS / S3
-* GitHub Actions CI/CD
-* Production 환경 설정 분리
+2026-10-13 Actions 배포는 새 백엔드의 준비 검사에서 실패했고, 스크립트는 backend 단계에서 롤백했습니다. 기록은 [docs/incidents/2026-10-13-backend-readiness.md](docs/incidents/2026-10-13-backend-readiness.md)입니다. 운영 장애를 현장에서 복구했다기보다, 실패한 배포 실행과 셸로 재현한 실패 조건을 나눠 적습니다. 당시 Actions 로그 본문과 EC2 컨테이너 로그는 읽지 못했습니다.
 
----
+사용자 영향은 그 실행이 프런트 교체 전에 끝나, 공개 프런트가 그 실패 이미지로 바뀌지는 않았다는 기록입니다. 프런트를 바꾸는 배포는 호스트 3000을 잠시 비웁니다.
 
-# 🏗️ Architecture
+원인은 `ddl-auto=validate`인데 `cart_sync_requests`가 운영 DB에 없던 상태로 보는 것이 채택된 설명입니다. 보존 컨테이너 스택트레이스는 없습니다.
+
+검토한 복구는 실패 컨테이너를 지우는 방법과, 멈추고 이름을 바꾼 뒤 이전 컨테이너를 다시 켜는 방법이었습니다. 원인을 남기려고 실패 컨테이너를 보존합니다.
+
+구현은 `deploy.sh`입니다. 새 백엔드 준비 실패는 그 컨테이너를 멈추고 `portfolio-backend-*-failed-<시각>`으로 남깁니다. 이전 백엔드를 이미 멈춘 단계라면 다시 시작합니다. Nginx를 바꾼 뒤의 실패는 백업의 `restore.sh`로 manifest를 되돌립니다. 프런트를 바꾼 뒤라면 이전 프런트 컨테이너 이름으로 되돌립니다. 복구 명령이 실패하면 컨테이너와 백업을 남기고 자동 복구 완료로 보지 않습니다. 이미지 태그는 커밋 SHA이고 `latest`로 배포하지 않습니다.
+
+셸 mock `ops/tests/run-deploy-checks.sh`가 재현하는 조건은 이미지 pull 실패, 백엔드·프런트 준비 실패, Nginx 검사 실패, 공개 확인 실패, 이전 컨테이너를 멈춘 뒤의 실패, 사용 중인 컨테이너 보존, 잘못된 포트, 슬롯과 어긋난 Nginx, `latest` 거부, 배포 잠금, 백업이 Nginx 밖인 경우, 릴리스 경로, manifest 복구, 컨테이너가 없을 때의 복구입니다. 이것은 로컬 가짜 docker와 파일입니다. EC2에서 같은 실패를 다시 만들지는 않았습니다.
+
+2026-10-29 `3226b10`의 Actions [40869105357](https://github.com/KimSunWooo/portfolio/actions/runs/40869105357)은 `deploy`까지 성공했습니다. 그 성공이 위 장애의 재현이나 운영 데이터 정합까지 확인한 것은 아닙니다.
+
+한계는 DB 마이그레이션을 배포 롤백이 되돌리지 않는다는 점, 구버전과 신버전의 `session_epoch` 검사가 다를 수 있다는 점, 그리고 프런트 한 포트 교체 중 짧은 중단입니다.
+
+## 아키텍처와 기술 선택
 
 ```text
-                         User
-                           │
-                           ▼
-                ┌───────────────────┐
-                │     Next.js       │
-                │ React / TypeScript│
-                │    App Router     │
-                │     SSR / CSR     │
-                └─────────┬─────────┘
-                          │
-                       REST API
-                          │
-                          ▼
-                ┌───────────────────┐
-                │    Spring Boot    │
-                │ Spring Security   │
-                │   JWT / REST API  │
-                └───────┬─────┬─────┘
-                        │     │
-                   Cache│     │Persistence
-                        ▼     ▼
-                   ┌──────┐ ┌──────────┐
-                   │Redis │ │ AWS RDS  │
-                   │Cache │ │  MySQL   │
-                   └──────┘ └──────────┘
-                             
-                          AWS S3
-                       Image / Media
+브라우저
+  Next.js 페이지, 로컬 장바구니, Access Token 메모리, Refresh 쿠키
+        |  NEXT_PUBLIC_API_URL
+        v
+Next.js 서버  SSR은 INTERNAL_API_URL. 브라우저의 localhost와 같지 않다
+        |
+        v
+Spring Boot  Security, 장바구니, 결제, 선택적 메시징
+        |                 \
+        v                  v
+MySQL  Redis 캐시          RabbitMQ, Kafka
+                           기본값은 꺼짐
 ```
 
----
+백엔드는 Java 21, Spring Boot, Spring Security, JPA, MySQL입니다. 프런트는 Next.js App Router, React, TypeScript입니다. 상품 목록만 Redis 캐시입니다. TTL 10분, null 캐시 없음, 문자열 키, `GenericJackson2JsonRedisSerializer`와 `JavaTimeModule`은 `RedisConfig`에 있습니다. 상품 상세 조회는 이 캐시를 쓰지 않습니다.
 
-# 🛠️ Tech Stack
+RabbitMQ와 Kafka는 선택 구성입니다. 설정 파일의 기본값은 둘 다 꺼져 있고, 운영에서 켜져 있는지는 확인하지 않았습니다. S3와 메일, 결제 키는 환경변수입니다. 운영 DB는 RDS와 `ddl-auto=validate`이고, 운영 프로파일만 Flyway를 켭니다.
 
-### Backend
+## 구현 범위·검증·한계
 
-`Java 21` `Spring Boot` `Spring Security` `Spring Data JPA` `Hibernate`
+대조표와 구매 분석·메시징의 범위는 [docs/implementation-scope.md](docs/implementation-scope.md)에 있습니다.
 
-`MySQL` `REST API` `JWT` `Spring Cache` `Redis`
+구매 분석은 DB에서 구매 기록 행을 읽고 서버에서 집계합니다. SQL `GROUP BY`로 합계를 만들지 않습니다. 결제 성공이 `purchase_orders`로 넘어가는 연계는 없습니다. DEMO 시드와 LIVE 결제는 `record_source`로 구분합니다. 시드 건수와 금액은 `backend/scripts/seed-demo-purchases.sh`와 `PurchaseAnalyticsMySqlTest`를 봅니다.
 
-### Frontend
+RabbitMQ는 비밀번호 변경 알림입니다. 변경과 Outbox 기록은 한 트랜잭션이고, 큐 발행과 메일 발송은 그 다음입니다. `PUBLISHED`는 메일 도착이 아닙니다. Kafka는 백엔드 상품 상세 조회 성공 이벤트입니다. 발행 코드는 `Future.get`으로 최대 1초를 기다립니다. 이 대기와 프로듀서 `max.block.ms=200`을 더한 값을 호출 전체의 최대 시간으로 단정하지 않습니다. 현재 규모에서 브로커가 필수였다고 보지 않습니다. 실패와 중복을 시험한 구성이고, 브로커를 켜면 운영 대상이 늘어납니다.
 
-`Next.js` `React` `TypeScript` `App Router`
+캐시 전후 138ms와 21ms는 측정 원본이 없어 결과로 쓰지 않습니다. 2026-10-29에 격리된 verify MySQL과 Redis, SALE 상품 51개, `GET /api/products`로 다시 재었습니다. 원본은 [ops/perf/2026-10-29-product-list.json](ops/perf/2026-10-29-product-list.json)입니다. JVM을 한 번 깨운 뒤 캐시 키를 지운 요청은 12.16ms와 8.35ms, 바로 다음 요청은 3.28ms와 3.03ms였고 응답 SHA-256은 같았습니다. MySQL `Questions`는 그 요청 동안 10과 4로, 히트에서도 0이 아니었습니다. 이어서 한 프로세스에서 순차 100회는 오류 0, p50 1.34ms, p95 1.65ms였습니다. k6 가상 사용자 50명 조건이 아니고 공개 서버를 치지 않았습니다. 이 차이만으로 운영 성능이 좋아졌다고 단정하지 않습니다.
 
-`SSR` `CSR` `Tailwind CSS` `Zustand` `Axios`
+같은 날 캐시를 끈 상태와 목록 캐시를 워밍한 상태를 10 VU, 30초, 요청 간 0.5초로 세 번씩 교차해 관측했습니다. 이 비교의 격리 데이터는 SALE 54개로 앞의 51개와 다릅니다. 워밍된 회차의 측정 구간에서는 상품 목록 SELECT가 없었고, 지연은 캐시를 끈 회차보다 낮았습니다. 처리량에는 대기가 포함되어 있어 최대 처리 능력이 아닙니다. 회차 값은 [ops/perf/2026-10-29-cache-ab/summary.json](ops/perf/2026-10-29-cache-ab/summary.json)에 있습니다.
 
-### Infrastructure
+`frontend/src/lib/api.ts`는 인증, 상품, 장바구니, 관리자, 커뮤니티, 구매 분석이 한 파일에 있습니다. Refresh Promise와 `authGeneration`의 소유가 하나여야 해서, 이번 문서 정리와 파일 분리를 섞지 않았습니다. 분리한다면 `api.ts`에서 다시보내 호출부를 유지해야 합니다.
 
-`Docker` `Docker Compose`
+테스트가 막는 범위는 위 세 사례와 `PaymentServiceTest`의 승인 전 `DONE` 금지, 같은 프로세스의 중복 승인, 취소 실패입니다. `./gradlew test`와 Actions 성공을 운영 기능 활성화의 증거로 쓰지 않습니다.
 
-`AWS EC2` `AWS RDS` `AWS S3`
+기준 커밋은 `3226b1061dcac92bf1fc093a97a4ed5fe15fbc1a`입니다. 그 Actions 실행은 다섯 job이 성공했습니다. 배포 job 성공과 개별 기능의 운영 활성은 다릅니다.
 
-`Docker Hub` `GitHub Actions`
+## 빠른 로컬 실행
 
-### Testing / Performance
+개인 `.env`는 만들지 않고, 있어도 덮어쓰지 않습니다. 이름만 있는 예시는 [`.env.example`](.env.example)입니다. 비밀번호와 운영 호스트는 넣지 않았습니다.
 
-`k6`
-
----
-
-# ✨ Main Features
-
-## 1. Dynamic Portfolio
-
-Backend API와 Database를 기반으로 동작하는 동적 포트폴리오입니다.
-
-* 경력 / 교육 / 기술 스택 관리
-* 프로젝트 정보 관리
-* 관리자 페이지를 통한 데이터 수정
-* SSR 기반 동적 렌더링
-
-```text
-Admin
-  ↓
-Spring Boot API
-  ↓
-MySQL / AWS RDS
-  ↓
-Next.js SSR
-  ↓
-Portfolio
-```
-
----
-
-## 2. E-Commerce
-
-포트폴리오 서비스 내부에 Commerce 기능을 구성했습니다.
-
-* 상품 목록 / 상세
-* 장바구니
-* 로그인 사용자 / 비회원 장바구니 분리
-* 로그인 이후 장바구니 동기화
-* 주문 / 결제 관련 기능
-
-목록과 상세는 같은 담기 정책을 쓴다. 비회원은 Local Storage에 담고, 로그인 사용자는 서버 장바구니에 담는다. 수량은 1개 이상 99개 이하다. 저장된 수량이 이 범위를 벗어나면 항목을 지우지 않고 범위 안으로 맞춘다. 색상은 선택 사항이며, 같은 상품의 다른 색은 다른 줄이다. 색이 없는 기존 줄은 그대로 둔다.
-
-로그인 이후에는 비회원 장바구니를 서버 장바구니와 한 번 병합한다. 같은 내용의 재시도는 같은 Idempotency-Key를 쓰고, 병합이 실패하면 로컬 장바구니는 남긴다.
-
-Refresh Token은 계정당 하나다. Redis에는 현재 세션과 10초 유예의 이전 세션이 있고, 계정 세대는 DB `users.session_epoch`에 있다. 로그아웃과 비밀번호 변경은 세대를 올린 뒤에 Redis를 지운다. Redis 삭제가 실패해도 이전 Refresh는 거절된다. 그 응답은 로그아웃 완료와 다르다. Access Token은 만료 전까지 상태 없이 유효하다. Refresh와 로그아웃은 허용된 Origin이 있을 때만 받는다.
-
----
-
-## 3. Admin Dashboard
-
-관리자 권한을 기반으로 포트폴리오와 상품 데이터를 관리합니다.
-
-* 관리자 인증
-* 포트폴리오 데이터 관리
-* 상품 데이터 관리
-* 이미지 / 영상 Multipart Upload
-* 관리자 전용 API 접근 제어
-
----
-
-# 🔐 Authentication & Authorization
-
-Spring Security와 JWT를 이용한 Stateless 인증 구조를 구현했습니다.
-
-```text
-Login
-  ↓
-Spring Security
-  ↓
-JWT 발급
-  ↓
-Client
-  ↓
-API Request + JWT
-  ↓
-JwtAuthenticationFilter
-  ↓
-JwtTokenProvider
-  ↓
-SecurityContext
-  ↓
-Authorization
-```
-
-세션 기반 인증 대신:
-
-```java
-SessionCreationPolicy.STATELESS
-```
-
-를 적용했습니다.
-
-관리자 API는:
-
-```java
-.hasRole("ADMIN")
-```
-
-을 기반으로 접근을 제한합니다.
-
-JWT 인증 필터에서 Access Token을 검증하고 `SecurityContext`에 Authentication을 설정하여 이후 Spring Security의 권한 검사를 수행하도록 구성했습니다.
-
----
-
-# ⚡ Performance Optimization
-
-## Redis Cache
-
-상품 목록 조회 API에 Spring Cache와 Redis를 적용했습니다.
-
-반복적인 상품 목록 조회 요청에 대해 DB를 매번 조회하지 않고 Redis Cache를 활용하도록 구성했습니다.
-
-```text
-API Request
-     │
-     ▼
-Redis Cache
-     │
- ┌───┴───┐
-Hit     Miss
- │        │
- ▼        ▼
-Response MySQL
-          │
-          ▼
-        Redis
-          │
-          ▼
-       Response
-```
-
-### Cache Policy
-
-* TTL: 10분
-* Null Value Cache 비활성화
-* String 기반 Cache Key
-* `GenericJackson2JsonRedisSerializer`
-* Java Time 처리를 위한 `JavaTimeModule`
-
-### Performance Result
-
-캐시 전후 응답 시간으로 적혀 있던 138ms → 21ms는 측정 원본과 환경이 이 저장소에 남아 있지 않아, 이번 문서의 확정 결과로 사용하지 않는다.
-
-k6 스크립트 조건은 아래에 남아 있다. 이번 작업에서 부하 테스트를 다시 실행하지는 않았다.
-
-```text
-Virtual Users : 50
-Duration      : 30 seconds
-Target        : /api/products
-```
-
----
-
-# 🔥 Troubleshooting
-
-이 프로젝트에서 가장 중요하게 생각한 부분입니다.
-
-단순히 기능을 구현하는 데서 끝내지 않고, **문제 발생 → 원인 분석 → 해결 → 구조 개선**의 과정을 기록했습니다.
-
----
-
-## 01. Redis Serialization / Generic Type 문제
-
-### Problem
-
-`List<DTO>` 형태의 응답을 Redis에 저장하는 과정에서 Jackson 역직렬화 시 타입 정보가 기대한 형태로 복원되지 않는 문제가 발생했습니다.
-
-### Solution
-
-응답 구조를 명시적인 Wrapper 객체로 변경했습니다.
-
-```text
-List<ProductListResponse>
-        ↓
-ProductListWrapper
-        ↓
-Redis Serialization
-        ↓
-Deserialization
-```
-
-또한 Redis 전용 `ObjectMapper`와 `GenericJackson2JsonRedisSerializer`를 구성하여 Cache Value의 직렬화 / 역직렬화 방식을 명시적으로 관리했습니다.
-
----
-
-## 02. Spring Security ROLE_ADMIN 문제
-
-### Problem
-
-DB / JWT의 권한 값과 Spring Security의 Role 기반 접근 제어 방식이 일치하지 않아 관리자 API 호출 시 `403 Forbidden`이 발생했습니다.
-
-### Solution
-
-Role 체계를 일관되게 맞추고 관리자 API에:
-
-```java
-.hasRole("ADMIN")
-```
-
-을 적용했습니다.
-
-이를 통해 인증(Authentication)과 인가(Authorization)의 역할을 분리하고 관리자 API 접근 제어를 일관되게 구성했습니다.
-
----
-
-## 03. Docker + Next.js SSR `localhost` 문제
-
-### Problem
-
-CSR에서는 API 요청이 정상적으로 동작하지만 SSR 환경에서 `Connection Refused`가 발생했습니다.
-
-### Root Cause
-
-Browser의 `localhost`와 Docker Container 내부의 `localhost`가 서로 다른 실행 환경을 가리키기 때문이었습니다.
-
-```text
-Browser
-localhost:8080
-    ↓
-사용자 PC
-
-Next.js Container
-localhost:8080
-    ↓
-Next.js Container 자신
-```
-
-### Solution
-
-실행 환경에 따라 API Endpoint를 분리했습니다.
-
-```text
-Browser
-  ↓
-NEXT_PUBLIC_API_URL
-  ↓
-Public API
-
-
-Next.js SSR
-  ↓
-INTERNAL_API_URL
-  ↓
-Docker Internal Network
-  ↓
-Backend
-```
-
----
-
-## 04. SSR Image `ERR_NAME_NOT_RESOLVED`
-
-### Problem
-
-SSR 과정에서 Docker 내부 hostname을 포함한 이미지 URL이 Browser로 전달되어 이미지가 표시되지 않는 문제가 발생했습니다.
-
-### Root Cause
-
-`backend-api`와 같은 Docker 내부 hostname은 Browser 환경에서 해석할 수 없습니다.
-
-### Solution
-
-Server와 Browser의 Asset URL을 분리했습니다.
-
-```text
-Server
-  ↓
-Internal API URL
-
-Browser
-  ↓
-Public API URL
-```
-
-`resolveAssetUrl()`을 통해 Browser에 전달되는 Asset URL을 Public URL 기준으로 처리하도록 구성했습니다.
-
----
-
-## 05. Multipart Upload `415 / 403`
-
-### Problem
-
-관리자 페이지의 이미지 / 영상 업로드 과정에서:
-
-* `415 Unsupported Media Type`
-* `403 Forbidden`
-
-오류가 발생했습니다.
-
-### Root Cause
-
-Frontend에서 FormData 요청의 `Content-Type`을 직접 지정하면서 Multipart Boundary 처리에 문제가 발생했고, Backend에서도 Multipart 데이터를 JSON 요청과 동일한 방식으로 처리하는 문제가 있었습니다.
-
-### Solution
-
-Frontend에서는 FormData 전송 시 `Content-Type`을 직접 지정하지 않도록 수정했습니다.
-
-Backend에서는 `MultipartFile` 기반으로 Multipart 요청을 처리하도록 변경했습니다.
-
----
-
-## 06. JWT Token Source 불일치
-
-### Problem
-
-일반 API는 정상적으로 인증되지만 특정 파일 업로드 API에서만 `403`이 발생했습니다.
-
-### Root Cause
-
-일부 API는 메모리의 Access Token을 사용하고, 다른 로직은 Cookie를 기준으로 Token을 조회하는 등 인증 Token Source가 일관되지 않았습니다.
-
-### Solution
-
-공통 인증 함수:
-
-```text
-getAccessToken()
-```
-
-를 사용하도록 인증 흐름을 통일했습니다.
-
----
-
-## 07. Next.js App Router Cache
-
-### Problem
-
-관리자 페이지에서 데이터를 수정했지만 메인 페이지에 변경 사항이 즉시 반영되지 않는 문제가 발생했습니다.
-
-### Solution
-
-동적 데이터가 필요한 요청에는:
-
-```text
-cache: "no-store"
-```
-
-를 적용하고 필요한 페이지에는:
-
-```text
-dynamic = "force-dynamic"
-```
-
-을 사용하여 최신 데이터를 조회하도록 구성했습니다.
-
----
-
-## 08. 불필요한 API Request 제거
-
-### Problem
-
-Portfolio 페이지에서도 Shopping Cart API가 호출되는 문제가 발생했습니다.
-
-### Root Cause
-
-Global Header가 모든 페이지에서 Mount되고 내부 `useEffect`가 페이지 종류와 관계없이 실행되고 있었습니다.
-
-### Solution
-
-`usePathname()`을 이용해 현재 경로를 확인하고 필요한 페이지에서만 Cart API를 호출하도록 분리했습니다.
-
-```text
-Portfolio
- └── Cart API 호출 X
-
-Shop
- └── Cart API 호출 O
-```
-
-페이지별 데이터 Lifecycle을 분리하여 불필요한 API Request를 제거했습니다.
-
----
-
-# ☁️ AWS / Production
-
-## AWS RDS
-
-Production 환경에서는 AWS RDS의 MySQL을 사용합니다.
-
-Production 설정에서는:
-
-```properties
-spring.jpa.hibernate.ddl-auto=validate
-```
-
-를 적용하여 애플리케이션 실행 과정에서 DB Schema가 임의로 변경되지 않도록 구성했습니다.
-
-## AWS S3
-
-상품 이미지 및 프로필 이미지 등의 파일을 AWS S3에 저장합니다.
-
-파일 업로드 시 UUID 기반 파일명을 생성하고 DB에는 Asset URL을 저장하도록 구성했습니다.
-
----
-
-# 🚀 CI/CD
-
-GitHub Actions workflow(`.github/workflows/deploy.yml`)는 `main`에 backend, frontend, `deploy.sh`, `ops`, workflow 변경이 push되거나 `workflow_dispatch`로 실행할 때 동작한다. Markdown만 바꾼 push는 배포하지 않는다. 같은 workflow의 실행은 `concurrency`로 직렬화하고, 진행 중인 배포는 `cancel-in-progress: false`로 취소하지 않는다.
-
-Runner는 `ubuntu-24.04`다. `actions/checkout@v5`, `actions/setup-java@v5`, `actions/setup-node@v5`, Docker Buildx/login/build-push의 Node 24용 안정 버전을 쓴다. Java는 Temurin 21, 프런트 검사는 Node 22다. 이 Node 버전은 Actions job의 검사용이고, 운영 프런트 이미지의 `node:20-alpine`과는 따로다. EC2 OS는 이 경고 때문에 바꾸지 않는다.
-
-`verify-deploy`, `backend-tests`, `frontend-checks`가 모두 통과해야 `build-and-push`가 실행된다. `deploy`는 그 이미지 빌드가 성공한 뒤에만 실행된다. 하나라도 실패하면 이미지 push와 EC2 배포는 시작되지 않는다. 백엔드 이미지 빌드 자체는 계속 `./gradlew clean build -x test`다. 업무 테스트는 이미지 빌드 안이 아니라 `backend-tests` job에서 `./gradlew test`로 실행한다. 그 테스트는 운영 RDS, Redis, S3, 메일, 결제에 연결하지 않고 Testcontainers MySQL과 Redis, Fake 결제 게이트웨이를 쓴다.
-
-이미지는 `github.sha`와 호환용 `latest`로 빌드한다. EC2는 `~/portfolio-release/<sha>`에 그 커밋의 `deploy.sh`, `ops/lib`, `ops/nginx`를 두고 그 스크립트를 `sha` 태그로 실행한다. `latest`는 배포 대상으로 쓰지 않는다. `.env`와 `.deploy.lock`은 릴리스 폴더가 아니라 `~/portfolio`를 쓴다. Nginx 백업은 `manifest.tsv`에 원본 경로와 백업 경로를 남기고, 복구는 그 백업 디렉터리의 `restore.sh`로 한다.
-
-Nginx `/api`는 `/etc/nginx/conf.d/service-url.inc`의 `$service_url`을 사용해야 한다. blue는 호스트 8081, green은 호스트 8082다. 프런트엔드는 호스트 3000 하나라서 교체 구간에 짧은 공백이 있다. 브라우저 API와 Next.js 서버 렌더링은 같은 blue/green 백엔드를 본다.
-
-이 workflow 수정은 작업 트리에만 있다. push하지 않았고 GitHub Actions도 이 개정으로 실행하지 않았다. 로컬 명령 통과를 운영 배포 완료로 보지 않는다.
-
-```text
-Git Push main
-      ↓
-GitHub Actions
-      ↓
-Backend Docker Build
-      ↓
-Frontend Docker Build
-      ↓
-Docker Hub Push
-      ↓
-EC2 SSH
-      ↓
-Deployment Script
-      ↓
-Docker Image Pull
-      ↓
-Container Deployment
-```
-
-민감한 Docker Hub / AWS / EC2 관련 정보는 GitHub Secrets를 통해 관리합니다.
-
-이미지 빌드 job에는 Redis 서비스 컨테이너를 두지 않는다. Redis가 필요한 검증은 `backend-tests`의 Testcontainers가 격리된 Redis를 띄운다.
-
----
-
-# 🐳 Docker
-
-Frontend와 Backend를 각각 Docker Image로 구성하고 Docker Compose를 통해 함께 실행할 수 있도록 구성했습니다.
-
-```text
-Docker Compose
-├── Frontend
-│   └── Next.js
-│
-└── Backend
-    └── Spring Boot
-```
-
-Production Database는 AWS RDS를 사용하며 Redis Endpoint 역시 환경변수를 통해 주입할 수 있도록 구성했습니다.
-
-운영 백엔드 이미지는 Amazon Corretto 21이다. 운영 프런트 이미지는 빌드와 실행 모두 `node:20-alpine`이다. Node 20 지원 종료 이후의 이미지 교체는 이 변경에 포함하지 않았다. 이미지 런타임을 바꾸려면 별도로 빌드와 화면 동작을 확인해야 한다.
-
----
-
-# 📈 Performance Test
-
-`k6` 기반 부하 테스트 스크립트를 포함하고 있습니다.
-
-```javascript
-export const options = {
-    vus: 50,
-    duration: '30s',
-};
-```
-
-상품 목록 API를 대상으로 반복 요청을 발생시켜 Cache 적용 전후의 성능을 비교할 수 있도록 구성했습니다.
-
----
-
-# 📌 Project Summary
-
-이 프로젝트를 통해 다음 영역을 하나의 서비스 흐름으로 경험했습니다.
-
-| 영역              | 구현 경험                                            |
-| --------------- | ------------------------------------------------ |
-| Backend         | Java, Spring Boot, REST API                      |
-| Security        | Spring Security, JWT, Role 기반 Authorization      |
-| Database        | MySQL, JPA / Hibernate                           |
-| Cache           | Spring Cache, Redis                              |
-| Frontend        | Next.js, React, TypeScript                       |
-| Rendering       | SSR, CSR, App Router                             |
-| File            | Multipart Upload, AWS S3                         |
-| Infrastructure  | Docker, Docker Compose                           |
-| Cloud           | AWS EC2, RDS, S3                                 |
-| CI/CD           | GitHub Actions, Docker Hub                       |
-| Performance     | Redis Cache, k6                                  |
-| Troubleshooting | 인증 / 캐시 / SSR / 네트워크 / Multipart / API Lifecycle |
-
----
-
-# 💡 Key Takeaways
-
-이 프로젝트에서 가장 중요하게 생각한 것은 **사용한 기술의 개수보다 문제를 해결하는 과정**이었습니다.
-
-특히 다음과 같은 문제를 직접 분석하고 해결했습니다.
-
-* Redis Cache 적용 과정의 Serialization 문제
-* Spring Security Role Mapping 문제
-* JWT Token Source 불일치
-* Next.js SSR과 Docker Network 차이
-* SSR Asset URL 문제
-* Multipart `415 / 403` 문제
-* Next.js App Router Cache 문제
-* 불필요한 API Request 문제
-
-이를 통해 **Frontend → Backend → Database → Cache → Container → Cloud**로 이어지는 Web Service의 전체 Request Lifecycle을 이해하고 문제를 추적하는 경험을 쌓았습니다.
-
----
-
-## 🔗 Repository
-
-**GitHub:** https://github.com/KimSunWooo/portfolio
-
-관련 개인 프로젝트: [미리매수](https://github.com/KimSunWooo/Auto-Trading-system)  
-Cursor를 활용한 바이브코딩으로 개발했다. 포트폴리오 화면 등록 상태는 `docs/projects/auto-trading-project.json`의 `registration`을 본다.
-
-## 로컬 검증
-
-아래 명령은 이 작업 트리에서 확인하는 방법이다. GitHub Actions 성공이나 운영 반영은 push와 운영 DB 적용 이후에만 말할 수 있다.
+격리된 MySQL과 Redis:
 
 ```bash
-bash ops/tests/run-deploy-checks.sh
-bash -n deploy.sh ops/nginx/apply-api-upstream.sh ops/nginx/recover-service.sh ops/lib/slots.sh ops/tests/run-deploy-checks.sh
-cd backend && ./gradlew test --no-daemon
-cd frontend && npm run lint && npm run typecheck && npm test && npm run build
-git diff --check
+docker compose -f compose.verify.yml up -d
+cd backend && ./gradlew bootRun --args='--spring.profiles.active=verify'
 ```
 
-백엔드 테스트는 격리된 MySQL과 Redis를 띄운다. 운영 RDS, Redis, S3, 메일, 결제에는 연결하지 않는다. 프런트 인증 테스트는 `frontend/src/lib/authSession.test.mts`다.
+verify 프로파일은 127.0.0.1:3307과 6380을 쓰고 Flyway로 빈 DB를 만듭니다. RabbitMQ와 Kafka는 꺼져 있습니다. 데이터소스나 `JWT_SECRET` 없이 기본 설정만으로 띄우면 기동에 필요한 값이 없어 실패합니다. 그 경우 verify 프로파일을 사용합니다.
 
-2026-10-13 작업 트리에서 로컬로 확인한 결과는 다음과 같다. 배포 모의 검사 27개는 연속 두 번 통과했고, 검사가 만든 flock 프로세스는 남지 않았다. 수정한 셸의 `bash -n`과 workflow YAML 파싱은 통과했다. `./gradlew test`는 32개 통과했다. 프런트 lint는 오류 0건과 `<img>` 경고 16건, `tsc --noEmit`은 통과, 인증 테스트는 7개 통과, `next build`는 정적 페이지 54개를 만들었다. `git diff --check`도 통과했다. GitHub Actions, EC2, 운영 컨테이너, 운영 DB 마이그레이션은 실행하지 않았다.
+프런트:
 
-## 대표 수정
+```bash
+cd frontend && npm ci && npm run dev
+```
 
-### 관리자 API 인가
+브라우저 API는 `NEXT_PUBLIC_API_URL`, 서버 렌더는 `INTERNAL_API_URL`입니다. 기본값은 `http://localhost:8080`입니다.
 
-`/api/admin/products`는 `/api/products/**` 규칙과 일치하지 않아 로그인 사용자에게 열려 있었다. `/api/admin/**`를 `ROLE_ADMIN`으로 막았다. 공개 조회 경로는 그대로다. Access Token으로 만든 인증 정보는 `SecurityContext`와 요청에 함께 저장한다. Refresh Token은 Access Token으로 쓰지 않는다.
+메시징을 보려면 `docker compose -f compose.messaging.yml up -d` 뒤에 `.env.example`의 `RABBITMQ_*`, `KAFKA_*`와 두 `enabled` 플래그를 켭니다. 기본 실행에는 필요 없습니다.
 
-### 빈 장바구니와 병합 재전송
+시연 구매 기록은 앱이 자동으로 넣지 않습니다. verify MySQL이 떠 있을 때 `backend/scripts/seed-demo-purchases.sh`와 `clear-demo-purchases.sh`를 사용합니다. 대량 배치는 `seed-bulk-demo-purchases.sh`와 `clear-bulk-demo-purchases.sh`입니다. LIVE 행은 지우지 않습니다.
 
-상품이 없는 Cart는 INNER JOIN으로 조회되지 않아 다시 담을 때 Cart가 새로 생길 수 있었다. 조회는 LEFT JOIN, 변경은 장바구니 행 잠금으로 나눴다. 같은 사용자, 같은 작업, 같은 `Idempotency-Key`의 병합은 `cart_sync_requests`의 UNIQUE 제약과 같은 DB 트랜잭션에서 한 번만 수량을 더한다. 같은 키에 다른 내용이 오면 409다. 트랜잭션이 롤백되면 그 키로 다시 시도할 수 있다. 키가 없으면 매번 병합한다. 프로세스 메모리에만 두던 완료 기록은 쓰지 않으므로 재시작 뒤에도 같은 키는 다시 더하지 않는다.
+로컬 관리자는 가입 뒤 DB에서 해당 사용자 역할을 `ROLE_ADMIN`으로 바꿉니다. 비밀번호를 저장소나 문서에 적지 않습니다.
 
-운영 `ddl-auto`는 `validate`다. `CartSyncRequest`가 들어 있는 이미지를 올리기 전에 `backend/src/main/resources/db/migration/V1__cart_sync_requests.sql`을 운영 DB에 한 번 적용해야 한다. 이 파일은 기존 `carts`, `cart_items`를 바꾸지 않는다. 되돌릴 때는 `cart_sync_requests`만 삭제하고 이전 이미지로 돌아간다. 이 마이그레이션은 운영 DB에 실행하지 않았다. 테이블이 없는 상태에서 새 이미지를 배포 가능하다고 보지 않는다.
+확인 명령:
 
-### 테스트 결제
+```bash
+cd backend && ./gradlew test --no-daemon
+cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+bash ops/tests/run-deploy-checks.sh
+python3 ops/perf/compare-product-list.py --base-url http://127.0.0.1:18080
+```
 
-승인 응답을 확인하기 전에 DONE을 저장하지 않는다. 금액은 100원만 받고, 승인 뒤에 취소한다. 취소에 실패하면 성공 화면으로 처리하지 않는다. 장바구니는 비우지 않는다. 같은 프로세스 안에서는 승인 트랜잭션이 끝난 뒤에 잠금을 풀어 중복 승인을 막는다. 인스턴스가 둘 이상이면 그 잠금만으로는 중복 승인을 막지 못한다. 외부 호출은 운영 키가 아닌 테스트의 FakePaymentGateway로만 검증했다. 실제 결제 API에는 연결하지 않는다.
+마지막 명령은 로컬에 상품 목록 API가 떠 있을 때만 의미가 있습니다.
 
+콘텐츠 초안·이력은 스키마에 없습니다. 이유는 [docs/follow-up-content-workflow.md](docs/follow-up-content-workflow.md)에 있습니다. 자동매매 소개 원본은 [docs/projects/auto-trading-project.json](docs/projects/auto-trading-project.json)입니다.
+
+저장소: [https://github.com/KimSunWooo/portfolio](https://github.com/KimSunWooo/portfolio)

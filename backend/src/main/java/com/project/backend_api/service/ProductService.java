@@ -70,7 +70,8 @@ public class ProductService {
      */
     @Cacheable(
             value = ProductListCache.NAME,
-            key = "T(com.project.backend_api.service.ProductListCache).key(#category, #search)"
+            key = "T(com.project.backend_api.service.ProductListCache).key(#category, #search)",
+            condition = "@productListCacheGate.enabled()"
     )
     public ProductListWrapper getProducts(String category, String search) {
     boolean hasCategory = category != null && !category.isBlank();

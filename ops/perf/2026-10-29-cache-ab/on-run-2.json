@@ -1,0 +1,51 @@
+{
+  "label": "on-run-2",
+  "base_url": "http://127.0.0.1:18080",
+  "request_path": "/api/products",
+  "vus": 10,
+  "duration": "30s",
+  "sleep_seconds": 0.5,
+  "expected_count": 54,
+  "requests": 600,
+  "throughput_rps": 19.820437662681204,
+  "http_error_rate": 0,
+  "check_rate": 1,
+  "p50_ms": 3.255186,
+  "p95_ms": 6.784493149999968,
+  "p99_ms": 16.40762094,
+  "sql": {
+    "product_list_selects": 0,
+    "other_statements": 0,
+    "product_list_digests": [],
+    "other_digest_sample": [],
+    "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+  },
+  "sql_per_request": 0.0,
+  "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+  "mode": "cache-warm",
+  "iteration": 2,
+  "inventory": {
+    "groups": [
+      {
+        "status": "HIDDEN",
+        "category": "sample",
+        "count": 2
+      },
+      {
+        "status": "SALE",
+        "category": "LIP",
+        "count": 1
+      },
+      {
+        "status": "SALE",
+        "category": "other",
+        "count": 3
+      },
+      {
+        "status": "SALE",
+        "category": "sample",
+        "count": 50
+      }
+    ]
+  }
+}

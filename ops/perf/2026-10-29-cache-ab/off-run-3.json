@@ -1,0 +1,73 @@
+{
+  "label": "off-run-3",
+  "base_url": "http://127.0.0.1:18080",
+  "request_path": "/api/products",
+  "vus": 10,
+  "duration": "30s",
+  "sleep_seconds": 0.5,
+  "expected_count": 54,
+  "requests": 600,
+  "throughput_rps": 19.728278877087856,
+  "http_error_rate": 0,
+  "check_rate": 1,
+  "p50_ms": 5.6299125,
+  "p95_ms": 7.9885593499999965,
+  "p99_ms": 28.66561574,
+  "sql": {
+    "product_list_selects": 591,
+    "other_statements": 2951,
+    "product_list_digests": [
+      {
+        "count": 591,
+        "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+      }
+    ],
+    "other_digest_sample": [
+      {
+        "count": 1191,
+        "digest": "SET `autocommit` = ?"
+      },
+      {
+        "count": 600,
+        "digest": "SET SESSION TRANSACTION READ WRITE"
+      },
+      {
+        "count": 594,
+        "digest": "COMMIT"
+      },
+      {
+        "count": 566,
+        "digest": "SET SESSION TRANSACTION READ ONLY"
+      }
+    ],
+    "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+  },
+  "sql_per_request": 0.985,
+  "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+  "mode": "cache-disabled",
+  "iteration": 3,
+  "inventory": {
+    "groups": [
+      {
+        "status": "HIDDEN",
+        "category": "sample",
+        "count": 2
+      },
+      {
+        "status": "SALE",
+        "category": "LIP",
+        "count": 1
+      },
+      {
+        "status": "SALE",
+        "category": "other",
+        "count": 3
+      },
+      {
+        "status": "SALE",
+        "category": "sample",
+        "count": 50
+      }
+    ]
+  }
+}

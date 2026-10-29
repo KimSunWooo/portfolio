@@ -1,0 +1,525 @@
+{
+  "head": "3226b1061dcac92bf1fc093a97a4ed5fe15fbc1a",
+  "dirty": true,
+  "git_status": " M .gitignore\n M README.md\n M backend/src/main/java/com/project/backend_api/service/ProductService.java\n M backend/src/main/resources/application.properties\n M backend/src/test/java/com/project/backend_api/service/ProductListCacheTest.java\n M docs/incidents/2026-10-13-backend-readiness.md\n?? .env.example\n?? backend/src/main/java/com/project/backend_api/service/ProductListCacheGate.java\n?? docs/implementation-scope.md\n?? ops/perf/\n",
+  "environment": {
+    "nproc": 12,
+    "mem_total_kb": 32785472,
+    "backend": "127.0.0.1:18080 spring profile verify",
+    "mysql": "127.0.0.1:3307 portfolio-verify-mysql portfolio_verify",
+    "redis": "127.0.0.1:6380 portfolio-verify-redis",
+    "left_running": [
+      "portfolio-frontend-web-1:3000",
+      "portfolio-backend-api-1:8080"
+    ]
+  },
+  "versions": {
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)",
+    "spring_boot": "4.1.0",
+    "mysql": "8.4.11",
+    "redis": "Redis server v=7.4.11 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=40ff01a501d8e4b6",
+    "k6_image": "grafana/k6:0.54.0"
+  },
+  "workload": {
+    "vus": 10,
+    "duration": "30s",
+    "sleep_seconds": 0.5,
+    "request_path": "/api/products",
+    "order": [
+      "off-1",
+      "on-1",
+      "on-2",
+      "off-2",
+      "off-3",
+      "on-3"
+    ],
+    "jvm_warmup": "30 GET /api/products/{firstSaleId} before each window",
+    "cache_warmup": "one GET /api/products after JVM warmup, only for cache-warm, outside the SQL window",
+    "sql_counter": "performance_schema statement digest delta during the k6 window only"
+  },
+  "accuracy": {
+    "sale_count": 54,
+    "sample_sale_count": 50,
+    "inventory": {
+      "groups": [
+        {
+          "status": "HIDDEN",
+          "category": "sample",
+          "count": 2
+        },
+        {
+          "status": "SALE",
+          "category": "LIP",
+          "count": 1
+        },
+        {
+          "status": "SALE",
+          "category": "other",
+          "count": 3
+        },
+        {
+          "status": "SALE",
+          "category": "sample",
+          "count": 50
+        }
+      ]
+    },
+    "disabled_all_sha256": "a8efc8668a0f734834bf5ccefd86d08a99a16ccbd49e49ad46cb0e6404f9bd34",
+    "disabled_sample_sha256": "1bb4a13850887d1f88fb18b746e045a394474be40acf266e6d9ca7104255077d",
+    "miss_all_sha256": "a8efc8668a0f734834bf5ccefd86d08a99a16ccbd49e49ad46cb0e6404f9bd34",
+    "hit_all_sha256": "a8efc8668a0f734834bf5ccefd86d08a99a16ccbd49e49ad46cb0e6404f9bd34",
+    "miss_sample_sha256": "1bb4a13850887d1f88fb18b746e045a394474be40acf266e6d9ca7104255077d",
+    "hit_sample_sha256": "1bb4a13850887d1f88fb18b746e045a394474be40acf266e6d9ca7104255077d",
+    "all_match": true,
+    "sample_match": true,
+    "all_response_bytes": 8607,
+    "sample_response_bytes": 7984,
+    "data_note": "Isolated portfolio_verify only. SALE count includes the verify-profile seed row plus this experiment's sample rows. This is a different dataset from ops/perf/2026-10-29-product-list.json.",
+    "disabled_five_requests_sql": {
+      "product_list_selects": 5,
+      "other_statements": 25,
+      "product_list_digests": [
+        {
+          "count": 5,
+          "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+        }
+      ],
+      "other_digest_sample": [
+        {
+          "count": 10,
+          "digest": "SET `autocommit` = ?"
+        },
+        {
+          "count": 5,
+          "digest": "COMMIT"
+        },
+        {
+          "count": 5,
+          "digest": "SET SESSION TRANSACTION READ ONLY"
+        },
+        {
+          "count": 5,
+          "digest": "SET SESSION TRANSACTION READ WRITE"
+        }
+      ],
+      "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+    },
+    "enabled_miss_sql": {
+      "product_list_selects": 1,
+      "other_statements": 5,
+      "product_list_digests": [
+        {
+          "count": 1,
+          "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+        }
+      ],
+      "other_digest_sample": [
+        {
+          "count": 2,
+          "digest": "SET `autocommit` = ?"
+        },
+        {
+          "count": 1,
+          "digest": "COMMIT"
+        },
+        {
+          "count": 1,
+          "digest": "SET SESSION TRANSACTION READ ONLY"
+        },
+        {
+          "count": 1,
+          "digest": "SET SESSION TRANSACTION READ WRITE"
+        }
+      ],
+      "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+    },
+    "enabled_hit_sql": {
+      "product_list_selects": 0,
+      "other_statements": 0,
+      "product_list_digests": [],
+      "other_digest_sample": [],
+      "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+    }
+  },
+  "runs": [
+    {
+      "label": "off-run-1",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.722826578113857,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 5.532572,
+      "p95_ms": 8.674576149999986,
+      "p99_ms": 30.86878364,
+      "sql": {
+        "product_list_selects": 594,
+        "other_statements": 2947,
+        "product_list_digests": [
+          {
+            "count": 594,
+            "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+          }
+        ],
+        "other_digest_sample": [
+          {
+            "count": 1197,
+            "digest": "SET `autocommit` = ?"
+          },
+          {
+            "count": 600,
+            "digest": "SET SESSION TRANSACTION READ WRITE"
+          },
+          {
+            "count": 593,
+            "digest": "COMMIT"
+          },
+          {
+            "count": 557,
+            "digest": "SET SESSION TRANSACTION READ ONLY"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.99,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-disabled",
+      "iteration": 1,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "label": "on-run-1",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.818105374746818,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 3.301578,
+      "p95_ms": 5.499896799999996,
+      "p99_ms": 16.74041044,
+      "sql": {
+        "product_list_selects": 0,
+        "other_statements": 0,
+        "product_list_digests": [],
+        "other_digest_sample": [],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.0,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-warm",
+      "iteration": 1,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "label": "on-run-2",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.820437662681204,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 3.255186,
+      "p95_ms": 6.784493149999968,
+      "p99_ms": 16.40762094,
+      "sql": {
+        "product_list_selects": 0,
+        "other_statements": 0,
+        "product_list_digests": [],
+        "other_digest_sample": [],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.0,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-warm",
+      "iteration": 2,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "label": "off-run-2",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.722112302499333,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 5.4709045,
+      "p95_ms": 11.124348749999994,
+      "p99_ms": 29.396843660000002,
+      "sql": {
+        "product_list_selects": 595,
+        "other_statements": 2942,
+        "product_list_digests": [
+          {
+            "count": 595,
+            "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+          }
+        ],
+        "other_digest_sample": [
+          {
+            "count": 1190,
+            "digest": "SET `autocommit` = ?"
+          },
+          {
+            "count": 597,
+            "digest": "SET SESSION TRANSACTION READ WRITE"
+          },
+          {
+            "count": 595,
+            "digest": "COMMIT"
+          },
+          {
+            "count": 560,
+            "digest": "SET SESSION TRANSACTION READ ONLY"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.9916666666666667,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-disabled",
+      "iteration": 2,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "label": "off-run-3",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.728278877087856,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 5.6299125,
+      "p95_ms": 7.9885593499999965,
+      "p99_ms": 28.66561574,
+      "sql": {
+        "product_list_selects": 591,
+        "other_statements": 2951,
+        "product_list_digests": [
+          {
+            "count": 591,
+            "digest": "SELECT `p1_0` . `id` , `p1_0` . `category` , `p1_0` . `created_at` , `p1_0` . `description` , `p1_0` . `is_best` , `p1_0` . `is_new` , `p1_0` . `name` , `p1_0` . `original_price` , `p1_0` . `price` , `p1_0` . `status` , `p1_0` . `stock` , `p1_0` . `subtitle` , `p1_0` . `thumbnail` , `p1_0` . `updated_at` FROM `products` `p1_0` WHERE `p1_0` . `status` = ? ORDER BY `p1_0` . `id`"
+          }
+        ],
+        "other_digest_sample": [
+          {
+            "count": 1191,
+            "digest": "SET `autocommit` = ?"
+          },
+          {
+            "count": 600,
+            "digest": "SET SESSION TRANSACTION READ WRITE"
+          },
+          {
+            "count": 594,
+            "digest": "COMMIT"
+          },
+          {
+            "count": 566,
+            "digest": "SET SESSION TRANSACTION READ ONLY"
+          }
+        ],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.985,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-disabled",
+      "iteration": 3,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    },
+    {
+      "label": "on-run-3",
+      "base_url": "http://127.0.0.1:18080",
+      "request_path": "/api/products",
+      "vus": 10,
+      "duration": "30s",
+      "sleep_seconds": 0.5,
+      "expected_count": 54,
+      "requests": 600,
+      "throughput_rps": 19.827215411418123,
+      "http_error_rate": 0,
+      "check_rate": 1,
+      "p50_ms": 3.046177,
+      "p95_ms": 5.255175449999995,
+      "p99_ms": 17.207242459999993,
+      "sql": {
+        "product_list_selects": 0,
+        "other_statements": 0,
+        "product_list_digests": [],
+        "other_digest_sample": [],
+        "counter": "performance_schema.events_statements_summary_by_digest COUNT_STAR delta"
+      },
+      "sql_per_request": 0.0,
+      "throughput_note": "Throughput includes the fixed sleep and is not a maximum server capacity.",
+      "mode": "cache-warm",
+      "iteration": 3,
+      "inventory": {
+        "groups": [
+          {
+            "status": "HIDDEN",
+            "category": "sample",
+            "count": 2
+          },
+          {
+            "status": "SALE",
+            "category": "LIP",
+            "count": 1
+          },
+          {
+            "status": "SALE",
+            "category": "other",
+            "count": 3
+          },
+          {
+            "status": "SALE",
+            "category": "sample",
+            "count": 50
+          }
+        ]
+      }
+    }
+  ],
+  "note": "p50, p95, and p99 are per run. They are not averaged into an overall percentile. Throughput includes the 0.5s sleep and is not maximum capacity.",
+  "disable_method": "app.cache.product-list.enabled defaults to true. Each isolated JVM was started with --app.cache.product-list.enabled=false or true. ProductService.getProducts uses @Cacheable condition @productListCacheGate.enabled(). False skips lookup and store for that method only. No public request parameter disables the cache. Refresh token storage is separate.",
+  "sql_observation": "Counter is performance_schema.events_statements_summary_by_digest COUNT_STAR delta while k6 is running. A product-list SELECT is a digest that starts with SELECT, contains FROM `products`, and contains ORDER BY. The collector's own performance_schema query is excluded. MySQL Questions is not this count. Disabled windows recorded 594, 595, and 591 of that digest for 600 responses. The only matching digest was FROM `products` WHERE status = ? ORDER BY id. Other statements in those windows were SET autocommit, COMMIT, and SET SESSION TRANSACTION. Performance_schema_digest_lost was 0. The 5 to 9 missing increments were not reassigned. Before the load, five disabled requests counted 5, the first enabled request counted 1, and the following request counted 0. Each warm window counted 0 statements.",
+  "commands": [
+    "docker compose -f compose.verify.yml up -d",
+    "python3 ops/perf/run_cache_ab.py"
+  ]
+}
