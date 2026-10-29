@@ -1,8 +1,10 @@
 package com.project.backend_api.notification;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.backend_api.messaging.MessagingJsonConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
@@ -87,11 +89,12 @@ public class RabbitNotificationConfig {
             JdbcTemplate jdbc,
             MailSender mailSender,
             RabbitTemplate passwordChangeRabbitTemplate,
-            ObjectMapper objectMapper,
+            @Qualifier(MessagingJsonConfig.MESSAGING_OBJECT_MAPPER) ObjectMapper messagingObjectMapper,
             @Value("${app.notification.password-changed.exchange}") String exchange,
             @Value("${app.notification.password-changed.routing-key}") String routingKey
     ) {
-        return new PasswordChangeMailConsumer(jdbc, mailSender, passwordChangeRabbitTemplate, objectMapper, exchange, routingKey);
+        return new PasswordChangeMailConsumer(
+                jdbc, mailSender, passwordChangeRabbitTemplate, messagingObjectMapper, exchange, routingKey);
     }
 
     @Bean

@@ -381,10 +381,5 @@ class PasswordChangeNotificationTest {
         MutableRevokeFault mutableRevokeFault() {
             return new MutableRevokeFault();
         }
-
-        @Bean
-        SessionRevokeFault sessionRevokeFault(MutableRevokeFault mutableRevokeFault) {
-            return mutableRevokeFault;
-        }
     }
 }

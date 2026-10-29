@@ -4,6 +4,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.backend_api.messaging.MessagingJsonConfig;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +21,6 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.backoff.FixedBackOff;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,9 +58,9 @@ public class KafkaProductReadConfig {
     ProductDetailReadStore productDetailReadStore(
             JdbcTemplate jdbc,
             PlatformTransactionManager transactions,
-            ObjectMapper objectMapper
+            @Qualifier(MessagingJsonConfig.MESSAGING_OBJECT_MAPPER) ObjectMapper messagingObjectMapper
     ) {
-        return new ProductDetailReadStore(jdbc, transactions, objectMapper);
+        return new ProductDetailReadStore(jdbc, transactions, messagingObjectMapper);
     }
 
     @Bean

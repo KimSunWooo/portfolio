@@ -97,12 +97,14 @@ class ProductDetailReadKafkaTest {
     void successfulReadIsCountedAndFailuresAreNot() throws Exception {
         Product product = products.save(Product.create(new ProductRequest(
                 "Read Shade", null, "detail", "립", 12000, null, null, false, false, 3, "SALE", null)));
-        productService.getProduct(product.getId());
-        waitUntil(() -> store.count(product.getId()) == 1);
+        waitUntilCounted(product.getId(), 1);
 
         assertThrows(ResponseStatusException.class, () -> productService.getProduct(Integer.MAX_VALUE));
-        Thread.sleep(500);
-        assertEquals(0, store.count(Integer.MAX_VALUE));
+        long started = System.nanoTime();
+        while (System.nanoTime() - started < Duration.ofSeconds(1).toNanos()) {
+            assertEquals(0, store.count(Integer.MAX_VALUE));
+            Thread.sleep(100);
+        }
         assertEquals(1, store.count(product.getId()));
 
         String payload = """
@@ -136,16 +138,35 @@ class ProductDetailReadKafkaTest {
     void productReadSucceedsWhenTheBrokerIsPaused() throws Exception {
         Product product = products.save(Product.create(new ProductRequest(
                 "Paused Shade", null, "detail", "립", 9000, null, null, false, false, 3, "SALE", null)));
-        productService.getProduct(product.getId());
-        waitUntil(() -> store.count(product.getId()) == 1);
+        waitUntilCounted(product.getId(), 1);
         KAFKA.getDockerClient().pauseContainerCmd(KAFKA.getContainerId()).exec();
         try {
             assertEquals("Paused Shade", productService.getProduct(product.getId()).name());
-            Thread.sleep(500);
-            assertEquals(1, store.count(product.getId()));
+            long started = System.nanoTime();
+            while (System.nanoTime() - started < Duration.ofSeconds(1).toNanos()) {
+                assertEquals(1, store.count(product.getId()));
+                Thread.sleep(100);
+            }
         } finally {
             KAFKA.getDockerClient().unpauseContainerCmd(KAFKA.getContainerId()).exec();
         }
+    }
+
+    /**
+     * Producer delivery is capped. A cold broker may drop the first publish.
+     * Retry the successful read until the consumer records the count.
+     */
+    private void waitUntilCounted(int productId, long expected) throws Exception {
+        waitUntil(() -> {
+            if (!container.isRunning()) {
+                return false;
+            }
+            if (store.count(productId) >= expected) {
+                return true;
+            }
+            productService.getProduct(productId);
+            return store.count(productId) >= expected;
+        });
     }
 
     private void readWithoutCommitting(String expected) throws Exception {

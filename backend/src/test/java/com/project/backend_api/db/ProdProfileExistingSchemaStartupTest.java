@@ -167,8 +167,19 @@ class ProdProfileExistingSchemaStartupTest {
                 assertTrue(rows.next());
                 assertEquals("4", rows.getString(1));
                 assertEquals("JDBC", rows.getString(2));
+                assertTrue(rows.next());
+                assertEquals("5", rows.getString(1));
+                assertEquals("SQL", rows.getString(2));
+                assertEquals("V5__messaging_and_purchase_analytics.sql", rows.getString(3));
+                assertTrue(rows.getBoolean(4));
                 assertFalse(rows.next());
             }
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "password_change_outbox"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "password_change_mail_delivery"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "product_detail_read_events"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "product_detail_read_counts"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "mock_purchase_orders"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "mock_purchase_lines"));
             assertEquals(productsBefore, FlywaySchemaFixture.columnSnapshot(connection, "products"));
             assertEquals(legacyBefore, FlywaySchemaFixture.columnSnapshot(connection, "legacy_orders"));
             try (ResultSet rows = connection.createStatement().executeQuery(

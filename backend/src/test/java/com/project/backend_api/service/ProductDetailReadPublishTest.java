@@ -7,7 +7,6 @@ import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductDetailRepository;
 import com.project.backend_api.repository.ProductImageRepository;
 import com.project.backend_api.repository.ProductRepository;
-import com.project.backend_api.service.ProductListCache;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -60,9 +60,6 @@ class ProductDetailReadPublishTest {
         when(details.findByProductId(org.mockito.ArgumentMatchers.any())).thenReturn(Optional.empty());
         when(images.findByProductIdOrderBySortOrderAscIdAsc(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
         when(colors.findByProductIdOrderBySortOrderAscIdAsc(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
-        @SuppressWarnings("unchecked")
-        ObjectProvider<ProductDetailReadPublisher> provider = mock(ObjectProvider.class);
-        when(provider.getIfAvailable()).thenReturn(publisher);
         return new ProductService(
                 products,
                 details,
@@ -71,6 +68,20 @@ class ProductDetailReadPublishTest {
                 mock(com.amazonaws.services.s3.AmazonS3.class),
                 mock(ProductListCache.class),
                 mock(AfterCommit.class),
-                provider);
+                available(publisher));
+    }
+
+    private static ObjectProvider<ProductDetailReadPublisher> available(ProductDetailReadPublisher publisher) {
+        return new ObjectProvider<>() {
+            @Override
+            public ProductDetailReadPublisher getObject() {
+                return publisher;
+            }
+
+            @Override
+            public void ifAvailable(Consumer<ProductDetailReadPublisher> dependencyConsumer) {
+                dependencyConsumer.accept(publisher);
+            }
+        };
     }
 }
