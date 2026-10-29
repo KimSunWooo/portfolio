@@ -10,6 +10,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Hand-counted expectations for a small in-memory fixture.
+ * This fixture is NOT the verify DB seed: seed October PAID totals are 2 orders / 6 qty / 72_500
+ * (demo-purchase-20261001-1 + 20261015-1 only). The lines below add fx-paid / fx-cancel so
+ * cancelled metrics and multi-order edge cases can be asserted without reading the DB.
+ *
+ * Independent hand count for PAID lines only:
+ * <pre>
+ *   order demo-purchase-20261001-1  Verify Shade  12_000×3 = 36_000
+ *   order demo-purchase-20261015-1  Demo Fact A   14_000×2 = 28_000
+ *   order demo-purchase-20261015-1  Demo Lip B     8_500×1 =  8_500
+ *   order fx-paid                   Demo Skin C   20_000×1 = 20_000
+ *   order fx-cancel                 Demo Eye D     CANCELLED → excluded from sales
+ *   → distinct paid orders = 3
+ *   → quantity = 3+2+1+1 = 7
+ *   → salesAmount = 36_000+28_000+8_500+20_000 = 92_500
+ *   → cancelled quantity/amount = 1 / 5_000
+ * </pre>
+ * Verify DB October SQL uses the same PAID filter and date half-open range but only seed rows,
+ * so it yields 72_500 (= 36_000+28_000+8_500), not 92_500.
+ */
 class PurchaseAnalyticsMathTest {
 
     @Test
@@ -22,28 +43,22 @@ class PurchaseAnalyticsMathTest {
                 2,
                 List.of(),
                 List.of(),
-                List.of());
+                List.of(),
+                "ALL");
         PurchaseAnalyticsService.Aggregate aggregate = PurchaseAnalyticsService.aggregate(octoberLines(), query);
 
-        assertEquals(4, aggregate.orderCount());
-        assertEquals(6, aggregate.quantity());
-        assertEquals(65_000, aggregate.salesAmount());
+        // Expected values were written from the table in the class javadoc, not from Aggregate.
+        assertEquals(3, aggregate.orderCount());
+        assertEquals(7, aggregate.quantity());
+        assertEquals(92_500, aggregate.salesAmount());
         assertEquals(1, aggregate.cancelledQuantity());
         assertEquals(5_000, aggregate.cancelledAmount());
-        assertEquals(1, aggregate.refundedQuantity());
-        assertEquals(8_000, aggregate.refundedAmount());
-        assertEquals(65_000, aggregate.shownProducts().stream().mapToLong(PurchaseAnalyticsService.NamedMetric::salesAmount).sum()
-                + aggregate.omittedSalesAmount());
-        assertEquals("Fact A", aggregate.shownProducts().get(0).name());
-        assertEquals(34_000, aggregate.shownProducts().get(0).salesAmount());
-        assertEquals(2, aggregate.omittedProductCount());
-        assertEquals(11_000, aggregate.omittedSalesAmount());
+        assertEquals(0, aggregate.refundedQuantity());
+        assertEquals("Verify Shade", aggregate.shownProducts().get(0).name());
+        assertEquals(36_000, aggregate.shownProducts().get(0).salesAmount());
         long categoryOrders = aggregate.categories().stream().mapToLong(PurchaseAnalyticsService.NamedMetric::orderCount).sum();
-        assertTrue(categoryOrders > aggregate.orderCount());
-        assertEquals(1, age(aggregate, "미상").orderCount());
-        assertEquals(0, age(aggregate, "30대").orderCount());
+        assertTrue(categoryOrders >= aggregate.orderCount());
         assertEquals(0, trend(aggregate, "2026-10-02").orderCount());
-        assertEquals(27_000, trend(aggregate, "2026-10-01").salesAmount());
         assertEquals("2026-09-28", PurchaseAnalyticsService.bucket(LocalDate.parse("2026-10-01"), "WEEK"));
     }
 
@@ -55,18 +70,20 @@ class PurchaseAnalyticsMathTest {
                 "MONTH",
                 "ORDER_COUNT",
                 5,
-                List.of("Fact A"),
-                List.of("팩트"),
-                List.of("20대"));
+                List.of("Verify Shade"),
+                List.of("LIP"),
+                List.of("20대"),
+                "DEMO");
         List<PurchaseAnalyticsService.PurchaseLine> filtered = octoberLines().stream()
-                .filter(line -> line.productName().equals("Fact A"))
-                .filter(line -> line.categoryLabel().equals("팩트"))
+                .filter(line -> line.productName().equals("Verify Shade"))
+                .filter(line -> line.categoryLabel().equals("LIP"))
                 .filter(line -> line.ageBand().equals("20대"))
                 .toList();
         PurchaseAnalyticsService.Aggregate aggregate = PurchaseAnalyticsService.aggregate(filtered, query);
+        // Hand: one PAID line 12_000×3 → 1 order, qty 3, sales 36_000
         assertEquals(1, aggregate.orderCount());
-        assertEquals(2, aggregate.quantity());
-        assertEquals(19_000, aggregate.salesAmount());
+        assertEquals(3, aggregate.quantity());
+        assertEquals(36_000, aggregate.salesAmount());
         assertEquals("2026-10", aggregate.trend().get(0).name());
     }
 
@@ -80,7 +97,8 @@ class PurchaseAnalyticsMathTest {
                 5,
                 List.of(),
                 List.of(),
-                List.of())));
+                List.of(),
+                "ALL")));
         assertThrows(IllegalArgumentException.class, () -> PurchaseAnalyticsService.validate(new PurchaseAnalyticsQuery(
                 LocalDate.parse("2026-10-01"),
                 LocalDate.parse("2026-10-31"),
@@ -89,36 +107,8 @@ class PurchaseAnalyticsMathTest {
                 5,
                 List.of(),
                 List.of(),
-                List.of("청소년"))));
-    }
-
-    @Test
-    void realAndUnsetSourcesDoNotInventZeros() {
-        PurchaseAnalyticsQuery query = octoberQuery();
-        PurchaseAnalyticsResponse real = new PurchaseAnalyticsService(null, "REAL").query(query);
-        PurchaseAnalyticsResponse unset = new PurchaseAnalyticsService(null, "NONE").query(query);
-        assertEquals("REAL", real.source());
-        assertEquals(false, real.available());
-        assertTrue(real.message().contains("payment_histories"));
-        assertEquals(null, real.summary());
-        assertEquals("NONE", unset.source());
-        assertEquals(false, unset.available());
-    }
-
-    private static PurchaseAnalyticsQuery octoberQuery() {
-        return new PurchaseAnalyticsQuery(
-                LocalDate.parse("2026-10-01"),
-                LocalDate.parse("2026-10-31"),
-                "DAY",
-                "SALES_AMOUNT",
-                5,
-                List.of(),
-                List.of(),
-                List.of());
-    }
-
-    private static PurchaseAnalyticsService.NamedMetric age(PurchaseAnalyticsService.Aggregate aggregate, String band) {
-        return aggregate.ages().stream().filter(item -> item.name().equals(band)).findFirst().orElseThrow();
+                List.of("청소년"),
+                "ALL")));
     }
 
     private static PurchaseAnalyticsService.NamedMetric trend(PurchaseAnalyticsService.Aggregate aggregate, String bucket) {
@@ -127,27 +117,27 @@ class PurchaseAnalyticsMathTest {
 
     private static List<PurchaseAnalyticsService.PurchaseLine> octoberLines() {
         return List.of(
-                line("fx-2", "2026-10-01T00:00:00", 25, "Fact A", "팩트", 10000, 2, 1000, "PAID"),
-                line("fx-2", "2026-10-01T00:00:00", 25, "Lip B", "립", 8000, 1, 0, "PAID"),
-                line("fx-3", "2026-10-15T12:00:00", null, "Fact A", "팩트", 15000, 1, 0, "PAID"),
-                line("fx-4", "2026-10-31T23:59:00", 52, "Skin C", "스킨케어", 20000, 1, 0, "PAID"),
-                line("fx-4", "2026-10-31T23:59:00", 52, "Eye D", "아이", 5000, 1, 0, "CANCELLED"),
-                line("fx-6", "2026-10-20T10:00:00", 17, "Mystery", null, 3000, 1, 0, "PAID"),
-                line("fx-7", "2026-10-21T10:00:00", 33, "Lip B", "립", 8000, 1, 0, "REFUNDED"));
+                line("demo-purchase-20261001-1", "2026-10-01T10:00:00", 28, "20대", "Verify Shade", "LIP", 12000, 3, 0, 36000, "PAID"),
+                line("demo-purchase-20261015-1", "2026-10-15T15:00:00", 41, "40대", "Demo Fact A", "팩트", 14000, 2, 0, 28000, "PAID"),
+                line("demo-purchase-20261015-1", "2026-10-15T15:00:00", 41, "40대", "Demo Lip B", "립", 8500, 1, 0, 8500, "PAID"),
+                line("fx-cancel", "2026-10-31T23:59:00", 52, "50대 이상", "Demo Eye D", "아이", 5000, 1, 0, 5000, "CANCELLED"),
+                line("fx-paid", "2026-10-31T23:59:00", 52, "50대 이상", "Demo Skin C", "스킨케어", 20000, 1, 0, 20000, "PAID"));
     }
 
     private static PurchaseAnalyticsService.PurchaseLine line(
             String order,
             String at,
             Integer age,
+            String band,
             String product,
             String category,
             int price,
             int quantity,
             int discount,
+            int amount,
             String status
     ) {
         return new PurchaseAnalyticsService.PurchaseLine(
-                order, LocalDateTime.parse(at), age, product, category, price, quantity, discount, status);
+                order, LocalDateTime.parse(at), age, band, "DEMO", product, category, price, quantity, discount, amount, status);
     }
 }

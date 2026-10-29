@@ -18,6 +18,7 @@ import {
   type ProductRequest,
   type ProductImage,
 } from "@/lib/api";
+import PurchaseAnalyticsPanel from "@/components/admin/purchase/PurchaseAnalyticsPanel";
 
 interface ShopEditorProps {
   selectedMenu: ShopMenu;
@@ -56,19 +57,21 @@ function DashboardEditor() {
   }, []);
 
   return (
-    <div>
-      <EditorHeader
-        label="01 · OVERVIEW"
-        title="Dashboard"
-        description="Shop의 전체 현황을 확인합니다."
-      />
+    <div className="space-y-10">
+      <div>
+        <EditorHeader
+          label="01 · OVERVIEW"
+          title="Dashboard"
+          description="Shop의 전체 현황과 DB 구매 집계를 확인합니다."
+        />
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:mt-10 xl:grid-cols-4">
-        <SummaryCard label="PRODUCTS (Real)" value={productCount.toString()} />
-        <SummaryCard label="CUSTOMERS (Real)" value={userCount.toString()} />
-        <SummaryCard label="ORDERS (Mock)" value="128" />
-        <SummaryCard label="SALES (Mock)" value="₩3,450,000" />
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:mt-10">
+          <SummaryCard label="PRODUCTS" value={productCount.toString()} />
+          <SummaryCard label="CUSTOMERS" value={userCount.toString()} />
+        </div>
       </div>
+
+      <PurchaseAnalyticsPanel mode="summary" />
     </div>
   );
 }

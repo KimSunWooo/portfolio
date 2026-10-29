@@ -1,15 +1,15 @@
 package com.project.backend_api.purchase;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 public record PurchaseAnalyticsResponse(
-        String source,
+        String dataBasis,
+        String sourceLabel,
+        boolean includesDemoRecords,
         boolean available,
         String message,
-        String sourceLabel,
         String timezone,
         String rangeStartInclusive,
         String rangeEndExclusive,
@@ -44,50 +44,21 @@ public record PurchaseAnalyticsResponse(
     public record Omission(int productCount, long salesAmount, long quantity) {
     }
 
-    static PurchaseAnalyticsResponse unavailable(
-            String source,
-            String message,
-            PurchaseAnalyticsQuery query,
-            LocalDateTime aggregatedAt
-    ) {
-        return new PurchaseAnalyticsResponse(
-                source,
-                false,
-                message,
-                null,
-                "Asia/Seoul",
-                query.from().toString(),
-                query.to().plusDays(1).toString(),
-                query.grain(),
-                query.metric(),
-                aggregatedAt.toString(),
-                "조회를 계산한 시각이며 마지막 구매 시각이 아닙니다.",
-                filters(query),
-                metricDefinitions(),
-                null,
-                List.of(),
-                List.of(),
-                null,
-                List.of(),
-                true,
-                List.of(),
-                "구매 주문 수. 미상 포함",
-                List.of(),
-                List.of()
-        );
-    }
-
     static PurchaseAnalyticsResponse of(
-            String source,
             PurchaseAnalyticsQuery query,
             LocalDateTime aggregatedAt,
-            PurchaseAnalyticsService.Aggregate aggregate
+            PurchaseAnalyticsService.Aggregate aggregate,
+            boolean includesDemo
     ) {
+        String label = includesDemo
+                ? "시연용 구매기록 포함 · DB purchase_orders 집계"
+                : "DB purchase_orders 집계";
         return new PurchaseAnalyticsResponse(
-                source,
+                "DATABASE",
+                label,
+                includesDemo,
                 true,
                 null,
-                "MOCK 데이터 / 시연용 구매 통계",
                 "Asia/Seoul",
                 query.from().toString(),
                 query.to().plusDays(1).toString(),
@@ -127,7 +98,8 @@ public record PurchaseAnalyticsResponse(
                 "ageBands", query.ageBands(),
                 "grain", query.grain(),
                 "metric", query.metric(),
-                "topN", query.topN()
+                "topN", query.topN(),
+                "recordSource", query.recordSource()
         );
     }
 
@@ -135,14 +107,12 @@ public record PurchaseAnalyticsResponse(
         return Map.of(
                 "orderCount", "조건에 맞는 결제 완료 줄이 하나 이상인 고유 주문 수. 주문상품 줄 수가 아닙니다.",
                 "quantity", "결제 완료 줄의 수량 합.",
-                "salesAmount", "구매 당시 단가 x 수량 - 줄 할인. 주문 전체 할인, 배송비, 부분 환불은 나누지 않습니다.",
-                "cancelledAmount", "취소 줄의 구매 당시 금액. 부분 취소 배분은 지원하지 않습니다.",
+                "salesAmount", "구매 당시 line_amount 합. 배송비·주문 전체 할인은 나누지 않습니다.",
+                "cancelledAmount", "취소 줄의 구매 당시 금액.",
                 "refundedAmount", "환불 줄의 구매 당시 금액. 결제 수납액과 다릅니다.",
-                "categoryOrderCount", "분류별 주문 수는 한 주문이 여러 분류에 있으면 각각 집계되어 전체 주문 수보다 클 수 있습니다."
+                "categoryOrderCount", "분류별 주문 수는 한 주문이 여러 분류에 있으면 각각 집계되어 전체 주문 수보다 클 수 있습니다.",
+                "weekStart", "주 시작은 월요일(Asia/Seoul).",
+                "range", "종료일은 다음 날 00:00 미만의 반개방 구간입니다."
         );
-    }
-
-    public LocalDate rangeStart() {
-        return LocalDate.parse(rangeStartInclusive);
     }
 }

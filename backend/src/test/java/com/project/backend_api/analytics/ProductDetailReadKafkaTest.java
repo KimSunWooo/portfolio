@@ -55,8 +55,7 @@ import static org.junit.jupiter.api.Assertions.fail;
         "spring.flyway.baseline-on-migrate=true",
         "spring.flyway.baseline-version=0",
         "app.notification.password-changed.enabled=false",
-        "app.analytics.product-detail-read.enabled=true",
-        "app.purchase-analytics.source=NONE"
+        "app.analytics.product-detail-read.enabled=true"
 })
 class ProductDetailReadKafkaTest {
 

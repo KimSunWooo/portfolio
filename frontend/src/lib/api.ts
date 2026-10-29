@@ -1257,3 +1257,93 @@ export async function deleteCommunityPost(
 ): Promise<void> {
   await authSend(`/api/admin/community/posts/${id}`, "DELETE");
 }
+
+export type PurchaseNamedMetric = {
+  name: string;
+  orderCount: number;
+  quantity: number;
+  salesAmount: number;
+};
+
+export type PurchaseAnalyticsResponse = {
+  dataBasis: string;
+  sourceLabel: string;
+  includesDemoRecords: boolean;
+  available: boolean;
+  message: string | null;
+  timezone: string;
+  rangeStartInclusive: string;
+  rangeEndExclusive: string;
+  grain: string;
+  metric: string;
+  aggregatedAt: string;
+  aggregatedAtMeaning: string;
+  filters: Record<string, unknown>;
+  definitions: Record<string, string>;
+  summary: {
+    orderCount: number;
+    quantity: number;
+    salesAmount: number;
+    cancelledQuantity: number;
+    cancelledAmount: number;
+    refundedQuantity: number;
+    refundedAmount: number;
+  } | null;
+  trend: PurchaseNamedMetric[];
+  products: PurchaseNamedMetric[];
+  productsOmitted: { productCount: number; salesAmount: number; quantity: number } | null;
+  categories: PurchaseNamedMetric[];
+  categoryOrderCountsMayOverlap: boolean;
+  ages: PurchaseNamedMetric[];
+  ageShareDenominator: string;
+  rows: PurchaseNamedMetric[];
+  cross: Array<{ ageBand: string; category: string; metric: PurchaseNamedMetric }>;
+};
+
+export type PurchaseAnalyticsFilters = {
+  products: string[];
+  categories: string[];
+  ageBands: string[];
+  recordSources: string[];
+};
+
+export type PurchaseAnalyticsParams = {
+  from: string;
+  to: string;
+  grain?: string;
+  metric?: string;
+  topN?: number;
+  recordSource?: string;
+  products?: string[];
+  categories?: string[];
+  ageBands?: string[];
+};
+
+export async function fetchPurchaseAnalytics(
+  params: PurchaseAnalyticsParams,
+): Promise<PurchaseAnalyticsResponse> {
+  const query = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    grain: params.grain ?? "DAY",
+    metric: params.metric ?? "SALES_AMOUNT",
+    topN: String(params.topN ?? 5),
+    recordSource: params.recordSource ?? "ALL",
+  });
+  for (const product of params.products ?? []) {
+    query.append("product", product);
+  }
+  for (const category of params.categories ?? []) {
+    query.append("category", category);
+  }
+  for (const ageBand of params.ageBands ?? []) {
+    query.append("ageBand", ageBand);
+  }
+  const response = await authSend(`/api/admin/purchase-analytics?${query}`, "GET");
+  return response.json();
+}
+
+export async function fetchPurchaseAnalyticsFilters(): Promise<PurchaseAnalyticsFilters> {
+  const response = await authSend("/api/admin/purchase-analytics/filters", "GET");
+  return response.json();
+}

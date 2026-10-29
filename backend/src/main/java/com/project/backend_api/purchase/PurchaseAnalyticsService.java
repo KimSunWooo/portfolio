@@ -15,32 +15,46 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/**
+ * Aggregates rows from purchase_orders / purchase_lines.
+ * payment_histories is not used: it has no line items, purchase-time category,
+ * unit price, or age. Weeks start on Monday (Asia/Seoul). Day ranges are
+ * [from 00:00, to+1 00:00).
+ */
 public class PurchaseAnalyticsService {
 
     public static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     public static final List<String> AGE_BANDS = List.of("10대 이하", "20대", "30대", "40대", "50대 이상", "미상");
+    public static final List<String> RECORD_SOURCES = List.of("ALL", "LIVE", "DEMO");
 
     private final JdbcTemplate jdbc;
-    private final String source;
 
-    public PurchaseAnalyticsService(JdbcTemplate jdbc, String source) {
+    public PurchaseAnalyticsService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        this.source = source == null ? "NONE" : source;
     }
 
     public PurchaseAnalyticsResponse query(PurchaseAnalyticsQuery query) {
         validate(query);
         LocalDateTime aggregatedAt = LocalDateTime.now(SEOUL);
-        if (!"MOCK".equals(source)) {
-            String message = "REAL".equals(source)
-                    ? "payment_histories에는 주문상품, 구매 당시 분류, 단가, 수량, 생년 정보가 없어 상품 판매금액을 계산하지 않습니다."
-                    : "구매 분석 출처가 설정되지 않았습니다.";
-            return PurchaseAnalyticsResponse.unavailable(source, message, query, aggregatedAt);
-        }
-        List<PurchaseLine> lines = load(query.from(), query.to()).stream()
+        List<PurchaseLine> lines = load(query).stream()
                 .filter(line -> matches(line, query))
                 .toList();
-        return PurchaseAnalyticsResponse.of(source, query, aggregatedAt, aggregate(lines, query));
+        boolean includesDemo = lines.stream().anyMatch(line -> "DEMO".equals(line.recordSource()))
+                || "DEMO".equals(query.recordSource())
+                || "ALL".equals(query.recordSource());
+        return PurchaseAnalyticsResponse.of(query, aggregatedAt, aggregate(lines, query), includesDemo);
+    }
+
+    public FilterOptions filterOptions() {
+        List<String> products = jdbc.queryForList("""
+                SELECT DISTINCT product_name FROM purchase_lines ORDER BY product_name
+                """, String.class);
+        List<String> categories = jdbc.queryForList("""
+                SELECT DISTINCT IFNULL(NULLIF(TRIM(category_name), ''), '미분류') AS category_name
+                FROM purchase_lines
+                ORDER BY category_name
+                """, String.class);
+        return new FilterOptions(products, categories, AGE_BANDS, RECORD_SOURCES);
     }
 
     static void validate(PurchaseAnalyticsQuery query) {
@@ -62,6 +76,9 @@ public class PurchaseAnalyticsService {
         }
         if (query.topN() < 1 || query.topN() > 20) {
             throw new IllegalArgumentException("Top N은 1부터 20까지입니다.");
+        }
+        if (!RECORD_SOURCES.contains(query.recordSource())) {
+            throw new IllegalArgumentException("기록 출처는 ALL, LIVE, DEMO 중 하나입니다.");
         }
         for (String band : query.ageBands()) {
             if (!AGE_BANDS.contains(band)) {
@@ -109,7 +126,7 @@ public class PurchaseAnalyticsService {
             byAge.put(band, new MutableMetric());
         }
         for (PurchaseLine line : paid) {
-            byAge.get(line.ageBand()).add(line);
+            byAge.computeIfAbsent(line.ageBand(), key -> new MutableMetric()).add(line);
         }
 
         Map<String, MutableMetric> trend = new LinkedHashMap<>();
@@ -147,24 +164,31 @@ public class PurchaseAnalyticsService {
         );
     }
 
-    private List<PurchaseLine> load(LocalDate from, LocalDate to) {
+    private List<PurchaseLine> load(PurchaseAnalyticsQuery query) {
+        String sourceClause = "ALL".equals(query.recordSource())
+                ? ""
+                : " AND o.record_source = '" + query.recordSource() + "'";
         return jdbc.query("""
-                SELECT o.order_key, o.purchased_at, o.age_at_purchase,
-                       l.product_name, l.category_name, l.unit_price, l.quantity, l.line_discount, l.line_status
-                FROM mock_purchase_lines l
-                JOIN mock_purchase_orders o ON o.order_key = l.order_key
+                SELECT o.order_key, o.purchased_at, o.age_at_purchase, o.age_band, o.record_source,
+                       l.product_name, l.category_name, l.unit_price, l.quantity, l.line_discount,
+                       l.line_amount, l.line_status
+                FROM purchase_lines l
+                JOIN purchase_orders o ON o.order_key = l.order_key
                 WHERE o.purchased_at >= ? AND o.purchased_at < ?
-                """, (rs, row) -> new PurchaseLine(
+                """ + sourceClause, (rs, row) -> new PurchaseLine(
                 rs.getString("order_key"),
                 parseWall(rs.getString("purchased_at")),
                 (Integer) rs.getObject("age_at_purchase"),
+                rs.getString("age_band"),
+                rs.getString("record_source"),
                 rs.getString("product_name"),
                 rs.getString("category_name"),
                 rs.getInt("unit_price"),
                 rs.getInt("quantity"),
                 rs.getInt("line_discount"),
+                rs.getInt("line_amount"),
                 rs.getString("line_status")
-        ), from + " 00:00:00", to.plusDays(1) + " 00:00:00");
+        ), query.from() + " 00:00:00", query.to().plusDays(1) + " 00:00:00");
     }
 
     private static boolean matches(PurchaseLine line, PurchaseAnalyticsQuery query) {
@@ -248,19 +272,30 @@ public class PurchaseAnalyticsService {
         return LocalDateTime.parse(text.substring(0, Math.min(text.length(), 19)));
     }
 
+    public record FilterOptions(
+            List<String> products,
+            List<String> categories,
+            List<String> ageBands,
+            List<String> recordSources
+    ) {
+    }
+
     public record PurchaseLine(
             String orderKey,
             LocalDateTime purchasedAt,
             Integer ageAtPurchase,
+            String storedAgeBand,
+            String recordSource,
             String productName,
             String categoryName,
             int unitPrice,
             int quantity,
             int lineDiscount,
+            int lineAmount,
             String status
     ) {
         long amount() {
-            return (long) unitPrice * quantity - lineDiscount;
+            return lineAmount;
         }
 
         boolean paid() {
@@ -272,6 +307,9 @@ public class PurchaseAnalyticsService {
         }
 
         String ageBand() {
+            if (storedAgeBand != null && !storedAgeBand.isBlank()) {
+                return storedAgeBand;
+            }
             return PurchaseAnalyticsService.ageBand(ageAtPurchase);
         }
     }

@@ -68,8 +68,7 @@ import static org.junit.jupiter.api.Assertions.fail;
         "spring.flyway.baseline-version=0",
         "app.notification.password-changed.enabled=true",
         "app.notification.password-changed.poll-delay=200",
-        "app.analytics.product-detail-read.enabled=false",
-        "app.purchase-analytics.source=NONE"
+        "app.analytics.product-detail-read.enabled=false"
 })
 class PasswordChangeNotificationTest {
 

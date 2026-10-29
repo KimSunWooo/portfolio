@@ -25,6 +25,17 @@
 
 시연용 관리자 계정은 저장소에 적지 않는다. 비밀번호는 별도로 전달하고, 이 문서나 커밋에 다시 넣지 않는다. 결제는 100원 승인 후 자동 취소하는 데모이며 일반 실결제로 바꾸지 않는다.
 
+### 구매 분석 대시보드 (DB 집계)
+
+관리자 `/admin/shop` DASHBOARD와 `/admin/purchases`는 `purchase_orders` / `purchase_lines`(Flyway V6)를 조회·집계한다. 프론트 하드코딩·메모리 MOCK·임의 API 응답으로 차트를 만들지 않는다.
+
+- **실제 DB 조회 기반:** 차트·카드·표는 `/api/admin/purchase-analytics`가 DB에서 집계한 값이다.
+- **실제 결제 연동 완료가 아님:** 결제 성공(`payment_histories`)이 `purchase_*`로 자동 적재되는 파이프라인은 아직 없다. LIVE 행은 스키마·필터만 준비되어 있다.
+- **시연 DEMO:** `backend/scripts/seed-demo-purchases.sh`로 명시 삽입한다. 앱 기동 시 자동 시드하지 않는다. `clear-demo-purchases.sh`는 DEMO/`demo-purchase-*`만 삭제하며 LIVE를 건드리지 않는다.
+- **범위 구분:** DEMO `purchase_orders` 시드 행은 12건이다. PAID 줄이 있는 주문은 11건(환불 전용 `20251021-1` 제외)이다. 집계 API 최대 조회 기간은 366일이라 시드 전 구간을 한 번에 조회하지 못할 수 있다. 캘린더 `2026-10-01`~`2026-10-31` DEMO PAID는 주문 2 · 수량 6 · 상품 판매금액 72_500(= Verify Shade 36_000 + Demo Fact A 28_000 + Demo Lip B 8_500)이다. UI 기본 기간은 Asia/Seoul 기준 최근 30일이며, 데이터를 보이게 기간을 몰래 바꾸지 않는다.
+
+로컬·검증 DB에 V6·시드를 적용했다고 해서 GitHub 커밋·Actions·운영 배포가 끝난 것은 아니다.
+
 ---
 
 ## 🌐 Project Overview

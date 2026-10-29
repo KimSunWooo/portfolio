@@ -102,10 +102,13 @@ class CartSyncFlywayExistingSchemaTest {
                 "2|JDBC",
                 "3|JDBC",
                 "4|JDBC",
-                "5|SQL"
+                "5|SQL",
+                "6|SQL"
         ), history());
         assertTrue(tableExists("password_change_outbox"));
         assertTrue(tableExists("mock_purchase_orders"));
+        assertTrue(tableExists("purchase_orders"));
+        assertTrue(tableExists("purchase_lines"));
         assertEquals("V1__cart_sync_requests.sql", scriptForVersion("1"));
         assertNotNull(checksumForVersion("1"));
         assertCartSyncColumns();

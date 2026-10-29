@@ -28,6 +28,7 @@ public class PurchaseAnalyticsController {
             @RequestParam(defaultValue = "DAY") String grain,
             @RequestParam(defaultValue = "SALES_AMOUNT") String metric,
             @RequestParam(defaultValue = "5") int topN,
+            @RequestParam(defaultValue = "ALL") String recordSource,
             @RequestParam(required = false) List<String> product,
             @RequestParam(required = false) List<String> category,
             @RequestParam(required = false) List<String> ageBand
@@ -41,10 +42,16 @@ public class PurchaseAnalyticsController {
                     topN,
                     product,
                     category,
-                    ageBand
+                    ageBand,
+                    recordSource
             ));
         } catch (IllegalArgumentException | DateTimeParseException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
         }
+    }
+
+    @GetMapping("/filters")
+    public PurchaseAnalyticsService.FilterOptions filters() {
+        return purchaseAnalyticsService.filterOptions();
     }
 }
