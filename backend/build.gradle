@@ -49,6 +49,10 @@ dependencies {
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+	implementation 'org.springframework.boot:spring-boot-starter-kafka'
+	testImplementation 'org.testcontainers:testcontainers-rabbitmq'
+	testImplementation 'org.testcontainers:testcontainers-kafka'
 }
 
 tasks.named('test') {

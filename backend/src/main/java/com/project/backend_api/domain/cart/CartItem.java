@@ -1,6 +1,7 @@
 package com.project.backend_api.domain.cart;
 
 import com.project.backend_api.domain.product.Product;
+import com.project.backend_api.domain.product.ProductColor;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,10 @@ public class CartItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_id")
+    private ProductColor color;
 
     // 담은 수량
     @Column(nullable = false)

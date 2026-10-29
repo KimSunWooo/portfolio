@@ -97,10 +97,16 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      await logoutUser();
+      const result = await logoutUser();
+      if (result === "incomplete" || result === "failed") {
+        alert("이 브라우저에서는 로그아웃했지만 서버 세션 정리가 끝나지 않았습니다. 다시 로그인해 주세요.");
+      } else if (result === "local_only") {
+        alert("이 브라우저의 로그인 정보는 지웠지만 서버 세션은 확인하지 못했습니다.");
+      }
     } catch (error) {
       console.error("로그아웃 API 호출 실패", error);
       removeAccessToken();
+      alert("이 브라우저에서는 로그아웃했지만 서버 세션 정리가 끝나지 않았습니다. 다시 로그인해 주세요.");
     } finally {
       clearAuthState();
 

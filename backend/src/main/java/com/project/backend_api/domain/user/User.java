@@ -46,6 +46,9 @@ public class User {
     @Column(name = "total_spent", nullable = false)
     private Long totalSpent = 0L;   // 초기값 0 세팅
 
+    @Column(name = "session_epoch", nullable = false)
+    private int sessionEpoch = 0;
+
     // 엔티티가 저장되기 전에 자동으로 현재 시간 세팅
     @PrePersist
     protected void onCreate() {
@@ -70,5 +73,10 @@ public class User {
 
     public void updatePassword(String newPassword) {
         this.password = newPassword;
+    }
+
+    public int advanceSessionEpoch() {
+        this.sessionEpoch += 1;
+        return this.sessionEpoch;
     }
 }

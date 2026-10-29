@@ -2,6 +2,7 @@ package com.project.backend_api.service;
 
 import com.project.backend_api.domain.cart.CartSyncRequest;
 import com.project.backend_api.domain.product.Product;
+import com.project.backend_api.domain.product.ProductColor;
 import com.project.backend_api.domain.product.ProductStatus;
 import com.project.backend_api.domain.user.User;
 import com.project.backend_api.domain.user.UserRole;
@@ -10,6 +11,7 @@ import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
 import com.project.backend_api.repository.CartSyncRequestRepository;
+import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
 import com.project.backend_api.support.SimpleCacheTestConfiguration;
@@ -45,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest
 @Import(SimpleCacheTestConfiguration.class)
@@ -83,6 +86,8 @@ class CartSyncMySqlTest {
     @Autowired
     private ProductRepository productRepository;
     @Autowired
+    private ProductColorRepository productColorRepository;
+    @Autowired
     private CartSyncRequestRepository cartSyncRequestRepository;
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -116,6 +121,7 @@ class CartSyncMySqlTest {
                 cartItemRepository,
                 userRepository,
                 productRepository,
+                productColorRepository,
                 cartSyncRequestRepository,
                 transactionManager
         );
@@ -132,6 +138,7 @@ class CartSyncMySqlTest {
                 cartItemRepository,
                 userRepository,
                 productRepository,
+                productColorRepository,
                 cartSyncRequestRepository,
                 transactionManager
         );
@@ -139,6 +146,60 @@ class CartSyncMySqlTest {
 
         assertEquals(1, cartSyncRequestRepository.count());
         assertEquals(2, quantity(owner.getEmail(), product.getId()));
+    }
+
+    @Test
+    void addingOneToNinetyEightReachesTheCapAndOneMoreIsRejected() {
+        User owner = userRepository.save(user("owner@example.com"));
+        Product product = productRepository.save(product("Lip", "SALE"));
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                cartService.addCartItem(owner.getEmail(), new CartRequest(product.getId(), 98)));
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                cartService.addCartItem(owner.getEmail(), new CartRequest(product.getId(), 1)));
+        assertEquals(99, quantityOf(owner.getEmail(), product.getId(), null));
+
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class, () ->
+                new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                        cartService.addCartItem(owner.getEmail(), new CartRequest(product.getId(), 1))));
+        assertTrue(rejected.getMessage().contains("Lip"));
+        assertTrue(rejected.getMessage().contains("색상 없음"));
+        assertEquals(99, quantityOf(owner.getEmail(), product.getId(), null));
+    }
+
+    @Test
+    void mergeOverTheCapRollsBackEveryLineAndCanBeRetriedAfterAdjustment() {
+        User owner = userRepository.save(user("owner@example.com"));
+        Product product = productRepository.save(product("Lip", "SALE"));
+        ProductColor ink = productColorRepository.save(ProductColor.create(product.getId(), "Ink", 0));
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            cartService.addCartItem(owner.getEmail(), new CartRequest(product.getId(), 98));
+            cartService.addCartItem(owner.getEmail(), new CartRequest(product.getId(), 2, ink.getId()));
+        });
+
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class, () ->
+                cartService.syncCart(owner.getEmail(), List.of(
+                        new CartRequest(product.getId(), 3),
+                        new CartRequest(product.getId(), 1, ink.getId())
+                ), "over-cap"));
+        assertTrue(rejected.getMessage().contains("Lip"));
+        assertTrue(rejected.getMessage().contains("색상 없음"));
+        assertEquals(98, quantityOf(owner.getEmail(), product.getId(), null));
+        assertEquals(2, quantityOf(owner.getEmail(), product.getId(), ink.getId()));
+        assertEquals(0, cartSyncRequestRepository.count());
+
+        cartService.syncCart(owner.getEmail(), List.of(
+                new CartRequest(product.getId(), 1),
+                new CartRequest(product.getId(), 1, ink.getId())
+        ), "adjusted");
+        cartService.syncCart(owner.getEmail(), List.of(
+                new CartRequest(product.getId(), 1),
+                new CartRequest(product.getId(), 1, ink.getId())
+        ), "adjusted");
+
+        assertEquals(99, quantityOf(owner.getEmail(), product.getId(), null));
+        assertEquals(3, quantityOf(owner.getEmail(), product.getId(), ink.getId()));
+        assertEquals(1, cartSyncRequestRepository.count());
     }
 
     @Test
@@ -258,6 +319,19 @@ class CartSyncMySqlTest {
                 .getCartItems()
                 .stream()
                 .filter(item -> item.getProduct().getId().equals(productId))
+                .mapToInt(item -> item.getQuantity())
+                .sum();
+    }
+
+    private int quantityOf(String email, Integer productId, Integer colorId) {
+        return cartRepository.findByUserEmailWithProducts(email)
+                .orElseThrow()
+                .getCartItems()
+                .stream()
+                .filter(item -> item.getProduct().getId().equals(productId))
+                .filter(item -> colorId == null
+                        ? item.getColor() == null
+                        : item.getColor() != null && colorId.equals(item.getColor().getId()))
                 .mapToInt(item -> item.getQuantity())
                 .sum();
     }

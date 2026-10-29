@@ -11,6 +11,7 @@ import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
 import com.project.backend_api.repository.CartSyncRequestRepository;
+import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,8 @@ class CartServiceTest {
     @Mock
     private ProductRepository productRepository;
     @Mock
+    private ProductColorRepository productColorRepository;
+    @Mock
     private CartSyncRequestRepository cartSyncRequestRepository;
 
     private final List<CartSyncRequest> storedSyncs = new ArrayList<>();
@@ -76,6 +79,7 @@ class CartServiceTest {
                 cartItemRepository,
                 userRepository,
                 productRepository,
+                productColorRepository,
                 cartSyncRequestRepository,
                 transactions
         );
@@ -96,7 +100,7 @@ class CartServiceTest {
         setId(cart, 4L);
         when(cartRepository.findByUserEmailForUpdate("owner@example.com")).thenReturn(Optional.of(cart));
         when(productRepository.findById(7)).thenReturn(Optional.of(product(7, "SALE")));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(4L, 7)).thenReturn(Optional.empty());
+        when(cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(4L, 7)).thenReturn(Optional.empty());
 
         cartService.addCartItem("owner@example.com", new CartRequest(7, 1));
 
@@ -123,7 +127,7 @@ class CartServiceTest {
         CartItem item = CartItem.builder().cart(cart).product(product).quantity(1).build();
         when(cartRepository.findByUserEmailForUpdate("owner@example.com")).thenReturn(Optional.of(cart));
         when(productRepository.findById(7)).thenReturn(Optional.of(product));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(4L, 7)).thenReturn(Optional.of(item));
+        when(cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(4L, 7)).thenReturn(Optional.of(item));
 
         cartService.syncCart("owner@example.com", List.of(new CartRequest(7, 2)), "sync-1");
         cartService.syncCart("owner@example.com", List.of(new CartRequest(7, 2)), "sync-1");
@@ -139,7 +143,7 @@ class CartServiceTest {
         CartItem item = CartItem.builder().cart(cart).product(product).quantity(1).build();
         when(cartRepository.findByUserEmailForUpdate("owner@example.com")).thenReturn(Optional.of(cart));
         when(productRepository.findById(7)).thenReturn(Optional.of(product));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(4L, 7)).thenReturn(Optional.of(item));
+        when(cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(4L, 7)).thenReturn(Optional.of(item));
 
         cartService.syncCart("owner@example.com", List.of(new CartRequest(7, 2)), null);
         cartService.syncCart("owner@example.com", List.of(new CartRequest(7, 2)), " ");
@@ -155,7 +159,7 @@ class CartServiceTest {
         CartItem item = CartItem.builder().cart(cart).product(product).quantity(1).build();
         when(cartRepository.findByUserEmailForUpdate("owner@example.com")).thenReturn(Optional.of(cart));
         when(productRepository.findById(7)).thenReturn(Optional.of(product));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(4L, 7)).thenReturn(Optional.of(item));
+        when(cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(4L, 7)).thenReturn(Optional.of(item));
 
         cartService.syncCart("owner@example.com", List.of(new CartRequest(7, 2)), "sync-1");
         ResponseStatusException error = assertThrows(
@@ -175,7 +179,7 @@ class CartServiceTest {
         Product sale = product(7, "SALE");
         when(cartRepository.findByUserEmailForUpdate("owner@example.com")).thenReturn(Optional.of(cart));
         when(productRepository.findById(7)).thenReturn(Optional.of(hidden), Optional.of(sale));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(4L, 7)).thenReturn(Optional.empty());
+        when(cartItemRepository.findByCart_IdAndProduct_IdAndColorIsNull(4L, 7)).thenReturn(Optional.empty());
         TransactionOperations rolling = new TransactionOperations() {
             @Override
             public <T> T execute(org.springframework.transaction.support.TransactionCallback<T> action) {

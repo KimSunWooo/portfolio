@@ -489,25 +489,23 @@ function UsersEditor() {
 
 function SettingsEditor() {
   const [shopName, setShopName] = useState("STUDIO.");
-  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = (e: React.SyntheticEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-    setTimeout(() => { setIsSaving(false); alert("설정이 저장되었습니다."); }, 600);
+    alert("상점 설정 저장 API가 없습니다. 입력값은 저장되지 않습니다.");
   };
 
   return (
     <div>
-      <EditorHeader label="05 · SETTINGS" title="Shop Settings" description="Shop의 기본 정보를 설정합니다." />
+      <EditorHeader label="05 · SETTINGS" title="Shop Settings" description="입력은 이 화면에만 남습니다. 저장 API가 없어 서버에 기록되지 않습니다." />
       <form onSubmit={handleSave} className="mt-8 max-w-2xl border-t border-black md:mt-10">
         <div className="border-b border-black/10 py-6">
           <label className="mb-2 block text-[9px] tracking-[0.14em] text-[#777]">SHOP NAME</label>
           <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Shop name" className="w-full border border-black/20 bg-transparent px-4 py-3 text-sm outline-none transition focus:border-black" />
         </div>
         <div className="mt-6 flex justify-end md:mt-8">
-          <button type="submit" disabled={isSaving} className="w-full border border-black bg-black px-8 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black disabled:opacity-50 sm:w-auto">
-            {isSaving ? "SAVING..." : "SAVE SETTINGS"}
+          <button type="submit" className="w-full border border-black bg-black px-8 py-3 text-[10px] tracking-[0.14em] text-white transition hover:bg-transparent hover:text-black sm:w-auto">
+            SAVE SETTINGS
           </button>
         </div>
       </form>

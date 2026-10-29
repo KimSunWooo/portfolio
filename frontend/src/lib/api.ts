@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { jwtDecode } from "jwt-decode";
+import { addGuestLine, recoverGuestCart, type GuestLineInput } from "./guestCart.ts";
 
 const IS_SERVER = typeof window === "undefined";
 
@@ -144,7 +145,12 @@ export async function handleResponseError(response: Response) {
     errorMessage = errorText || errorMessage;
   }
 
-  throw new Error(errorMessage);
+  const kind = response.status === 401
+    ? "unauthenticated"
+    : response.status === 403
+      ? "forbidden"
+      : "failed";
+  throw new ApiRequestError(errorMessage, kind, response.status);
 }
 
 export function resolveAssetUrl(path?: string | null) {
@@ -311,22 +317,28 @@ export type AuthResolution = {
 };
 
 export class ApiRequestError extends Error {
-  readonly kind: "unauthenticated" | "forbidden" | "recovery_failed" | "network";
+  readonly kind: "unauthenticated" | "forbidden" | "recovery_failed" | "network" | "failed";
+  readonly status: number | null;
 
-  constructor(message: string, kind: ApiRequestError["kind"]) {
+  constructor(message: string, kind: ApiRequestError["kind"], status: number | null = null) {
     super(message);
     this.name = "ApiRequestError";
     this.kind = kind;
+    this.status = status;
   }
 }
 
 type RefreshOutcome =
   | { phase: "authenticated"; token: string }
   | { phase: "guest" }
+  | { phase: "discarded" }
   | { phase: "recovery_failed"; message: string };
+
+export type LogoutResult = "revoked" | "incomplete" | "local_only" | "failed";
 
 let authPhase: AuthPhase = "guest";
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
+let authGeneration = 0;
 
 export function getAuthPhase(): AuthPhase {
   return authPhase;
@@ -336,11 +348,15 @@ async function requestRefresh(): Promise<RefreshOutcome> {
   if (typeof window === "undefined") {
     return { phase: "recovery_failed", message: "인증 복구는 브라우저에서만 실행합니다." };
   }
+  const generation = authGeneration;
   try {
     const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
       method: "POST",
       credentials: "include",
     });
+    if (generation !== authGeneration) {
+      return { phase: "discarded" };
+    }
     if (response.status === 401) {
       setAccessToken(null);
       return { phase: "guest" };
@@ -352,14 +368,24 @@ async function requestRefresh(): Promise<RefreshOutcome> {
       return { phase: "recovery_failed", message: "로그인 상태를 복구하지 못했습니다." };
     }
     const data = await response.json() as { accessToken?: string };
+    if (generation !== authGeneration) {
+      return { phase: "discarded" };
+    }
     if (!data.accessToken || !isAccessTokenValid(data.accessToken)) {
       setAccessToken(null);
       return { phase: "recovery_failed", message: "복구된 액세스 토큰이 유효하지 않습니다." };
     }
     setAccessToken(data.accessToken);
+    if (generation !== authGeneration) {
+      removeAccessToken();
+      return { phase: "discarded" };
+    }
     return { phase: "authenticated", token: data.accessToken };
   } catch (error) {
     console.error("[REFRESH] 요청 예외:", error);
+    if (generation !== authGeneration) {
+      return { phase: "discarded" };
+    }
     return { phase: "recovery_failed", message: "로그인 상태 복구 요청이 완료되지 않았습니다." };
   }
 }
@@ -399,6 +425,17 @@ export async function resolveAuthState(): Promise<AuthResolution> {
   const hadSession = rememberedSession || Boolean(current);
   authPhase = "checking";
   const outcome = await silentRefresh();
+  if (outcome.phase === "discarded") {
+    const phaseAfterLogout = getAuthPhase();
+    if (phaseAfterLogout === "recovery_failed") {
+      return { phase: "recovery_failed", token: null, message: "로그아웃 상태를 확인하지 못했습니다. 다시 로그인해 주세요." };
+    }
+    if (phaseAfterLogout === "checking") {
+      authPhase = "guest";
+      settledGuest = true;
+    }
+    return { phase: "guest", token: null, message: "" };
+  }
   if (outcome.phase === "authenticated") {
     authPhase = "authenticated";
     return { phase: "authenticated", token: outcome.token, message: "" };
@@ -500,16 +537,40 @@ async function authSend(path: string, method: string, body?: BodyInit | null): P
   return response;
 }
 
-export async function logoutUser() {
+export async function logoutUser(): Promise<LogoutResult> {
+  authGeneration += 1;
+  const generation = authGeneration;
+  removeAccessToken();
   try {
-    await fetch(`${API_BASE_URL}/api/users/logout`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/logout`, {
       method: "POST",
       credentials: "include",
     });
+    if (generation !== authGeneration) {
+      return "failed";
+    }
+    if (response.status === 503) {
+      authPhase = "recovery_failed";
+      return "incomplete";
+    }
+    if (!response.ok) {
+      authPhase = "recovery_failed";
+      return "failed";
+    }
+    const data = await response.json() as { status?: string };
+    if (data.status === "revoked") {
+      authPhase = "guest";
+      settledGuest = true;
+      rememberedSession = false;
+      return "revoked";
+    }
+    authPhase = "recovery_failed";
+    return data.status === "local_only" ? "local_only" : "failed";
   } catch {
-    // 로그아웃 요청 실패와 관계없이 클라이언트 인증 상태는 제거
-  } finally {
-    removeAccessToken();
+    if (generation === authGeneration) {
+      authPhase = "recovery_failed";
+    }
+    return "failed";
   }
 }
 
@@ -550,7 +611,16 @@ export async function verifyPasswordResetCode(email: string, code: string) {
 }
 
 // 3. 비밀번호 재설정 (최종)
-export async function resetPassword(email: string, code: string, newPassword: string) {
+export type PasswordResetResult = {
+  status: "complete" | "cleanup_incomplete";
+  message: string;
+};
+
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<PasswordResetResult> {
   const response = await fetch(`${API_BASE_URL}/api/users/password/reset`, {
     method: "POST",
     headers: {
@@ -558,13 +628,17 @@ export async function resetPassword(email: string, code: string, newPassword: st
     },
     body: JSON.stringify({ email, code, newPassword }),
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "비밀번호 변경에 실패했습니다.");
+  const message = await response.text();
+  if (response.status === 503) {
+    return {
+      status: "cleanup_incomplete",
+      message: message || "비밀번호는 변경되었습니다. 이전 로그인은 더 이상 갱신할 수 없습니다. 다시 로그인해 주세요.",
+    };
   }
-
-  return response.text();
+  if (!response.ok) {
+    throw new Error(message || "비밀번호 변경에 실패했습니다.");
+  }
+  return { status: "complete", message: message || "비밀번호가 변경되었습니다. 새로운 비밀번호로 로그인해 주세요." };
 }
 
 /* =========================================================================
@@ -784,6 +858,8 @@ export interface CartItemResponse {
   price: number;
   thumbnailUrl?: string | null;
   quantity: number;
+  colorId?: number | null;
+  colorName?: string | null;
 }
 
 export interface GuestCartItem {
@@ -793,6 +869,8 @@ export interface GuestCartItem {
   price: number;
   thumbnailUrl?: string | null;
   quantity: number;
+  colorId?: number | null;
+  colorName?: string | null;
 }
 
 export interface CartProductInput {
@@ -812,35 +890,8 @@ const GUEST_CART_KEY = "guestCart";
 /**
  * 비회원 장바구니 조회
  */
-function isGuestCartItem(value: unknown): value is GuestCartItem {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const item = value as Partial<GuestCartItem>;
-  const productId = Number(item.productId);
-  const quantity = Number(item.quantity);
-  return Number.isInteger(productId)
-    && productId > 0
-    && Number.isInteger(quantity)
-    && quantity >= 1
-    && quantity <= 99
-    && typeof item.productName === "string"
-    && item.productName.length > 0
-    && typeof item.price === "number";
-}
-
 export function parseGuestCart(value: unknown): GuestCartItem[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter(isGuestCartItem).map((item) => ({
-    cartItemId: Number(item.cartItemId) || Date.now(),
-    productId: item.productId,
-    productName: item.productName,
-    price: item.price,
-    thumbnailUrl: item.thumbnailUrl || "",
-    quantity: item.quantity,
-  }));
+  return recoverGuestCart(value);
 }
 
 export const getGuestCart = (): GuestCartItem[] => {
@@ -857,7 +908,7 @@ export const getGuestCart = (): GuestCartItem[] => {
   try {
     const raw = JSON.parse(stored);
     const parsed = parseGuestCart(raw);
-    if (!Array.isArray(raw) || parsed.length !== raw.length) {
+    if (JSON.stringify(parsed) !== JSON.stringify(raw)) {
       localStorage.setItem(GUEST_CART_KEY, JSON.stringify(parsed));
     }
     return parsed;
@@ -919,7 +970,8 @@ export const fetchCartItems = async (): Promise<CartItemResponse[]> => {
  */
 export const addCartItem = async (
   product: CartProductInput,
-  quantity: number
+  quantity: number,
+  color?: { id: number; name: string } | null
 ): Promise<void> => {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
     throw new Error("수량은 1개 이상 99개 이하여야 합니다.");
@@ -934,38 +986,31 @@ export const addCartItem = async (
       body: JSON.stringify({
         productId: product.id,
         quantity,
+        colorId: color?.id ?? null,
       }),
     });
     if (!response.ok) {
       await handleResponseError(response);
     }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("cartChanged"));
+    }
     return;
   }
 
-  const cart = getGuestCart();
-
-  const existingItemIndex = cart.findIndex(
-    (item) => item.productId === product.id
-  );
-
-  if (existingItemIndex > -1) {
-    const nextQuantity = cart[existingItemIndex].quantity + quantity;
-    if (nextQuantity > 99) {
-      throw new Error("수량은 99개 이하여야 합니다.");
-    }
-    cart[existingItemIndex].quantity = nextQuantity;
-  } else {
-    cart.push({
-      cartItemId: Date.now(),
-      productId: product.id,
-      productName: product.name,
-      price: product.price,
-      thumbnailUrl: product.thumbnail,
-      quantity,
-    });
+  const line: GuestLineInput = {
+    productId: product.id,
+    productName: product.name,
+    price: product.price,
+    thumbnailUrl: product.thumbnail,
+    quantity,
+    colorId: color?.id ?? null,
+    colorName: color?.name ?? null,
+  };
+  setGuestCart(addGuestLine(getGuestCart(), line));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("cartChanged"));
   }
-
-  setGuestCart(cart);
 };
 
 /**
@@ -975,13 +1020,15 @@ export const addCartItem = async (
  */
 export async function addToCart(
   productId: number,
-  quantity: number = 1
+  quantity: number = 1,
+  colorId?: number | null
 ) {
   const response = await authorizedFetch(`${API_BASE_URL}/api/cart`, {
     method: "POST",
     body: JSON.stringify({
       productId,
       quantity,
+      colorId: colorId ?? null,
     }),
   });
   if (!response.ok) {
@@ -1042,7 +1089,9 @@ export const fetchCartCount = async (): Promise<number> => {
   if (!response.ok) {
     await handleResponseError(response);
   }
-  return response.json();
+  const serverCount = await response.json();
+  const pendingCount = getGuestCart().reduce((sum, item) => sum + item.quantity, 0);
+  return serverCount + pendingCount;
 };
 
 /**
@@ -1050,12 +1099,14 @@ export const fetchCartCount = async (): Promise<number> => {
  */
 const SYNC_KEY_STORAGE = "guestCartSyncKey";
 
-export function guestCartSyncKey(items: { productId: number; quantity: number }[]): string {
+export function guestCartSyncKey(items: { productId: number; quantity: number; colorId?: number | null }[]): string {
   if (typeof window === "undefined") {
     throw new ApiRequestError("장바구니 병합 키는 브라우저에서만 만듭니다.", "recovery_failed");
   }
   const fingerprint = items
-    .map((item) => `${item.productId}:${item.quantity}`)
+    .map((item) => item.colorId
+      ? `${item.productId}:${item.colorId}:${item.quantity}`
+      : `${item.productId}:${item.quantity}`)
     .sort()
     .join("|");
   const raw = sessionStorage.getItem(SYNC_KEY_STORAGE);
@@ -1084,6 +1135,7 @@ export async function syncLocalCartToServer(
   const payload = guestItems.map((item) => ({
     productId: item.productId,
     quantity: item.quantity,
+    ...(item.colorId ? { colorId: item.colorId } : {}),
   }));
   const syncKey = guestCartSyncKey(payload);
   const response = await authorizedFetch(`${API_BASE_URL}/api/cart/sync`, {
