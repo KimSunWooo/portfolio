@@ -43,12 +43,13 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
       summary: { orderCount: number; quantity: number; salesAmount: number };
     };
     expect(body.dataBasis).toBe("DATABASE");
+    expect(body.summary.orderCount).toBeGreaterThanOrEqual(80);
     shopSummary = body.summary;
     await expect(page.getByRole("heading", { name: "구매 요약", exact: true })).toBeVisible();
     await expect(page.getByTestId("purchase-applied-range")).toContainText("적용 기간:");
     await expect(page.getByTestId("purchase-applied-range")).toContainText("기본값 최근 30일");
     await expect(page.getByRole("region", { name: "기간별 상품 판매금액 추이" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "상품분류별 판매 비교" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "상품분류별 상품 판매금액 비교" })).toBeVisible();
     await expect(page.getByText(`${body.summary.orderCount.toLocaleString("ko-KR")}건`)).toBeVisible();
   });
 
@@ -68,16 +69,16 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
     expect(body.summary.salesAmount).toBe(shopSummary!.salesAmount);
     await expect(page.getByRole("heading", { name: "구매 분석", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "기간별 상품 판매금액 추이" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "상품분류별 판매 비교" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "상품분류별 상품 판매금액 비교" })).toBeVisible();
   });
 
-  await test.step("october DEMO window matches seed hand count 2/6/72500", async () => {
+  await test.step("legacy DEMO mid-October stays 2/6/72500 without the bulk batch", async () => {
     await page.getByLabel("시작일").fill("2026-10-01");
-    await page.getByLabel("종료일").fill("2026-10-31");
+    await page.getByLabel("종료일").fill("2026-10-15");
     const analytics = page.waitForResponse((response) =>
       response.url().includes("/api/admin/purchase-analytics?")
       && response.url().includes("from=2026-10-01")
-      && response.url().includes("to=2026-10-31")
+      && response.url().includes("to=2026-10-15")
       && response.url().includes("recordSource=DEMO")
       && response.ok());
     await page.getByLabel("기록 출처").selectOption("DEMO");
@@ -91,8 +92,25 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
     expect(body.summary.salesAmount).toBe(72500);
     await expect(page.getByRole("status").filter({ hasText: "시연용 구매기록 포함" })).toBeVisible();
     await expect(page.getByText("조회 오류")).toHaveCount(0);
-    await expect(page.getByTestId("purchase-applied-range")).toContainText("2026-10-01 ~ 2026-10-31");
-    await expect(page.getByTestId("purchase-applied-range")).toContainText("사용자 선택 기간");
+  });
+
+  await test.step("bulk DEMO day has 300 paid orders", async () => {
+    await page.getByLabel("시작일").fill("2026-10-29");
+    await page.getByLabel("종료일").fill("2026-10-29");
+    const analytics = page.waitForResponse((response) =>
+      response.url().includes("/api/admin/purchase-analytics?")
+      && response.url().includes("from=2026-10-29")
+      && response.url().includes("to=2026-10-29")
+      && response.url().includes("recordSource=DEMO")
+      && response.ok());
+    await page.getByLabel("기록 출처").selectOption("DEMO");
+    const body = await (await analytics).json() as {
+      dataBasis: string;
+      summary: { orderCount: number; quantity: number; salesAmount: number };
+    };
+    expect(body.summary.orderCount).toBe(300);
+    expect(body.summary.quantity).toBe(582);
+    expect(body.summary.salesAmount).toBe(6804967);
   });
 });
 

@@ -43,7 +43,7 @@ export function BarChart({
         <ul className="mt-4 space-y-3">
           {items.map((item) => {
             const value = metricValue(item, metric);
-            const width = `${Math.max(2, (value / max) * 100)}%`;
+            const width = value <= 0 ? "0%" : `${Math.max(2, (value / max) * 100)}%`;
             return (
               <li key={item.name}>
                 <div className="flex items-baseline justify-between gap-3 text-[11px]">
@@ -61,7 +61,7 @@ export function BarChart({
         <div className="mt-4 flex h-40 items-end gap-1 overflow-x-auto md:gap-2">
           {items.map((item) => {
             const value = metricValue(item, metric);
-            const height = `${Math.max(4, (value / max) * 100)}%`;
+            const height = value <= 0 ? "0%" : `${Math.max(4, (value / max) * 100)}%`;
             return (
               <div key={item.name} className="flex min-w-[28px] flex-1 flex-col items-center justify-end">
                 <span className="mb-1 text-[9px] tabular-nums text-[#666]">{formatValue(value, metric)}</span>

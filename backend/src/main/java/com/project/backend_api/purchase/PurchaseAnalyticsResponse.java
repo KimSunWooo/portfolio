@@ -51,8 +51,8 @@ public record PurchaseAnalyticsResponse(
             boolean includesDemo
     ) {
         String label = includesDemo
-                ? "시연용 구매기록 포함 · DB purchase_orders 집계"
-                : "DB purchase_orders 집계";
+                ? "시연용 구매기록 포함"
+                : "저장된 구매기록 집계";
         return new PurchaseAnalyticsResponse(
                 "DATABASE",
                 label,

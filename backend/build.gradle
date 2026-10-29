@@ -59,6 +59,16 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
+tasks.register('seedBulkDemoPurchases', JavaExec) {
+	group = 'verification'
+	description = 'Insert or clear an explicit DEMO purchase batch (not started by bootRun)'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.project.backend_api.purchase.BulkDemoPurchaseSeedMain'
+	if (project.hasProperty('seedArgs')) {
+		args((project.property('seedArgs') as String).tokenize())
+	}
+}
+
 configurations.configureEach {
 	resolutionStrategy.eachDependency { details ->
 		if (details.requested.group == 'org.testcontainers') {
@@ -66,4 +76,11 @@ configurations.configureEach {
 			details.because('Spring Boot imports the Testcontainers BOM without versions Gradle can apply')
 		}
 	}
+}
+
+tasks.register('flywayMigrateMain', JavaExec) {
+	group = 'verification'
+	description = 'Run Flyway migrate against an explicit JDBC URL (not bootRun)'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.project.backend_api.purchase.FlywayMigrateMain'
 }

@@ -142,8 +142,8 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
             {mode === "summary" ? "구매 요약" : "구매 분석"}
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-[#555]">
-            DB `purchase_orders` / `purchase_lines` 집계입니다. Kafka 상품 조회 이벤트와는 별개이며,
-            결제 승인 이력(`payment_histories`) 자동 적재는 포함하지 않습니다.
+            저장된 구매기록을 집계한 현황입니다. 시연용 기록이 포함될 수 있으며, 외부 결제 연동 실적과는
+            구분됩니다.
           </p>
           <p
             className="mt-3 text-[12px] text-[#444]"
@@ -326,17 +326,17 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
 
       {data && mode === "summary" && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <BarChart title="기간별 상품 판매금액 추이" items={data.trend} metric={metric} />
-          <BarChart title="상품분류별 판매 비교" items={data.categories} metric={metric} horizontal />
+          <BarChart title={`기간별 ${metricLabel(metric)} 추이`} items={data.trend} metric={metric} />
+          <BarChart title={`상품분류별 ${metricLabel(metric)} 비교`} items={data.categories} metric={metric} horizontal />
         </div>
       )}
 
       {data && mode === "full" && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <BarChart title="기간별 상품 판매금액 추이" items={data.trend} metric={metric} />
-          <BarChart title="상품별 비교" items={data.products} metric={metric} horizontal />
-          <BarChart title="상품분류별 판매 비교" items={data.categories} metric={metric} horizontal />
-          <BarChart title="연령대별 비교" items={data.ages} metric={metric} horizontal />
+          <BarChart title={`기간별 ${metricLabel(metric)} 추이`} items={data.trend} metric={metric} />
+          <BarChart title={`상품별 ${metricLabel(metric)} 비교`} items={data.products} metric={metric} horizontal />
+          <BarChart title={`상품분류별 ${metricLabel(metric)} 비교`} items={data.categories} metric={metric} horizontal />
+          <BarChart title={`연령대별 ${metricLabel(metric)} 비교`} items={data.ages} metric={metric} horizontal />
         </div>
       )}
 
@@ -347,12 +347,18 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
           <MetricTable title="연령대별 상세" rows={data.ages} />
           <p className="text-[11px] leading-5 text-[#777]">
             시간대 {data.timezone}. {data.aggregatedAtMeaning} 분류별 주문 수는 한 주문이 여러 분류에
-            있으면 중복될 수 있습니다. 취소·환불은 저장 상태(CANCELLED/REFUNDED)가 있는 줄만 반영합니다.
+            있으면 합계가 전체 주문 수보다 클 수 있습니다. 취소·환불은 저장된 상태만 반영합니다.
           </p>
         </div>
       )}
     </div>
   );
+}
+
+function metricLabel(metric: string): string {
+  if (metric === "QUANTITY") return "판매 수량";
+  if (metric === "ORDER_COUNT") return "구매 주문 수";
+  return "상품 판매금액";
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {

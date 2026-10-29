@@ -55,7 +55,7 @@ class CartSyncFlywayMigrationTest {
                     .anyMatch(column -> column.startsWith("color_id|")));
             assertTrue(FlywaySchemaFixture.columnSnapshot(connection, "users").stream()
                     .anyMatch(column -> column.startsWith("session_epoch|")));
-            assertEquals(6, appliedMigrations(connection));
+            assertEquals(7, appliedMigrations(connection));
             assertTrue(tableExists(connection, "password_change_outbox"));
             assertTrue(tableExists(connection, "password_change_mail_delivery"));
             assertTrue(tableExists(connection, "product_detail_read_events"));
@@ -63,6 +63,8 @@ class CartSyncFlywayMigrationTest {
             assertTrue(tableExists(connection, "mock_purchase_lines"));
             assertTrue(tableExists(connection, "purchase_orders"));
             assertTrue(tableExists(connection, "purchase_lines"));
+            assertTrue(tableExists(connection, "purchase_demo_member_profiles"));
+            assertTrue(tableExists(connection, "purchase_seed_batches"));
             try (ResultSet rows = connection.createStatement().executeQuery(
                     "SELECT version, `type`, script FROM flyway_schema_history WHERE success = 1 ORDER BY installed_rank")) {
                 assertTrue(rows.next());
@@ -86,6 +88,10 @@ class CartSyncFlywayMigrationTest {
                 assertEquals("6", rows.getString(1));
                 assertEquals("SQL", rows.getString(2));
                 assertEquals("V6__purchase_orders.sql", rows.getString(3));
+                assertTrue(rows.next());
+                assertEquals("7", rows.getString(1));
+                assertEquals("SQL", rows.getString(2));
+                assertEquals("V7__purchase_bulk_demo.sql", rows.getString(3));
                 assertFalse(rows.next());
             }
             try (org.hibernate.SessionFactory factory = FlywaySchemaFixture.sessionFactory(
