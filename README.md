@@ -21,6 +21,16 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 
 서비스를 확인하려면 [상품 목록](https://swportfolioservices.com/shop)에서 상품을 담고 장바구니를 확인할 수 있습니다. [로그인](https://swportfolioservices.com/login) 후에는 서버 장바구니와 병합합니다. 관리자 데이터 API는 서버에서 `ROLE_ADMIN` 권한을 검사합니다.
 
+### 테스트용 관리자 계정
+
+[로그인 페이지](https://swportfolioservices.com/login)에서 아래 계정으로 시연 기능을 확인할 수 있습니다.
+
+| 항목 | 값 |
+| --- | --- |
+| 아이디 | `test@test.com` |
+| 비밀번호 | `test147@` |
+| 권한 | 관리자 (`ROLE_ADMIN`) |
+
 | 홈 | 상품 목록 |
 | --- | --- |
 | ![홈 화면](career-portfolio/assets/screenshots/home.png) | ![상품 목록](career-portfolio/assets/screenshots/shop.png) |
