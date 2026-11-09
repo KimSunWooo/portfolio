@@ -1,7 +1,7 @@
 import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
 import MarkdownContent from "../components/common/MarkdownContent";
-import IntroductionCards from "../components/home/IntroductionCards";
+import IntroductionCarousel from "../components/home/IntroductionCarousel";
 import {
   fetchProjects,
   fetchResume,
@@ -210,7 +210,7 @@ export default async function Home() {
    */
 
   return (
-    <>
+    <div className="bg-[var(--portfolio-surface)] [--portfolio-surface:#f5f5ef]">
       <Header />
 
       <main className="pt-[76px] max-sm:pt-[62px]">
@@ -370,7 +370,7 @@ export default async function Home() {
 
         <section
           id="experience"
-          className="bg-[#f4f3f1] px-7 py-[120px] max-sm:px-4 max-sm:py-16"
+          className="border-t border-black/10 px-7 py-[120px] max-sm:px-4 max-sm:py-16"
         >
           <div className="mx-auto max-w-[1440px]">
             <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
@@ -463,23 +463,9 @@ export default async function Home() {
 
         <section
           id="introduction"
-          className="border-y border-black/10 bg-white px-7 py-[96px] max-sm:px-4 max-sm:py-16"
+          className="scroll-mt-20 border-y border-black/10 px-7 py-[96px] max-sm:px-4 max-sm:py-16"
         >
-          <div className="mx-auto max-w-[1440px]">
-            {resume.introductions.length === 0 ? (
-              <div className="border border-[#ddd] bg-[#f1efec] px-6 py-10 text-[14px] text-[#555]">
-                자기소개를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
-              </div>
-            ) : (
-              resume.introductions.map((item) => (
-                <IntroductionCards
-                  key={item.id}
-                  title={item.title ?? "자기소개"}
-                  content={item.content}
-                />
-              ))
-            )}
-          </div>
+          <IntroductionCarousel introductions={resume.introductions} />
         </section>
 
         {/* ================================================================== */}
@@ -597,7 +583,6 @@ export default async function Home() {
 
                 const isExternal = href.startsWith("http");
                 
-                // 트러블 슈팅 돋보이게 하기 위한 상태 변수
                 const isHighlight = project.id === -2;
 
                 return (
@@ -606,18 +591,10 @@ export default async function Home() {
                     href={href}
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noreferrer" : undefined}
-                    className={`group min-h-[310px] border-b p-7 no-underline max-sm:min-h-[220px] max-sm:p-5 transition-colors ${
-                      isHighlight
-                        ? "bg-[#111] text-white border-r-0 hover:bg-[#222]" // 색상 반전 (눈에 띄는 디자인)
-                        : "border-r border-black/15 text-[#111] max-md:border-r-0 hover:bg-[#f9f9f9]" // 기본 스타일
-                    }`}
+                    className="group min-h-[310px] border-b border-r border-black/15 p-7 text-[#171713] no-underline transition-colors hover:bg-black/[0.035] max-md:border-r-0 max-sm:min-h-[220px] max-sm:p-5"
                   >
                     {/* Card Meta */}
-                    <div
-                      className={`flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] ${
-                        isHighlight ? "text-white/60" : "text-[#777]"
-                      }`}
-                    >
+                    <div className="flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] text-[#53534a]">
                       <span>
                         {String(index + 1).padStart(2, "0")} ·{" "}
                         {project.subtitle?.toUpperCase() || "PROJECT"}
@@ -628,20 +605,15 @@ export default async function Home() {
                     {/* Title */}
                     <h3 className="mt-24 flex items-center gap-3 text-[30px] tracking-[-0.04em] max-sm:mt-12 max-sm:text-[22px]">
                       {project.title}
-                      {/* 강렬한 포인트 뱃지 추가 */}
                       {isHighlight && (
-                        <span className="rounded bg-[#ff3b30] px-2 py-1 text-[9px] font-bold tracking-[0.1em] text-white">
+                        <span className="rounded-full border border-black/30 px-2 py-1 text-[9px] font-bold tracking-[0.1em]">
                           MAIN FOCUS
                         </span>
                       )}
                     </h3>
 
                     {/* Tech Stack */}
-                    <p
-                      className={`mt-4 text-[12px] leading-6 max-sm:text-[11px] max-sm:leading-5 ${
-                        isHighlight ? "text-white/70" : "text-[#666]"
-                      }`}
-                    >
+                    <p className="mt-4 text-[12px] leading-6 text-[#53534a] max-sm:text-[11px] max-sm:leading-5">
                       {project.techStack || project.description}
                     </p>
 
@@ -703,6 +675,6 @@ export default async function Home() {
       </main>
 
       <Footer />
-    </>
+    </div>
   );
 }

@@ -130,7 +130,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-white border-b border-black/10">
+      <header className="sticky top-0 z-40 w-full border-b border-black/10 bg-[var(--portfolio-surface,#fff)]">
         <div className="mx-auto flex h-[74px] max-w-[1200px] items-center justify-between px-5">
           <Link href="/" className="text-[18px] font-bold tracking-widest">
             PORTFOLIO
@@ -210,7 +210,7 @@ export default function Header() {
       />
 
       <aside
-        className={`fixed right-0 top-0 z-50 h-full w-[250px] bg-white p-6 shadow-xl transition-transform duration-300 md:hidden flex flex-col ${
+        className={`fixed right-0 top-0 z-50 h-full w-[250px] bg-[var(--portfolio-surface,#fff)] p-6 shadow-xl transition-transform duration-300 md:hidden flex flex-col ${
           isMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
