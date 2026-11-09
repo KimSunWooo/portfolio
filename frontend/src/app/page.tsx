@@ -1,7 +1,11 @@
+import Link from "next/link";
 import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
 import MarkdownContent from "../components/common/MarkdownContent";
 import IntroductionCarousel from "../components/home/IntroductionCarousel";
+import HomeMediaPanel from "../components/home/HomeMediaPanel";
+import SkillStackSlider from "../components/home/SkillStackSlider";
+import ribbonStyles from "../components/home/homeRibbon.module.css";
 import {
   fetchProjects,
   fetchResume,
@@ -209,37 +213,65 @@ export default async function Home() {
    * --------------------------------------------------------------------------
    */
 
+  const troubleshootingItems = [
+    {
+      title: "장바구니 정합성",
+      href: "https://github.com/KimSunWooo/portfolio#1-장바구니-병합-재전송으로-인한-수량-중복-반영-방지",
+      body: "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았습니다.",
+    },
+    {
+      title: "인증 갱신과 로그아웃 충돌",
+      href: "https://github.com/KimSunWooo/portfolio#2-인증-갱신과-로그아웃의-경쟁으로-인한-세션-상태-불일치-해결",
+      body: "늦게 도착한 Refresh 응답이 로그아웃 이후 세션을 되살리지 않도록 세대 번호로 폐기합니다.",
+    },
+    {
+      title: "배포 복구",
+      href: "https://github.com/KimSunWooo/portfolio#3-배포-준비-검사-실패-시-이전-서비스-복구와-실패-컨테이너-보존",
+      body: "새 백엔드 준비 실패 시 이전 서비스로 되돌리고 실패 컨테이너를 보존합니다.",
+    },
+  ] as const;
+
   return (
-    <div className="bg-[var(--portfolio-surface)] [--portfolio-surface:#f5f5ef]">
+    <div className="bg-[var(--portfolio-surface)] [--portfolio-surface:#f4f1ef]">
       <Header />
 
-      <main className="pt-[76px] max-sm:pt-[62px]">
+      <main className="overflow-x-hidden pt-[76px] max-sm:pt-[62px]">
         {/* ================================================================== */}
         {/* ABOUT */}
         {/* ================================================================== */}
 
         <section
           id="about"
-          className="min-h-[calc(10vh-76px)] border-b border-black/10 px-7 py-[86px] max-sm:min-h-0 max-sm:px-4 max-sm:py-14"
+          className={`${ribbonStyles.hero} border-b border-black/10 px-7 py-[72px] max-sm:px-4 max-sm:py-12`}
         >
-          <div className="mx-auto flex min-h-[620px] max-w-[1440px] flex-col justify-between max-sm:min-h-[560px]">
-            {/* Top Meta */}
-            <div className="flex items-start justify-between gap-8 text-[10px] tracking-[0.14em] text-[#777] max-sm:flex-col max-sm:gap-2">
-              <span>PORTFOLIO · 2026</span>
-              <span>
-                {profile.jobTitle?.toUpperCase() ??
-                  "BACKEND / FULL-STACK DEVELOPER"}
-              </span>
-            </div>
+          <svg
+            className={ribbonStyles.ribbon}
+            viewBox="0 0 1440 320"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path fill="#a16e72" fillOpacity="0.22" d="M0 180 C180 120 260 240 420 190 C580 140 640 90 820 150 C1000 210 1120 250 1440 170 L1440 320 L0 320 Z" />
+            <path fill="#c4989b" fillOpacity="0.35" d="M0 210 C200 160 300 250 460 210 C640 160 760 120 940 180 C1100 230 1240 250 1440 200 L1440 320 L0 320 Z" />
+            <path fill="#e9dddc" fillOpacity="0.85" d="M0 240 C220 200 340 270 520 230 C700 190 860 160 1040 210 C1200 250 1320 270 1440 230 L1440 320 L0 320 Z" />
+          </svg>
 
-            {/* Main Profile */}
-            <div className="py-16 max-sm:py-14">
-              <p className="mb-5 text-[30px] tracking-[0.18em] text-[#777] max-sm:text-[20px]">
+          <div className={`${ribbonStyles.inner} mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start lg:gap-16`}>
+            <div>
+              <div className="flex items-start justify-between gap-6 text-[10px] tracking-[0.14em] text-[#5e5759] max-sm:flex-col max-sm:gap-2">
+                <span>PORTFOLIO · 2026</span>
+                <span>
+                  {profile.jobTitle?.toUpperCase() ??
+                    "BACKEND / FULL-STACK DEVELOPER"}
+                </span>
+              </div>
+
+              <div className={`${ribbonStyles.accentRule} mt-8`} />
+              <p className={`${ribbonStyles.role} mt-6 text-[14px] tracking-[0.18em] max-sm:text-[12px]`}>
                 DEVELOPER
               </p>
 
-              <div className="grid grid-cols-[1fr_360px] items-end gap-16 max-lg:grid-cols-[1fr_280px] max-md:grid-cols-1 max-md:gap-10">
-                <h1 className="text-[clamp(42px,10vw,150px)] font-medium leading-[0.9] tracking-[-0.07em] text-[#111]">
+              <div className="mt-5 grid grid-cols-[minmax(0,1fr)_minmax(140px,280px)] items-end gap-8 max-md:grid-cols-1 max-md:gap-8">
+                <h1 className={`${ribbonStyles.title} text-[clamp(42px,9vw,128px)] font-medium leading-[0.92] tracking-[-0.07em]`}>
                   {englishName[0]}
                   {englishName[1] && (
                     <>
@@ -251,82 +283,98 @@ export default async function Home() {
 
                 {profileImageUrl && (
                   <div className="flex justify-end max-md:justify-start">
-                    <div className="relative w-full max-w-[320px] overflow-hidden max-md:max-w-[240px]">
+                    <div className={`${ribbonStyles.profileFrame} relative w-full max-w-[280px] overflow-hidden max-md:max-w-[220px]`}>
                       <img
                         src={profileImageUrl}
                         alt={profile.name ?? "Profile"}
-                        className="aspect-[3/4] w-full object-cover"
+                        className="aspect-[3/4] w-full object-cover object-[center_18%]"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Short Intro */}
-              <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
-                <div className="max-w-[680px]">
-                  <p className="whitespace-pre-wrap text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
-                    {profile.shortIntro}
-                  </p>
-                  <p className="mt-4 text-[15px] leading-[1.7] tracking-[-0.02em] text-[#333] max-sm:text-[13px]">
-                    대표 프로젝트는 장바구니 정합성, 인증 갱신과 로그아웃 충돌, 배포 복구를
-                    코드와 테스트로 검증한 풀스택 웹 서비스입니다.
-                  </p>
-                </div>
-
-                <a
-                  href="#experience"
-                  className="text-[10px] tracking-[0.16em] text-[#111] no-underline hover:opacity-50"
-                >
-                  SCROLL TO RESUME ↓
-                </a>
+              <div className="mt-9 max-w-[42rem] border-t border-[#242225]/15 pt-5">
+                <p className={`${ribbonStyles.copy} whitespace-pre-wrap text-[15px] leading-[1.8] tracking-[-0.02em]`}>
+                  {profile.shortIntro}
+                </p>
+                <p className={`${ribbonStyles.copy} mt-4 text-[15px] leading-[1.75] tracking-[-0.02em]`}>
+                  대표 프로젝트는 장바구니 정합성, 인증 갱신과 로그아웃 충돌, 배포 복구를
+                  코드와 테스트로 검증한 풀스택 웹 서비스입니다.
+                </p>
               </div>
 
               <nav
                 aria-label="대표 프로젝트 바로가기"
-                className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-black/15 pt-5 text-[11px] tracking-[0.12em]"
+                className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#242225]/15 pt-5 text-[11px] tracking-[0.12em]"
               >
-                <a href="#projects" className="text-[#111] no-underline hover:opacity-50">
+                <a href="#projects" className={ribbonStyles.link}>
                   대표 프로젝트
                 </a>
-                <a href="#troubleshooting" className="text-[#111] no-underline hover:opacity-50">
+                <a href="#troubleshooting" className={ribbonStyles.link}>
                   트러블슈팅
                 </a>
                 <a
                   href={profile.githubUrl || "https://github.com/KimSunWooo/portfolio"}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#111] no-underline hover:opacity-50"
+                  className={ribbonStyles.link}
                 >
                   GitHub
                 </a>
-                <a href="/shop" className="text-[#111] no-underline hover:opacity-50">
+                <a href="/shop" className={ribbonStyles.link}>
                   쇼핑몰 데모
                 </a>
               </nav>
             </div>
 
-            {/* Profile Summary */}
-            <div className="grid grid-cols-4 border-y border-black/15 max-md:grid-cols-2">
-              {[
-                ["FOCUS", profile.jobTitle ?? "Backend"],
-                ["SKILLS", `${resume.skills.length} ITEMS`],
-                ["DATABASE", "MySQL"],
-                ["LOCATION", "Korea"],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="min-h-[102px] border-r border-black/15 px-5 py-5 last:border-r-0 max-md:border-b max-md:odd:border-r max-md:even:border-r-0 max-sm:p-4"
-                >
-                  <div className="text-[9px] tracking-[0.14em] text-[#888]">
-                    {label}
-                  </div>
-                  <div className="mt-8 text-[15px] tracking-[-0.02em] max-sm:text-[13px]">
-                    {value}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <aside className="grid gap-4 self-stretch">
+              <div className={`${ribbonStyles.panel} p-5 sm:p-6`}>
+                <p className={`${ribbonStyles.panelTitle} text-[10px] tracking-[0.16em]`}>
+                  SELECTED WORK
+                </p>
+                <h2 className={`${ribbonStyles.title} mt-3 text-[22px] tracking-[-0.03em] max-sm:text-[18px]`}>
+                  대표 프로젝트
+                </h2>
+                <ul className="mt-5 space-y-4">
+                  {(projects.length > 0 ? projects.slice(0, 3) : [
+                    { id: 0, title: "Portfolio Demo", subtitle: "장바구니·결제·배포 검증" },
+                  ]).map((item) => (
+                    <li key={item.id} className="border-t border-[#242225]/10 pt-4 first:border-t-0 first:pt-0">
+                      <a href="#projects" className={`${ribbonStyles.link} text-[15px] tracking-[-0.02em]`}>
+                        {item.title}
+                      </a>
+                      {item.subtitle && (
+                        <p className={`${ribbonStyles.copy} mt-1 text-[13px] leading-6`}>
+                          {item.subtitle}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className={`${ribbonStyles.panel} p-5 sm:p-6`}>
+                <p className={`${ribbonStyles.panelTitle} text-[10px] tracking-[0.16em]`}>
+                  TROUBLESHOOTING
+                </p>
+                <h2 className={`${ribbonStyles.title} mt-3 text-[22px] tracking-[-0.03em] max-sm:text-[18px]`}>
+                  재현·원인·검증 요약
+                </h2>
+                <ul className="mt-5 space-y-4">
+                  {troubleshootingItems.map((item) => (
+                    <li key={item.title}>
+                      <a href="#troubleshooting" className={`${ribbonStyles.link} text-[15px]`}>
+                        {item.title}
+                      </a>
+                      <p className={`${ribbonStyles.copy} mt-1 text-[13px] leading-6`}>
+                        {item.body}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
           </div>
         </section>
 
@@ -336,31 +384,21 @@ export default async function Home() {
 
         <section
           id="skills"
-          className="px-7 py-[120px] max-sm:px-4 max-sm:py-16"
+          className="bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
         >
           <div className="mx-auto max-w-[1440px]">
-            <div className="mb-16 grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5 max-sm:mb-10">
-              <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
+            <div className="mb-12 grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5 max-sm:mb-8">
+              <p className="text-[25px] tracking-[0.16em] text-[#5e5759] max-sm:text-[18px]">
                 01 · SKILLS
               </p>
-              <h2 className="max-w-[900px] text-[clamp(28px,5.2vw,78px)] font-normal leading-[1.1] tracking-[-0.055em]">
+              <h2 className="max-w-[900px] text-[clamp(28px,5.2vw,78px)] font-normal leading-[1.1] tracking-[-0.055em] text-[#242225]">
                 기술은 목적이 아니라,
                 <br />
                 문제를 해결하기 위한 도구라고 생각합니다.
               </h2>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-y border-black/15 py-7 max-sm:py-5">
-              {resume.skills.map((skill) => (
-                <span
-                  key={skill.id}
-                  className="rounded-full border border-[#bbb] px-4 py-2 text-[11px] tracking-[0.05em] max-sm:text-[10px]"
-                >
-                  {skill.name}
-                  {skill.category ? ` · ${skill.category}` : ""}
-                </span>
-              ))}
-            </div>
+            <SkillStackSlider skills={resume.skills} />
           </div>
         </section>
 
@@ -463,9 +501,19 @@ export default async function Home() {
 
         <section
           id="introduction"
-          className="scroll-mt-20 border-y border-black/10 px-7 py-[96px] max-sm:px-4 max-sm:py-16"
+          className="scroll-mt-20 border-y border-black/10 bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
         >
-          <IntroductionCarousel introductions={resume.introductions} />
+          <div className="mx-auto grid max-w-[1440px] gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-stretch lg:gap-10">
+            <HomeMediaPanel
+              src="/home/intro-desk.jpg"
+              alt="책상 위 노트북과 모니터가 보이는 작업 공간"
+              title="일하는 방식"
+              className="min-h-[320px] lg:min-h-full"
+            />
+            <div className="min-w-0">
+              <IntroductionCarousel introductions={resume.introductions} />
+            </div>
+          </div>
         </section>
 
         {/* ================================================================== */}
@@ -484,23 +532,7 @@ export default async function Home() {
               대표 구현의 재현·원인·검증 근거
             </h2>
             <ul className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-3">
-              {[
-                {
-                  title: "장바구니 정합성",
-                  href: "https://github.com/KimSunWooo/portfolio#1-장바구니-병합-재전송으로-인한-수량-중복-반영-방지",
-                  body: "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았습니다.",
-                },
-                {
-                  title: "인증 갱신과 로그아웃 충돌",
-                  href: "https://github.com/KimSunWooo/portfolio#2-인증-갱신과-로그아웃의-경쟁으로-인한-세션-상태-불일치-해결",
-                  body: "늦게 도착한 Refresh 응답이 로그아웃 이후 세션을 되살리지 않도록 세대 번호로 폐기합니다.",
-                },
-                {
-                  title: "배포 복구",
-                  href: "https://github.com/KimSunWooo/portfolio#3-배포-준비-검사-실패-시-이전-서비스-복구와-실패-컨테이너-보존",
-                  body: "새 백엔드 준비 실패 시 이전 서비스로 되돌리고 실패 컨테이너를 보존합니다.",
-                },
-              ].map((item) => (
+              {troubleshootingItems.map((item) => (
                 <li key={item.title} className="min-w-0">
                   <a
                     href={item.href}
@@ -514,6 +546,41 @@ export default async function Home() {
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+
+        {/* ================================================================== */}
+        {/* CI / CD */}
+        {/* ================================================================== */}
+
+        <section
+          id="cicd"
+          className="border-t border-black/10 bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
+        >
+          <div className="mx-auto grid max-w-[1440px] gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-stretch lg:gap-10">
+            <div className="order-2 flex min-w-0 flex-col justify-center lg:order-1">
+              <p className="text-[12px] tracking-[0.16em] text-[#a16e72]">DEPLOYMENT</p>
+              <h2 className="mt-4 break-keep text-[clamp(28px,4.5vw,48px)] font-medium leading-[1.15] tracking-[-0.045em] text-[#242225]">
+                운영 배포 절차를 검증 가능한 흐름으로 정리했습니다
+              </h2>
+              <p className="mt-5 max-w-[40rem] text-[15px] leading-[1.8] text-[#5e5759]">
+                PR 검사와 운영 배포를 분리하고, 준비 검사 실패 시 이전 서비스로 되돌리며
+                실패 컨테이너를 보존하는 절차를 모의 환경에서 확인했습니다. 배포 과정의
+                재현과 복구 근거는 커뮤니티 기록으로도 남겨 두었습니다.
+              </p>
+              <Link
+                href="/community/14"
+                className="mt-8 inline-flex w-fit items-center border border-[#242225] bg-[#242225] px-5 py-3 text-[11px] tracking-[0.14em] text-[#f7f3ea] no-underline hover:bg-transparent hover:text-[#242225]"
+              >
+                배포 사례 보기 →
+              </Link>
+            </div>
+            <HomeMediaPanel
+              src="/home/cicd-concrete.jpg"
+              alt="빛과 그림자가 드리운 콘크리트 건축 공간"
+              title="운영 배포 절차 개선"
+              className="order-1 min-h-[320px] lg:order-2 lg:min-h-full"
+            />
           </div>
         </section>
 

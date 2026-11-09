@@ -1,0 +1,69 @@
+.hero {
+  --home-warm: #f4f1ef;
+  --home-rose: #e9dddc;
+  --home-accent: #a16e72;
+  --home-ink: #242225;
+  --home-muted: #5e5759;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, var(--home-warm) 0%, var(--home-warm) 46%, var(--home-rose) 100%);
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.ribbon {
+  pointer-events: none;
+  position: absolute;
+  inset: auto -8% 8% -8%;
+  height: min(34vw, 280px);
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+}
+
+.accentRule {
+  height: 3px;
+  width: 4.5rem;
+  background: var(--home-accent);
+}
+
+.role {
+  color: var(--home-muted);
+}
+
+.title {
+  color: var(--home-ink);
+}
+
+.copy {
+  color: var(--home-muted);
+}
+
+.panel {
+  border: 1px solid rgba(36, 34, 37, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.panelTitle {
+  color: var(--home-accent);
+}
+
+.link {
+  color: var(--home-ink);
+  text-decoration: none;
+}
+
+.link:hover {
+  opacity: 0.6;
+}
+
+.profileFrame {
+  border: 1px solid rgba(36, 34, 37, 0.12);
+  background: #fff;
+}
