@@ -99,6 +99,7 @@ class ProdProfileExistingSchemaStartupTest {
                     "SELECT price FROM products WHERE name = 'synthetic-product'")) {
                 productSurvivedMissingTableFailure = rows.next() && rows.getInt(1) == 1234;
             }
+            FlywaySchemaFixture.removeProjectRevisionColumns(connection);
         }
 
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);

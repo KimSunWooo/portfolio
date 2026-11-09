@@ -18,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,6 +91,11 @@ class CartSyncFlywayExistingSchemaTest {
             FlywaySchemaFixture.execute(connection, "ALTER TABLE cart_items DROP COLUMN color_id");
             FlywaySchemaFixture.execute(connection, "ALTER TABLE users DROP COLUMN session_epoch");
             FlywaySchemaFixture.execute(connection, "DROP TABLE cart_sync_requests");
+            FlywaySchemaFixture.removeProjectRevisionColumns(connection);
+            FlywaySchemaFixture.execute(connection, """
+                    INSERT INTO projects (title, description)
+                    VALUES ('legacy-project', 'published-description-keep')
+                    """);
         }
 
         List<String> legacyColumns = columnSnapshot("legacy_orders");
@@ -115,6 +121,17 @@ class CartSyncFlywayExistingSchemaTest {
         assertTrue(tableExists("purchase_lines"));
         assertTrue(tableExists("purchase_demo_member_profiles"));
         assertTrue(tableExists("purchase_seed_batches"));
+        assertTrue(tableExists("project_revisions"));
+        try (Connection connection = connect();
+             ResultSet project = connection.createStatement().executeQuery("""
+                     SELECT description, draft_description, published_at FROM projects
+                     WHERE title = 'legacy-project'
+                     """)) {
+            assertTrue(project.next());
+            assertEquals("published-description-keep", project.getString(1));
+            assertNull(project.getObject(2));
+            assertNull(project.getObject(3));
+        }
         assertEquals("V1__cart_sync_requests.sql", scriptForVersion("1"));
         assertNotNull(checksumForVersion("1"));
         assertCartSyncColumns();

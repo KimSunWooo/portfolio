@@ -76,6 +76,14 @@ final class FlywaySchemaFixture {
         }
     }
 
+    static void removeProjectRevisionColumns(Connection connection) throws Exception {
+        execute(connection, """
+                ALTER TABLE projects
+                    DROP COLUMN draft_description,
+                    DROP COLUMN published_at
+                """);
+    }
+
     static boolean tableExists(Connection connection, String table) throws Exception {
         try (ResultSet tables = connection.getMetaData().getTables(connection.getCatalog(), null, table, null)) {
             return tables.next();
