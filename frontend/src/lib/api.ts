@@ -1212,6 +1212,61 @@ export const fetchPaymentHistory = async (status: "DONE" | "CANCELED"): Promise<
   return response.json();
 };
 
+export interface DemoOrderLine {
+  productId: number | null;
+  colorId: number | null;
+  productName: string;
+  categoryName: string | null;
+  unitPrice: number;
+  quantity: number;
+  lineDiscount: number;
+  lineAmount: number;
+  status: string;
+}
+
+export interface DemoOrderResponse {
+  orderKey: string;
+  userId: number | null;
+  purchasedAt: string;
+  recordSource: string;
+  status: string;
+  paidAmount: number;
+  lines: DemoOrderLine[];
+  requestId: string | null;
+}
+
+export async function confirmDemoOrder(idempotencyKey: string): Promise<DemoOrderResponse> {
+  const response = await authorizedFetch(`${API_BASE_URL}/api/demo-orders/confirm`, {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+export async function fetchDemoOrders(): Promise<DemoOrderResponse[]> {
+  const response = await authorizedFetch(`${API_BASE_URL}/api/demo-orders`);
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+export async function cancelDemoOrder(orderKey: string): Promise<DemoOrderResponse> {
+  const response = await authorizedFetch(`${API_BASE_URL}/api/demo-orders/${encodeURIComponent(orderKey)}/cancel`, {
+    method: "POST",
+  });
+  if (!response.ok) await handleResponseError(response);
+  return response.json();
+}
+
+export async function parsePurchaseAnalyticsQuery(text: string): Promise<{
+  ok: boolean;
+  message: string;
+  filters: Record<string, unknown>;
+}> {
+  const response = await authSend("/api/admin/purchase-analytics/parse-query", "POST", JSON.stringify({ text }));
+  return response.json();
+}
+
 /* =========================================================================
  * 10. 커뮤니티 (Community) API
  * ========================================================================= */

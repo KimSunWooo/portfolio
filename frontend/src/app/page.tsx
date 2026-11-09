@@ -1,6 +1,7 @@
 import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
 import MarkdownContent from "../components/common/MarkdownContent";
+import IntroductionCards from "../components/home/IntroductionCards";
 import {
   fetchProjects,
   fetchResume,
@@ -462,29 +463,22 @@ export default async function Home() {
 
         <section
           id="introduction"
-          className="border-y border-black/10 bg-[#151515] px-7 py-[120px] text-white max-sm:px-4 max-sm:py-16"
+          className="border-y border-black/10 bg-white px-7 py-[96px] max-sm:px-4 max-sm:py-16"
         >
           <div className="mx-auto max-w-[1440px]">
-            <p className="text-[25px] tracking-[0.16em] text-white/50 max-sm:text-[18px]">
-              04 · INTRODUCTION
-            </p>
-
-            <div className="mt-14 space-y-20 max-sm:mt-8 max-sm:space-y-12">
-              {resume.introductions.map((item) => (
-                <div
+            {resume.introductions.length === 0 ? (
+              <div className="border border-[#ddd] bg-[#f1efec] px-6 py-10 text-[14px] text-[#555]">
+                자기소개를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
+              </div>
+            ) : (
+              resume.introductions.map((item) => (
+                <IntroductionCards
                   key={item.id}
-                  className="grid grid-cols-[1.2fr_0.8fr] gap-20 max-lg:grid-cols-1 max-lg:gap-8"
-                >
-                  <h2 className="text-[clamp(28px,6vw,86px)] font-normal leading-[1.1] tracking-[-0.06em]">
-                    {item.title ?? "Introduction"}
-                  </h2>
-                  <MarkdownContent
-                    content={item.content}
-                    variant="dark"
-                  />
-                </div>
-              ))}
-            </div>
+                  title={item.title ?? "자기소개"}
+                  content={item.content}
+                />
+              ))
+            )}
           </div>
         </section>
 

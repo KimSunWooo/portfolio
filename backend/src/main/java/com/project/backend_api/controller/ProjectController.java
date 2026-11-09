@@ -53,6 +53,26 @@ public class ProjectController {
         return projectService.update(id, request);
     }
 
+    @PutMapping("/admin/projects/{id}/draft")
+    public Project saveProjectDraft(@PathVariable Integer id, @RequestBody java.util.Map<String, String> body) {
+        return projectService.saveDraft(id, body == null ? null : body.get("draftDescription"));
+    }
+
+    @PostMapping("/admin/projects/{id}/publish")
+    public Project publishProject(@PathVariable Integer id) {
+        return projectService.publish(id);
+    }
+
+    @GetMapping("/admin/projects/{id}/revisions")
+    public java.util.List<java.util.Map<String, Object>> listProjectRevisions(@PathVariable Integer id) {
+        return projectService.listRevisions(id);
+    }
+
+    @PostMapping("/admin/projects/{id}/revisions/{revisionId}/restore")
+    public Project restoreProjectRevision(@PathVariable Integer id, @PathVariable long revisionId) {
+        return projectService.restoreRevision(id, revisionId);
+    }
+
     @DeleteMapping("/admin/projects/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProject(@PathVariable Integer id) {

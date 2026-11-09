@@ -56,10 +56,15 @@ public class SecurityConfig {
                 .requestMatchers("/api/verify/mailbox", "/api/verify/fail-next-revoke", "/api/verify/fail-next-product").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/community/**").permitAll()
 
+                .requestMatchers("/api/demo-orders/**").authenticated()
+
                 // DEMO는 구매 분석 샘플 조회만. 쓰기·회원 조회를 포함한 나머지 관리자 API는 ADMIN만.
                 .requestMatchers(HttpMethod.GET,
                         "/api/admin/purchase-analytics",
-                        "/api/admin/purchase-analytics/filters")
+                        "/api/admin/purchase-analytics/filters",
+                        "/api/admin/purchase-analytics/parse-query")
+                    .hasAnyRole("ADMIN", "DEMO")
+                .requestMatchers(HttpMethod.POST, "/api/admin/purchase-analytics/parse-query")
                     .hasAnyRole("ADMIN", "DEMO")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
 

@@ -3,6 +3,8 @@ package com.project.backend_api.purchase;
 import com.project.backend_api.security.SecurityRoles;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,15 +13,21 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/purchase-analytics")
 public class PurchaseAnalyticsController {
 
     private final PurchaseAnalyticsService purchaseAnalyticsService;
+    private final PurchaseAnalyticsQueryParser queryParser;
 
-    public PurchaseAnalyticsController(PurchaseAnalyticsService purchaseAnalyticsService) {
+    public PurchaseAnalyticsController(
+            PurchaseAnalyticsService purchaseAnalyticsService,
+            PurchaseAnalyticsQueryParser queryParser
+    ) {
         this.purchaseAnalyticsService = purchaseAnalyticsService;
+        this.queryParser = queryParser;
     }
 
     @GetMapping
@@ -55,5 +63,16 @@ public class PurchaseAnalyticsController {
     @GetMapping("/filters")
     public PurchaseAnalyticsService.FilterOptions filters() {
         return purchaseAnalyticsService.filterOptions(SecurityRoles.isDemo());
+    }
+
+    @PostMapping("/parse-query")
+    public Map<String, Object> parseQuery(@RequestBody Map<String, String> body) {
+        PurchaseAnalyticsQueryParser.ParseResult parsed =
+                queryParser.parse(body == null ? null : body.get("text"), SecurityRoles.isDemo());
+        return Map.of(
+                "ok", parsed.ok(),
+                "message", parsed.message() == null ? "" : parsed.message(),
+                "filters", parsed.filters()
+        );
     }
 }

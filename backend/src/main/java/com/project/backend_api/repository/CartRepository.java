@@ -14,6 +14,6 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Query("SELECT c FROM Cart c WHERE c.user.email = :email")
     Optional<Cart> findByUserEmailForUpdate(@Param("email") String email);
 
-    @Query("SELECT DISTINCT c FROM Cart c LEFT JOIN FETCH c.cartItems ci LEFT JOIN FETCH ci.product WHERE c.user.email = :email")
+    @Query("SELECT DISTINCT c FROM Cart c LEFT JOIN FETCH c.cartItems ci LEFT JOIN FETCH ci.product LEFT JOIN FETCH ci.color WHERE c.user.email = :email")
     Optional<Cart> findByUserEmailWithProducts(@Param("email") String email);
 }

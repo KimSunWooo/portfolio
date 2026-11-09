@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   fetchPurchaseAnalytics,
   fetchPurchaseAnalyticsFilters,
+  parsePurchaseAnalyticsQuery,
   type PurchaseAnalyticsFilters,
   type PurchaseAnalyticsResponse,
 } from "@/lib/api";
@@ -40,6 +41,8 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
   const [categories, setCategories] = useState<string[]>([]);
   const [ageBands, setAgeBands] = useState<string[]>([]);
   const [options, setOptions] = useState<PurchaseAnalyticsFilters | null>(null);
+  const [naturalQuery, setNaturalQuery] = useState("");
+  const [naturalMessage, setNaturalMessage] = useState("");
   const filterKey = [
     from,
     to,
@@ -66,6 +69,9 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
       .then((filters) => {
         if (!cancelled) {
           setOptions(filters);
+          if (filters.recordSources?.length === 1) {
+            setRecordSource(filters.recordSources[0]);
+          }
         }
       })
       .catch(() => {
@@ -178,6 +184,49 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
           시연용 구매기록 포함 · {data.sourceLabel}
         </p>
       )}
+
+      <div className="border border-black/10 bg-white p-4">
+        <label className="block text-[11px] tracking-[0.12em] text-[#666]" htmlFor={`${formId}-natural`}>
+          자연어 질문 (DEMO 시연)
+        </label>
+        <div className="mt-2 flex flex-col gap-2 md:flex-row">
+          <input
+            id={`${formId}-natural`}
+            value={naturalQuery}
+            onChange={(event) => setNaturalQuery(event.target.value)}
+            placeholder="예: 2026년 10월 LIP 매출"
+            className="w-full border border-black/15 bg-[#faf9f6] px-2 py-2 text-sm"
+          />
+          <button
+            type="button"
+            className="border border-black px-4 py-2 text-[11px] tracking-[0.1em] hover:bg-black hover:text-white"
+            onClick={async () => {
+              try {
+                const parsed = await parsePurchaseAnalyticsQuery(naturalQuery);
+                if (!parsed.ok) {
+                  setNaturalMessage(parsed.message || "변환에 실패했습니다. 아래 필터로 이어서 조회하세요.");
+                  return;
+                }
+                const filters = parsed.filters;
+                setFrom(String(filters.from ?? from));
+                setTo(String(filters.to ?? to));
+                setGrain(String(filters.grain ?? grain));
+                setMetric(String(filters.metric ?? metric));
+                setRecordSource(String(filters.recordSource ?? recordSource));
+                setCategories(Array.isArray(filters.category) ? filters.category.map(String) : []);
+                setNaturalMessage("필터로 변환했습니다. 집계는 서버 API가 계산합니다.");
+              } catch (error) {
+                setNaturalMessage(error instanceof Error ? error.message : "변환 요청에 실패했습니다.");
+              }
+            }}
+          >
+            필터로 변환
+          </button>
+        </div>
+        {naturalMessage && (
+          <p className="mt-2 text-[12px] text-[#555]" role="status">{naturalMessage}</p>
+        )}
+      </div>
 
       <form
         className="grid gap-3 border border-black/10 bg-white p-4 md:grid-cols-2 lg:grid-cols-4"

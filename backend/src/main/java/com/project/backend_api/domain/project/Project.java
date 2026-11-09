@@ -1,5 +1,6 @@
 package com.project.backend_api.domain.project;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project.backend_api.dto.project.ProjectRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -25,6 +26,10 @@ public class Project {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @JsonIgnore
+    @Column(name = "draft_description", columnDefinition = "TEXT")
+    private String draftDescription;
 
     @Column(name = "tech_stack", length = 500)
     private String techStack;
@@ -60,6 +65,9 @@ public class Project {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     public static Project create(ProjectRequest request) {
         Project project = new Project();
         project.createdAt = LocalDateTime.now();
@@ -82,6 +90,22 @@ public class Project {
         this.sortOrder = request.sortOrder() == null ? 0 : request.sortOrder();
         this.startDate = request.startDate();
         this.endDate = request.endDate();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void saveDraft(String draft) {
+        this.draftDescription = draft;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void publishDraft() {
+        this.description = this.draftDescription == null ? this.description : this.draftDescription;
+        this.publishedAt = LocalDateTime.now();
+        this.updatedAt = this.publishedAt;
+    }
+
+    public void replaceDraftFromRevision(String description) {
+        this.draftDescription = description;
         this.updatedAt = LocalDateTime.now();
     }
 }

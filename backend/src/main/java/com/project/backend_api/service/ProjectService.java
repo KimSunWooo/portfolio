@@ -12,6 +12,7 @@ import com.project.backend_api.domain.project.MediaType;
 import com.project.backend_api.domain.project.ProjectMedia;
 import com.project.backend_api.dto.project.ProjectMediaResponse;
 import com.project.backend_api.repository.ProjectMediaRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.amazonaws.services.s3.AmazonS3;
@@ -21,9 +22,10 @@ import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
-import java.util.UUID;
-
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -33,6 +35,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMediaRepository projectMediaRepository;
+    private final JdbcTemplate jdbc;
 
     private final AmazonS3 amazonS3;
     private final AfterCommit afterCommit;
@@ -79,6 +82,59 @@ public class ProjectService {
             throw new ResponseStatusException(NOT_FOUND, "프로젝트를 찾을 수 없습니다. id=" + id);
         }
         projectRepository.deleteById(id);
+    }
+
+    @Transactional
+    public Project saveDraft(Integer id, String draftDescription) {
+        Project project = getProject(id);
+        project.saveDraft(draftDescription);
+        return project;
+    }
+
+    @Transactional
+    public Project publish(Integer id) {
+        Project project = getProject(id);
+        Integer nextRevision = jdbc.query("""
+                SELECT COALESCE(MAX(revision_no), 0) + 1 FROM project_revisions WHERE project_id = ?
+                """, rs -> rs.next() ? rs.getInt(1) : 1, id);
+        jdbc.update("""
+                INSERT INTO project_revisions
+                (project_id, revision_no, title, subtitle, description, tech_stack, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                id,
+                nextRevision,
+                project.getTitle(),
+                project.getSubtitle(),
+                project.getDescription(),
+                project.getTechStack(),
+                project.getStatus() == null ? null : project.getStatus().name(),
+                LocalDateTime.now());
+        project.publishDraft();
+        return project;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listRevisions(Integer id) {
+        getProject(id);
+        return jdbc.queryForList("""
+                SELECT id, revision_no, title, subtitle, description, tech_stack, status, created_at
+                FROM project_revisions WHERE project_id = ? ORDER BY revision_no DESC
+                """, id);
+    }
+
+    @Transactional
+    public Project restoreRevision(Integer id, long revisionId) {
+        Project project = getProject(id);
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT description FROM project_revisions WHERE id = ? AND project_id = ?
+                """, revisionId, id);
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(NOT_FOUND, "이전 버전을 찾을 수 없습니다.");
+        }
+        Object description = rows.getFirst().get("description");
+        project.replaceDraftFromRevision(description == null ? null : String.valueOf(description));
+        return project;
     }
 
     @Transactional(readOnly = true)

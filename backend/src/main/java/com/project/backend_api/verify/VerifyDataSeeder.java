@@ -4,11 +4,14 @@ import com.project.backend_api.domain.cart.Cart;
 import com.project.backend_api.domain.cart.CartItem;
 import com.project.backend_api.domain.product.Product;
 import com.project.backend_api.domain.product.ProductColor;
+import com.project.backend_api.domain.resume.Introduction;
 import com.project.backend_api.domain.user.User;
 import com.project.backend_api.domain.user.UserRole;
 import com.project.backend_api.dto.product.ProductRequest;
+import com.project.backend_api.dto.resume.IntroductionRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
+import com.project.backend_api.repository.IntroductionRepository;
 import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
@@ -19,6 +22,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import javax.sql.DataSource;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.nio.file.Path;
@@ -42,6 +47,7 @@ public class VerifyDataSeeder {
             ProductColorRepository colors,
             CartRepository carts,
             CartItemRepository cartItems,
+            IntroductionRepository introductions,
             PasswordEncoder passwordEncoder,
             DataSource dataSource
     ) {
@@ -51,6 +57,13 @@ public class VerifyDataSeeder {
                 if (url != null && url.contains("rds.amazonaws.com")) {
                     throw new IllegalStateException("verify profile refused a production database host");
                 }
+            }
+            if (introductions.count() == 0) {
+                introductions.save(Introduction.create(new IntroductionRequest(
+                        "자기소개",
+                        readSelfIntro(),
+                        1
+                )));
             }
             if (users.count() > 0) {
                 return;
@@ -112,5 +125,14 @@ public class VerifyDataSeeder {
             value.append(alphabet.charAt(random.nextInt(alphabet.length())));
         }
         return value.toString();
+    }
+
+    private static String readSelfIntro() throws Exception {
+        try (InputStream stream = VerifyDataSeeder.class.getResourceAsStream("/verify/self-intro-augmented.md")) {
+            if (stream == null) {
+                throw new IllegalStateException("verify self-intro resource missing");
+            }
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 }

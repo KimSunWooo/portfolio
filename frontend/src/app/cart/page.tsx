@@ -17,6 +17,9 @@ import {
   setGuestCart,
   syncLocalCartToServer,
   isAdminFromToken,
+  ensureAccessToken,
+  isAccessTokenValid,
+  confirmDemoOrder,
   ApiRequestError,
   type CartItemResponse,
 } from "../../lib/api";
@@ -453,10 +456,35 @@ export default function CartPage() {
                 </div>
 
                 <button
-                  onClick={() => router.push("/checkout")}
-                  className="mt-8 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const token = await ensureAccessToken();
+                      if (!isAccessTokenValid(token)) {
+                        router.push("/login?next=/cart");
+                        return;
+                      }
+                      const key = `demo-order-${Date.now()}-${cartItems
+                        .map((item) => `${item.productId}:${item.colorId ?? "-"}:${item.quantity}`)
+                        .join("|")}`;
+                      const order = await confirmDemoOrder(key);
+                      sessionStorage.setItem("demoOrderNotice", `데모 주문이 확정되었습니다. (${order.orderKey})`);
+                      await loadCart();
+                      await refreshCartCount();
+                      router.push("/mypage?tab=ORDERS");
+                    } catch (error) {
+                      alert(error instanceof Error ? error.message : "데모 주문 확정에 실패했습니다.");
+                    }
+                  }}
+                  className="mt-8 h-12 w-full border border-black bg-white text-[12px] tracking-[0.1em] text-black transition hover:bg-black hover:text-white"
                 >
-                  PROCEED TO CHECKOUT
+                  데모 주문 확정
+                </button>
+                <button
+                  onClick={() => router.push("/checkout")}
+                  className="mt-3 h-12 w-full bg-black text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+                >
+                  100원 테스트 결제
                 </button>
               </div>}
             </>

@@ -16,8 +16,8 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 | 사용자 | 주요 기능 |
 | --- | --- |
 | 방문자 | 이력·프로젝트·커뮤니티·상품 목록 및 상세 조회, 브라우저에 비회원 장바구니 저장 |
-| 회원 | 로그인과 세션 복구, 비회원·회원 장바구니 병합, 수량·색상 관리, 100원 테스트 결제 및 자동 취소 |
-| 관리자 | 이력·프로젝트·상품 관리, 기간·상품·카테고리·연령대별 구매 분석 조회 |
+| 회원 | 로그인과 세션 복구, 비회원·회원 장바구니 병합, 수량·색상 관리, **데모 주문 확정·취소**, 100원 테스트 결제 및 자동 취소 |
+| 관리자 | 이력·프로젝트·상품 관리, 기간·상품·카테고리·연령대별 구매 분석 조회, 자연어 필터 변환 |
 
 서비스를 확인하려면 [상품 목록](https://swportfolioservices.com/shop)에서 상품을 담고 장바구니를 확인할 수 있습니다. [로그인](https://swportfolioservices.com/login) 후에는 서버 장바구니와 병합합니다. 관리자 쓰기·회원 조회 API는 서버에서 `ROLE_ADMIN`만 허용합니다. 공개 시연은 `ROLE_DEMO`로 DEMO 구매 집계만 조회하며, 클라이언트가 `ALL`/`LIVE`를 요청해도 운영 기록이 섞이지 않습니다. 운영 계정 교체·세션 무효화 절차는 [시연 권한 적용](docs/ops/demo-role-rollout.md)에 정리했습니다.
 
@@ -169,7 +169,9 @@ MySQL이 연결 가능한 상태가 되면 각 터미널에서 백엔드와 프�
 
 [http://localhost:3000](http://localhost:3000)에서 확인합니다. 로컬 API 기본 주소는 `http://localhost:8080`입니다. `verify`의 외부 연동 키는 검증용 값이므로 실제 결제·S3 업로드·메일 발송에는 별도 설정이 필요합니다. 환경변수 항목은 [`.env.example`](.env.example)을 참고합니다.
 
-구매 분석 시연 데이터는 앱 실행 후 저장소 루트에서 `bash backend/scripts/seed-demo-purchases.sh`로 넣습니다. 로컬 관리자는 회원가입 후 해당 사용자의 DB 역할을 `ROLE_ADMIN`으로 설정합니다. 공개 시연만 필요하면 `ROLE_DEMO`로 두고 `/admin/purchases`에서 DEMO 집계만 확인합니다. verify 프로파일은 기동 시 `build/verify-accounts.properties`에 회원·관리자·시연 계정을 남깁니다.
+구매 분석 시연 데이터는 앱 실행 후 저장소 루트에서 `bash backend/scripts/seed-demo-purchases.sh`로 넣습니다. 시드 정리와 사용자 데모 주문(`seed_batch_id IS NULL`)은 분리됩니다. 로컬 관리자는 회원가입 후 DB 역할을 `ROLE_ADMIN`으로 설정합니다. 공개 시연만 필요하면 `ROLE_DEMO`로 `/admin/purchases`를 확인합니다. verify 프로파일은 `build/verify-accounts.properties`와 보강된 자기소개 시드를 남깁니다.
+
+**데모 주문 시연 순서:** 로그인 → `/shop`에서 담기 → `/cart`의 **데모 주문 확정** → `/mypage?tab=ORDERS`에서 내역·취소 → `/admin/purchases`(ADMIN/DEMO)에서 DEMO 집계 확인. 100원 테스트 결제와는 별 경로입니다.
 
 **테스트 — 저장소 루트의 별도 터미널**
 
@@ -189,8 +191,9 @@ bash ops/tests/run-deploy-checks.sh
 
 | 항목 | 현재 구현 | 후속 개선 |
 | --- | --- | --- |
-| 결제 | 100원 승인·자동 취소, `/payment/fail` 안내, 승인 후 자동 취소 실패 구분. 결제 이력과 구매 분석 테이블은 분리 | 주문·상품 스냅샷과 구매 분석 적재 연결, 다중 인스턴스·실패 후 재시도 처리 |
-| 구매 분석 | DB 집계. `ROLE_DEMO`는 DEMO만, `ROLE_ADMIN`은 ALL/LIVE/DEMO | SQL 집계와 조회 계획 비교 |
+| 결제 | 100원 승인·자동 취소, `/payment/fail` 안내. Toss 이력과 구매 분석 테이블은 분리 | 다중 인스턴스·실패 후 재시도 처리 |
+| 데모 주문 | 장바구니 → `POST /api/demo-orders/confirm` → `purchase_*`(DEMO, seed_batch_id NULL) → 마이페이지·구매 분석. Idempotency-Key·재고 차감/복구 | 색상 단위 재고 UI |
+| 구매 분석 | DB 집계. `ROLE_DEMO`는 DEMO만. 자연어→필터 변환 후 기존 집계 API 사용 | SQL 집계와 조회 계획 비교 |
 | 관리자 상품 목록 | 페이지네이션과 페이지 내 상품 ID 기준 색상 일괄 조회 | 목록 필터·정렬 UX 확장 |
 | 프런트 API 모듈 | 인증·상품·장바구니 등의 API가 `api.ts`에 함께 위치 | 인증 상태의 단일 소유를 유지하며 도메인별 분리 |
 | CI | PR 검사에 핵심 브라우저 시나리오 포함. 운영 배포는 `main`/수동 | 브라우저 전체 suite와 성능 측정의 PR 게이트화 |

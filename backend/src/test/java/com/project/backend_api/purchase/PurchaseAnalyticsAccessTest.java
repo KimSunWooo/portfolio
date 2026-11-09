@@ -37,7 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         JwtAuthenticationFilter.class,
         JwtTokenProvider.class,
         SimpleCacheTestConfiguration.class,
-        PurchaseAnalyticsAccessTest.StubAnalytics.class
+        PurchaseAnalyticsAccessTest.StubAnalytics.class,
+        PurchaseAnalyticsQueryParser.class
 })
 @TestPropertySource(properties = "jwt.secret=test-secret-test-secret-test-secret-test")
 class PurchaseAnalyticsAccessTest {
