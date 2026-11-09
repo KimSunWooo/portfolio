@@ -1,9 +1,6 @@
 package com.project.backend_api.order;
 
-import com.project.backend_api.domain.product.Product;
-import com.project.backend_api.domain.product.ProductStatus;
 import com.project.backend_api.domain.user.User;
-import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -32,37 +29,33 @@ public class DemoOrderService {
     public static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final UserRepository userRepository;
-    private final ProductRepository productRepository;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
 
     public DemoOrderService(
             UserRepository userRepository,
-            ProductRepository productRepository,
             JdbcTemplate jdbc,
             DataSource dataSource
     ) {
         this.userRepository = userRepository;
-        this.productRepository = productRepository;
         this.jdbc = jdbc;
         this.transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
     }
 
     public DemoOrderResponse confirm(String email, String requestKey, String requestId) {
-        return transactions.execute(status -> confirmInTransaction(email, requestKey, requestId));
-    }
-
-    private DemoOrderResponse confirmInTransaction(String email, String requestKey, String requestId) {
         if (requestKey == null || requestKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key가 필요합니다.");
         }
         User user = requireUser(email);
+        return transactions.execute(status -> confirmInTransaction(user, requestKey, requestId));
+    }
+
+    private DemoOrderResponse confirmInTransaction(User user, String requestKey, String requestId) {
         Long cartId = jdbc.query("""
                 SELECT c.id FROM carts c
-                JOIN users u ON u.id = c.user_id
-                WHERE u.email = ?
+                WHERE c.user_id = ?
                 FOR UPDATE
-                """, rs -> rs.next() ? rs.getLong(1) : null, email);
+                """, rs -> rs.next() ? rs.getLong(1) : null, user.getId());
         if (cartId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "장바구니를 찾을 수 없습니다.");
         }
@@ -76,22 +69,25 @@ public class DemoOrderService {
                 (Integer) rs.getObject("color_id"),
                 rs.getInt("quantity")
         ), cartId);
-        if (items.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "장바구니 상품이 없습니다.");
-        }
-        String hash = hashSnapshots(items);
 
         List<Map<String, Object>> existing = jdbc.queryForList("""
                 SELECT request_hash, order_key FROM demo_order_requests
                 WHERE user_id = ? AND request_key = ?
                 """, user.getId(), requestKey.trim());
         if (!existing.isEmpty()) {
-            String storedHash = String.valueOf(existing.getFirst().get("request_hash"));
-            if (!hash.equals(storedHash)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "같은 Idempotency-Key에 다른 장바구니 내용이 전달되었습니다.");
+            if (!items.isEmpty()) {
+                String hash = hashSnapshots(items);
+                String storedHash = String.valueOf(existing.getFirst().get("request_hash"));
+                if (!hash.equals(storedHash)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "같은 Idempotency-Key에 다른 장바구니 내용이 전달되었습니다.");
+                }
             }
             return loadOrder(String.valueOf(existing.getFirst().get("order_key")), requestId);
         }
+        if (items.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "장바구니 상품이 없습니다.");
+        }
+        String hash = hashSnapshots(items);
 
         String orderKey = "demo-" + UUID.randomUUID().toString().replace("-", "");
         LocalDateTime purchasedAt = LocalDateTime.now(SEOUL);
@@ -103,17 +99,23 @@ public class DemoOrderService {
                     """, orderKey, user.getId(), purchasedAt, RECORD_SOURCE, purchasedAt);
 
             for (CartSnapshot item : items) {
-                Product product = productRepository.findById(item.productId())
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "상품을 찾을 수 없습니다."));
-                if (product.getStatus() != ProductStatus.SALE) {
+                List<Map<String, Object>> products = jdbc.queryForList("""
+                        SELECT id, name, category, price, status
+                        FROM products WHERE id = ?
+                        """, item.productId());
+                if (products.isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "상품을 찾을 수 없습니다.");
+                }
+                Map<String, Object> product = products.getFirst();
+                if (!"SALE".equals(String.valueOf(product.get("status")))) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "판매 중이 아닌 상품이 포함되어 있습니다.");
                 }
-                int unitPrice = product.getPrice() == null ? 0 : product.getPrice();
+                int unitPrice = product.get("price") == null ? 0 : ((Number) product.get("price")).intValue();
                 int quantity = item.quantity();
                 if (quantity < 1 || quantity > 99) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수량 범위를 확인하세요.");
                 }
-                deductStock(product.getId(), item.colorId(), quantity);
+                deductStock(item.productId(), item.colorId(), quantity);
                 int lineAmount = unitPrice * quantity;
                 jdbc.update("""
                         INSERT INTO purchase_lines
@@ -122,10 +124,10 @@ public class DemoOrderService {
                         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'PAID', 0)
                         """,
                         orderKey,
-                        product.getId(),
+                        item.productId(),
                         item.colorId(),
-                        product.getName(),
-                        product.getCategory(),
+                        String.valueOf(product.get("name")),
+                        product.get("category") == null ? null : String.valueOf(product.get("category")),
                         unitPrice,
                         quantity,
                         lineAmount);
@@ -151,11 +153,11 @@ public class DemoOrderService {
     }
 
     public DemoOrderResponse cancel(String email, String orderKey, String requestId) {
-        return transactions.execute(status -> cancelInTransaction(email, orderKey, requestId));
+        User user = requireUser(email);
+        return transactions.execute(status -> cancelInTransaction(user, orderKey, requestId));
     }
 
-    private DemoOrderResponse cancelInTransaction(String email, String orderKey, String requestId) {
-        User user = requireUser(email);
+    private DemoOrderResponse cancelInTransaction(User user, String orderKey, String requestId) {
         List<Map<String, Object>> orders = jdbc.queryForList("""
                 SELECT order_key, user_id FROM purchase_orders WHERE order_key = ?
                 """, orderKey);
@@ -173,7 +175,7 @@ public class DemoOrderService {
                 """, orderKey);
         for (Map<String, Object> line : lines) {
             String status = String.valueOf(line.get("line_status"));
-            boolean restored = ((Number) line.get("stock_restored")).intValue() == 1;
+            boolean restored = asBoolean(line.get("stock_restored"));
             if ("PAID".equals(status) && !restored) {
                 Integer productId = line.get("product_id") == null ? null : ((Number) line.get("product_id")).intValue();
                 Integer colorId = line.get("color_id") == null ? null : ((Number) line.get("color_id")).intValue();
@@ -285,6 +287,16 @@ public class DemoOrderService {
     private User requireUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."));
+    }
+
+    private static boolean asBoolean(Object value) {
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        return value != null && !"0".equals(String.valueOf(value)) && !"false".equalsIgnoreCase(String.valueOf(value));
     }
 
     private static String hashSnapshots(List<CartSnapshot> items) {

@@ -108,7 +108,7 @@ class DemoOrderMySqlTest {
         jdbc.update("DELETE FROM products");
         jdbc.update("DELETE FROM users");
 
-        service = new DemoOrderService(userRepository, productRepository, jdbc, jdbc.getDataSource());
+        service = new DemoOrderService(userRepository, jdbc, jdbc.getDataSource());
         buyer = userRepository.save(User.builder()
                 .email("buyer@example.test").password("x").name("buyer").role(UserRole.ROLE_USER).build());
         other = userRepository.save(User.builder()
@@ -134,8 +134,10 @@ class DemoOrderMySqlTest {
 
         Product contested = productRepository.save(Product.create(new ProductRequest(
                 "Scarce", null, "demo", "LIP", 1000, null, null, true, false, 1, "SALE", null)));
-        Cart cartA = cartRepository.save(Cart.builder().user(buyer).build());
-        Cart cartB = cartRepository.save(Cart.builder().user(other).build());
+        Cart cartA = cartRepository.findByUserEmailWithProducts(buyer.getEmail())
+                .orElseGet(() -> cartRepository.save(Cart.builder().user(buyer).build()));
+        Cart cartB = cartRepository.findByUserEmailWithProducts(other.getEmail())
+                .orElseGet(() -> cartRepository.save(Cart.builder().user(other).build()));
         cartItemRepository.save(CartItem.builder().cart(cartA).product(contested).quantity(1).build());
         cartItemRepository.save(CartItem.builder().cart(cartB).product(contested).quantity(1).build());
 
