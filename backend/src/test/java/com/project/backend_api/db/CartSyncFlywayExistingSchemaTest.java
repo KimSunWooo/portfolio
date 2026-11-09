@@ -104,7 +104,8 @@ class CartSyncFlywayExistingSchemaTest {
                 "4|JDBC",
                 "5|SQL",
                 "6|SQL",
-                "7|SQL"
+                "7|SQL",
+                "8|SQL"
         ), history());
         assertTrue(tableExists("password_change_outbox"));
         assertTrue(tableExists("mock_purchase_orders"));

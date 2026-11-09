@@ -64,6 +64,14 @@ class AdminAccessWebTest {
     }
 
     @Test
+    void demoCannotOpenAdminProductWritesOrLists() throws Exception {
+        String access = jwtTokenProvider.createAccessToken("demo@example.com", "ROLE_DEMO");
+
+        mockMvc.perform(get("/api/admin/products").header(HttpHeaders.AUTHORIZATION, "Bearer " + access))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void refreshTokenDoesNotAuthenticate() throws Exception {
         String refresh = jwtTokenProvider.createRefreshToken("admin@example.com");
 

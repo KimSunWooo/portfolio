@@ -15,7 +15,9 @@ function PaymentSuccessContent() {
   const orderId = searchParams.get("orderId");
   const amount = searchParams.get("amount");
   const missingPayment = !paymentKey || !orderId || !amount;
-  const [status, setStatus] = useState<"loading" | "canceled" | "fail">(missingPayment ? "fail" : "loading");
+  const [status, setStatus] = useState<"loading" | "canceled" | "cancel_failed" | "fail">(
+    missingPayment ? "fail" : "loading"
+  );
   const [errorMessage, setErrorMessage] = useState(missingPayment ? "결제 정보가 올바르지 않습니다." : "");
 
   useEffect(() => {
@@ -51,12 +53,23 @@ function PaymentSuccessContent() {
           setStatus("canceled");
           return;
         }
+        if (result?.status === "DONE") {
+          setStatus("cancel_failed");
+          setErrorMessage(result?.message || "승인은 기록됐지만 자동 취소 상태를 확인하지 못했습니다.");
+          return;
+        }
         setStatus("fail");
         setErrorMessage(result?.message || "결제 상태를 확인하지 못했습니다.");
       } catch (error: unknown) {
         if (ignore) return;
-        setStatus("fail");
-        setErrorMessage(error instanceof Error ? error.message : "결제 확인에 실패했습니다.");
+        const detail = error instanceof Error ? error.message : "결제 확인에 실패했습니다.";
+        if (detail.includes("자동 취소") || detail.includes("승인은 기록")) {
+          setStatus("cancel_failed");
+          setErrorMessage(detail);
+        } else {
+          setStatus("fail");
+          setErrorMessage(detail);
+        }
       } finally {
         confirmingPayments.delete(paymentKey);
       }
@@ -93,6 +106,20 @@ function PaymentSuccessContent() {
               className="inline-block bg-black px-8 py-3 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
             >
               취소 내역 보기
+            </Link>
+          </>
+        )}
+
+        {status === "cancel_failed" && (
+          <>
+            <h2 className="mb-4 text-[20px] font-bold">승인은 됐지만 자동 취소에 실패했습니다.</h2>
+            <p className="mb-3 text-[12px] leading-6 text-[#777]">주문 번호: {orderId}</p>
+            <p className="mb-8 text-[12px] leading-6 text-[#777]">{errorMessage}</p>
+            <Link
+              href="/mypage"
+              className="inline-block bg-black px-8 py-3 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
+            >
+              결제 내역 확인
             </Link>
           </>
         )}

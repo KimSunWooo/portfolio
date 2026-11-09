@@ -182,6 +182,11 @@ class ProdProfileExistingSchemaStartupTest {
                 assertEquals("SQL", rows.getString(2));
                 assertEquals("V7__purchase_bulk_demo.sql", rows.getString(3));
                 assertTrue(rows.getBoolean(4));
+                assertTrue(rows.next());
+                assertEquals("8", rows.getString(1));
+                assertEquals("SQL", rows.getString(2));
+                assertEquals("V8__demo_role.sql", rows.getString(3));
+                assertTrue(rows.getBoolean(4));
                 assertFalse(rows.next());
             }
             assertTrue(FlywaySchemaFixture.tableExists(connection, "password_change_outbox"));

@@ -33,6 +33,7 @@ public class VerifyDataSeeder {
 
     private static final String MEMBER_EMAIL = "verify-member@example.test";
     private static final String ADMIN_EMAIL = "verify-admin@example.test";
+    private static final String DEMO_EMAIL = "verify-demo@example.test";
 
     @Bean
     ApplicationRunner seedVerificationData(
@@ -56,6 +57,7 @@ public class VerifyDataSeeder {
             }
             String memberPassword = password();
             String adminPassword = password();
+            String demoPassword = password();
             User member = users.save(User.builder()
                     .email(MEMBER_EMAIL)
                     .password(passwordEncoder.encode(memberPassword))
@@ -67,6 +69,12 @@ public class VerifyDataSeeder {
                     .password(passwordEncoder.encode(adminPassword))
                     .name("검증관리자")
                     .role(UserRole.ROLE_ADMIN)
+                    .build());
+            users.save(User.builder()
+                    .email(DEMO_EMAIL)
+                    .password(passwordEncoder.encode(demoPassword))
+                    .name("검증시연")
+                    .role(UserRole.ROLE_DEMO)
                     .build());
             Product product = products.save(Product.create(new ProductRequest(
                     "Verify Shade", null, "isolated verification product", "LIP",
@@ -82,8 +90,14 @@ public class VerifyDataSeeder {
                     memberPassword=%s
                     adminEmail=%s
                     adminPassword=%s
+                    demoEmail=%s
+                    demoPassword=%s
                     productId=%d
-                    """.formatted(MEMBER_EMAIL, memberPassword, ADMIN_EMAIL, adminPassword, product.getId()));
+                    """.formatted(
+                    MEMBER_EMAIL, memberPassword,
+                    ADMIN_EMAIL, adminPassword,
+                    DEMO_EMAIL, demoPassword,
+                    product.getId()));
             Set<PosixFilePermission> ownerOnly = EnumSet.of(
                     PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
             Files.setPosixFilePermissions(output, ownerOnly);

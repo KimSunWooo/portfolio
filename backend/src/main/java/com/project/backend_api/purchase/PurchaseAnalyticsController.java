@@ -1,5 +1,6 @@
 package com.project.backend_api.purchase;
 
+import com.project.backend_api.security.SecurityRoles;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +35,7 @@ public class PurchaseAnalyticsController {
             @RequestParam(required = false) List<String> ageBand
     ) {
         try {
+            String effectiveSource = SecurityRoles.isDemo() ? "DEMO" : recordSource;
             return purchaseAnalyticsService.query(new PurchaseAnalyticsQuery(
                     LocalDate.parse(from),
                     LocalDate.parse(to),
@@ -43,7 +45,7 @@ public class PurchaseAnalyticsController {
                     product,
                     category,
                     ageBand,
-                    recordSource
+                    effectiveSource
             ));
         } catch (IllegalArgumentException | DateTimeParseException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
@@ -52,6 +54,6 @@ public class PurchaseAnalyticsController {
 
     @GetMapping("/filters")
     public PurchaseAnalyticsService.FilterOptions filters() {
-        return purchaseAnalyticsService.filterOptions();
+        return purchaseAnalyticsService.filterOptions(SecurityRoles.isDemo());
     }
 }

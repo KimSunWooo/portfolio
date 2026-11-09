@@ -27,7 +27,7 @@
 1. GitHub 인증 후 `Auto_Trading_AI_Agent`를 읽고, 공개 승인된 범위만 12페이지를 구현 근거로 교체한다.
 2. 관리자 화면과 자동매매 읽기 전용 화면을 받아 4·9페이지 근처에 넣는다.
 3. `./gradlew test`와 자동매매 `npm test`를 안전한 로컬에서 실행해 통과 여부를 증거 표에 갱신한다.
-4. 장바구니 DB 멱등이 main에 반영되면 “미커밋” 서술을 커밋 해시로 바꾼다.
+4. 장바구니 DB 멱등 서술은 CartService·CartSyncMySqlTest·merge-retry 기준으로 갱신했다. 공개 ROLE_ADMIN 자격 증명은 README에서 제거하고 ROLE_DEMO 시연으로 분리했다.
 
 ## 채용 독자 기준 자가 점검
 

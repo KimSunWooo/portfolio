@@ -7,18 +7,26 @@ import {
   getAccessToken,
   isAccessTokenValid,
   isAdminFromToken,
+  isDemoFromToken,
+  canAccessPurchaseAnalytics,
   loginUser,
   syncLocalCartToServer,
 } from "../../lib/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
-function safeNextPath(next: string | null, isAdmin: boolean) {
+function safeNextPath(next: string | null, token: string | null) {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("://")) {
+    if (isDemoFromToken(token)) {
+      return "/admin/purchases";
+    }
     return "/";
   }
-  if (next.startsWith("/admin") && !isAdmin) {
-    return "/";
+  if (next.startsWith("/admin/purchases") && canAccessPurchaseAnalytics(token)) {
+    return next;
+  }
+  if (next.startsWith("/admin") && !isAdminFromToken(token)) {
+    return isDemoFromToken(token) ? "/admin/purchases" : "/";
   }
   return next;
 }
@@ -67,7 +75,7 @@ export default function Login() {
       }
 
       const next = new URLSearchParams(window.location.search).get("next");
-      router.push(safeNextPath(next, isAdmin));
+      router.push(safeNextPath(next, token));
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "로그인에 실패했습니다.");
     }

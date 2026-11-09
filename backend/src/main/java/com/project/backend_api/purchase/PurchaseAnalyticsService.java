@@ -46,15 +46,26 @@ public class PurchaseAnalyticsService {
     }
 
     public FilterOptions filterOptions() {
+        return filterOptions(false);
+    }
+
+    public FilterOptions filterOptions(boolean demoOnly) {
+        String sourceJoin = demoOnly
+                ? " JOIN purchase_orders o ON o.order_key = l.order_key WHERE o.record_source = 'DEMO'"
+                : "";
         List<String> products = jdbc.queryForList("""
-                SELECT DISTINCT product_name FROM purchase_lines ORDER BY product_name
+                SELECT DISTINCT l.product_name FROM purchase_lines l
+                """ + sourceJoin + """
+                 ORDER BY l.product_name
                 """, String.class);
         List<String> categories = jdbc.queryForList("""
-                SELECT DISTINCT IFNULL(NULLIF(TRIM(category_name), ''), '미분류') AS category_name
-                FROM purchase_lines
-                ORDER BY category_name
+                SELECT DISTINCT IFNULL(NULLIF(TRIM(l.category_name), ''), '미분류') AS category_name
+                FROM purchase_lines l
+                """ + sourceJoin + """
+                 ORDER BY category_name
                 """, String.class);
-        return new FilterOptions(products, categories, AGE_BANDS, RECORD_SOURCES);
+        List<String> sources = demoOnly ? List.of("DEMO") : RECORD_SOURCES;
+        return new FilterOptions(products, categories, AGE_BANDS, sources);
     }
 
     static void validate(PurchaseAnalyticsQuery query) {

@@ -19,17 +19,7 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 | 회원 | 로그인과 세션 복구, 비회원·회원 장바구니 병합, 수량·색상 관리, 100원 테스트 결제 및 자동 취소 |
 | 관리자 | 이력·프로젝트·상품 관리, 기간·상품·카테고리·연령대별 구매 분석 조회 |
 
-서비스를 확인하려면 [상품 목록](https://swportfolioservices.com/shop)에서 상품을 담고 장바구니를 확인할 수 있습니다. [로그인](https://swportfolioservices.com/login) 후에는 서버 장바구니와 병합합니다. 관리자 데이터 API는 서버에서 `ROLE_ADMIN` 권한을 검사합니다.
-
-### 테스트용 관리자 계정
-
-[로그인 페이지](https://swportfolioservices.com/login)에서 아래 계정으로 시연 기능을 확인할 수 있습니다.
-
-| 항목 | 값 |
-| --- | --- |
-| 아이디 | `test@test.com` |
-| 비밀번호 | `test147@` |
-| 권한 | 관리자 (`ROLE_ADMIN`) |
+서비스를 확인하려면 [상품 목록](https://swportfolioservices.com/shop)에서 상품을 담고 장바구니를 확인할 수 있습니다. [로그인](https://swportfolioservices.com/login) 후에는 서버 장바구니와 병합합니다. 관리자 쓰기·회원 조회 API는 서버에서 `ROLE_ADMIN`만 허용합니다. 공개 시연은 `ROLE_DEMO`로 DEMO 구매 집계만 조회하며, 클라이언트가 `ALL`/`LIVE`를 요청해도 운영 기록이 섞이지 않습니다. 운영 계정 교체·세션 무효화 절차는 [시연 권한 적용](docs/ops/demo-role-rollout.md)에 정리했습니다.
 
 | 홈 | 상품 목록 |
 | --- | --- |
@@ -91,11 +81,11 @@ Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, R
 - Nginx 전환 이후 실패는 백업의 복구 스크립트와 manifest로 되돌립니다.
 - 배포 잠금으로 중복 실행을 막고, 복구 실패 시 컨테이너와 백업을 남깁니다.
 
-**검증:** 셸 mock 테스트로 이미지 pull 실패, 백엔드·프런트 준비 실패, Nginx 검사 실패, 공개 응답 확인 실패, 이전 컨테이너 재시작과 manifest 복구 등을 검사합니다. 2026-10-29 코드 커밋 `83eaae3`의 [Actions 실행](https://github.com/KimSunWooo/portfolio/actions/runs/40907382291)은 배포 검사·백엔드 테스트·프런트 검사·이미지 빌드·배포의 5개 job이 성공했습니다.
+**검증:** 셸 mock 테스트로 이미지 pull 실패, 백엔드·프런트 준비 실패, Nginx 검사 실패, 공개 응답 확인 실패, 이전 컨테이너 재시작과 manifest 복구 등을 검사합니다. 장애 기록의 에러·수정·복구 근거는 [2026-10-13 백엔드 준비 실패](docs/incidents/2026-10-13-backend-readiness.md)에 있고, 2026-10-29 코드 커밋 `83eaae3`의 [Actions 실행](https://github.com/KimSunWooo/portfolio/actions/runs/40907382291)은 배포 검사·백엔드 테스트·프런트 검사·이미지 빌드·배포의 5개 job이 성공했습니다.
 
 [배포 구현](deploy.sh) · [실패 조건 테스트](ops/tests/run-deploy-checks.sh) · [배포 실패 조사 기록](docs/incidents/2026-10-13-backend-readiness.md)
 
-**처리 경계:** 실패 조건 테스트는 mock 환경에서 실행합니다. 배포 복구는 DB 마이그레이션을 되돌리지 않으며, 프런트 컨테이너 교체 중에는 짧은 중단이 있습니다.
+**처리 경계:** 실패 조건 테스트는 mock 환경에서 실행합니다. 배포 복구는 DB 마이그레이션을 되돌리지 않으며, 프런트 컨테이너 교체 중에는 짧은 중단이 있습니다. 100원 테스트 결제 이력과 구매 분석(`purchase_orders`)은 자동 연결되지 않으며, 구매 분석 DEMO는 별도 시드로 넣습니다.
 
 ## 상품 목록 캐시 성능 측정
 
@@ -110,7 +100,7 @@ Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, R
 | HTTP 오류율 | 매 회차 0% | 매 회차 0% |
 | 상품 목록 SELECT: 회차별 digest 관측값 | 594 / 595 / 591 | 0 / 0 / 0 |
 
-응답 내용은 캐시 비활성·미스·히트 간 SHA-256으로 대조했습니다. 위 수치는 로컬 검증 환경의 결과이며, 대기 시간이 포함된 부하이므로 최대 처리량을 뜻하지 않습니다. SQL digest 관측값과 HTTP 요청 수의 차이는 [후속 계측 원본](ops/perf/2026-10-30-sql-gap/probe.json)에 남겼습니다.
+표기 요약: **격리 환경, k6 10 VU·30초, 600요청당 상품 목록 SELECT 관측값 591~595회 → 워밍 후 0회**. 응답 내용은 캐시 비활성·미스·히트 간 SHA-256으로 대조했습니다. 대기 시간이 포함된 부하이므로 최대 처리량을 뜻하지 않습니다. SQL digest 관측값과 HTTP 요청 수의 차이는 [후속 계측 원본](ops/perf/2026-10-30-sql-gap/probe.json)에 남겼습니다.
 
 [측정 조건·회차별 원본](ops/perf/2026-10-29-cache-ab/summary.json) · [측정 스크립트](ops/perf/run_cache_ab.py) · [캐시 테스트](backend/src/test/java/com/project/backend_api/service/ProductListCacheProxyTest.java)
 
@@ -151,7 +141,7 @@ RabbitMQ와 Kafka는 **선택적으로 활성화하는 학습·검증 구성**�
 | 배포·복구 | 실패 단계별 복구, 컨테이너 보존, 슬롯·포트 검사 | 셸 mock / Actions |
 | 성능 | 캐시 OFF·워밍 비교, SQL 관측, 응답 일치 | k6 / 격리 환경 |
 
-현재 [워크플로](.github/workflows/deploy.yml)는 `main`의 대상 경로 push 또는 수동 실행 시 동작합니다. 프런트 lint·타입 검사·단위 테스트·빌드, 백엔드 테스트, 배포 스크립트 검사를 통과한 뒤 이미지를 생성하고 배포합니다. 브라우저 테스트는 별도 실행이며, 위 Actions 성공 기록은 해당 실행의 검사와 배포 결과입니다.
+[PR 검사](.github/workflows/pr-checks.yml)는 배포와 분리되어 백엔드 테스트, 프런트 lint·타입·단위 테스트·빌드, 배포 스크립트 검사, 격리 MySQL·Redis 위의 Playwright(장바구니 병합 재시도·늦은 Refresh·홈/결제 실패)를 실행합니다. [운영 배포 워크플로](.github/workflows/deploy.yml)는 `main` push 또는 수동 실행 시에만 이미지를 만들고 배포합니다.
 
 ## 로컬 실행
 
@@ -179,7 +169,7 @@ MySQL이 연결 가능한 상태가 되면 각 터미널에서 백엔드와 프�
 
 [http://localhost:3000](http://localhost:3000)에서 확인합니다. 로컬 API 기본 주소는 `http://localhost:8080`입니다. `verify`의 외부 연동 키는 검증용 값이므로 실제 결제·S3 업로드·메일 발송에는 별도 설정이 필요합니다. 환경변수 항목은 [`.env.example`](.env.example)을 참고합니다.
 
-구매 분석 시연 데이터는 앱 실행 후 저장소 루트에서 `bash backend/scripts/seed-demo-purchases.sh`로 넣습니다. 로컬 관리자는 회원가입 후 해당 사용자의 DB 역할을 `ROLE_ADMIN`으로 설정합니다.
+구매 분석 시연 데이터는 앱 실행 후 저장소 루트에서 `bash backend/scripts/seed-demo-purchases.sh`로 넣습니다. 로컬 관리자는 회원가입 후 해당 사용자의 DB 역할을 `ROLE_ADMIN`으로 설정합니다. 공개 시연만 필요하면 `ROLE_DEMO`로 두고 `/admin/purchases`에서 DEMO 집계만 확인합니다. verify 프로파일은 기동 시 `build/verify-accounts.properties`에 회원·관리자·시연 계정을 남깁니다.
 
 **테스트 — 저장소 루트의 별도 터미널**
 
@@ -199,10 +189,10 @@ bash ops/tests/run-deploy-checks.sh
 
 | 항목 | 현재 구현 | 후속 개선 |
 | --- | --- | --- |
-| 결제 | 100원 승인·자동 취소, 결제 이력과 소유권 검사, 같은 JVM의 중복 호출 제어 | 주문·상품 스냅샷과 구매 분석 적재 연결, 다중 인스턴스·실패 후 재시도 처리 |
-| 구매 분석 | 별도 `purchase_orders`·`purchase_lines`를 조회해 Java에서 집계. DEMO/LIVE 출처 구분 | SQL 집계와 조회 계획 비교. 현재 결제 결과의 자동 적재는 미구현 |
-| 관리자 상품 목록 | 전체 상품 조회 후 상품별 색상 조회 | 페이지네이션·색상 일괄 조회, SQL 수와 지연 비교 |
+| 결제 | 100원 승인·자동 취소, `/payment/fail` 안내, 승인 후 자동 취소 실패 구분. 결제 이력과 구매 분석 테이블은 분리 | 주문·상품 스냅샷과 구매 분석 적재 연결, 다중 인스턴스·실패 후 재시도 처리 |
+| 구매 분석 | DB 집계. `ROLE_DEMO`는 DEMO만, `ROLE_ADMIN`은 ALL/LIVE/DEMO | SQL 집계와 조회 계획 비교 |
+| 관리자 상품 목록 | 페이지네이션과 페이지 내 상품 ID 기준 색상 일괄 조회 | 목록 필터·정렬 UX 확장 |
 | 프런트 API 모듈 | 인증·상품·장바구니 등의 API가 `api.ts`에 함께 위치 | 인증 상태의 단일 소유를 유지하며 도메인별 분리 |
-| CI | `main` push 검사 후 배포, 브라우저 테스트는 별도 실행 | PR 검사와 격리된 브라우저 테스트 자동화 |
+| CI | PR 검사에 핵심 브라우저 시나리오 포함. 운영 배포는 `main`/수동 | 브라우저 전체 suite와 성능 측정의 PR 게이트화 |
 
 구현 범위의 상세 기록은 [구현·설명 대조 문서](docs/implementation-scope.md), 콘텐츠 초안·이력 관리의 확장 방향은 [후속 설계](docs/follow-up-content-workflow.md)에 있습니다. 날짜가 있는 문서와 측정 원본은 해당 시점의 기록입니다.

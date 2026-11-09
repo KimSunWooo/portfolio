@@ -1,6 +1,7 @@
 package com.project.backend_api.controller;
 
 import com.project.backend_api.domain.product.Product;
+import com.project.backend_api.dto.product.AdminProductPage;
 import com.project.backend_api.dto.product.ProductDetailResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
 import com.project.backend_api.dto.product.ProductListWrapper;
@@ -62,8 +63,11 @@ public class ProductController {
 
     // 👉 GET /api/admin/products
     @GetMapping("/admin/products")
-    public List<Product> getAdminProducts() {
-        return productService.getAdminProducts();
+    public AdminProductPage getAdminProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return productService.getAdminProducts(page, size);
     }
 
     // 👉 POST /api/admin/products

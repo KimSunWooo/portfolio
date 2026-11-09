@@ -1,0 +1,190 @@
+name: PR Checks
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "deploy.sh"
+      - "ops/**"
+      - "docker-compose.yml"
+      - "compose.verify.yml"
+      - ".github/workflows/pr-checks.yml"
+      - ".github/workflows/deploy.yml"
+
+concurrency:
+  group: portfolio-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v5
+
+      - name: 배포와 복구 검증
+        run: bash ops/tests/run-deploy-checks.sh
+
+  backend-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v5
+
+      - name: Java 21 설치
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: 백엔드 단위·통합 테스트
+        working-directory: backend
+        run: ./gradlew test --no-daemon
+
+      - name: 백엔드 테스트 결과 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-backend-test-results
+          path: |
+            backend/build/test-results/test/
+            backend/build/reports/tests/test/
+          if-no-files-found: ignore
+
+  frontend-checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v5
+
+      - name: Node.js 22 설치
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 프런트 의존성 설치
+        working-directory: frontend
+        run: npm ci
+
+      - name: 프런트 lint, 타입, 테스트, 빌드
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://swportfolioservices.com
+
+  browser-core-flows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v5
+
+      - name: Java 21 설치
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Node.js 22 설치
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 격리 MySQL·Redis 시작
+        run: docker compose -f compose.verify.yml up -d
+
+      - name: 프런트 의존성 설치
+        working-directory: frontend
+        run: npm ci
+
+      - name: Playwright Chromium 설치
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: 백엔드 verify 기동
+        working-directory: backend
+        run: |
+          nohup ./gradlew bootRun --args='--spring.profiles.active=verify --spring.datasource.url=jdbc:mysql://127.0.0.1:3307/portfolio_verify?serverTimezone=Asia/Seoul&characterEncoding=UTF-8 --spring.data.redis.port=6380' \
+            > /tmp/portfolio-verify-backend.log 2>&1 &
+          echo $! > /tmp/portfolio-verify-backend.pid
+
+      - name: 프런트 기동
+        working-directory: frontend
+        run: |
+          nohup npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/portfolio-verify-frontend.log 2>&1 &
+          echo $! > /tmp/portfolio-verify-frontend.pid
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8080
+          INTERNAL_API_URL: http://127.0.0.1:8080
+
+      - name: 핵심 브라우저 시나리오
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const { execFileSync, spawn } = require("node:child_process");
+          const fs = require("node:fs");
+          async function wait(stage, probe, timeoutMs = 180000) {
+            const started = Date.now();
+            let last = "no response";
+            while (Date.now() - started < timeoutMs) {
+              try {
+                const result = await probe();
+                if (result === true) return;
+                last = String(result);
+              } catch (error) {
+                last = error instanceof Error ? error.message : "probe failed";
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            throw new Error(`${stage}: ${last}`);
+          }
+          await wait("mysql", async () => {
+            execFileSync("docker", ["exec", "portfolio-verify-mysql", "mysqladmin", "ping", "-uroot", "-pverify-db", "--silent"], { stdio: "ignore" });
+            return true;
+          });
+          await wait("backend-http", async () => {
+            const response = await fetch("http://127.0.0.1:8080/api/products/1");
+            return response.ok ? true : `status ${response.status}`;
+          });
+          await wait("frontend-http", async () => {
+            const response = await fetch("http://127.0.0.1:3000/login");
+            return response.ok ? true : `status ${response.status}`;
+          });
+          const child = spawn("npx", [
+            "playwright",
+            "test",
+            "e2e/merge-retry.spec.ts",
+            "e2e/late-refresh.spec.ts",
+            "e2e/home-and-payment-fail.spec.ts",
+          ], { stdio: "inherit", env: process.env });
+          const code = await new Promise((resolve) => child.on("exit", (value) => resolve(value ?? 1)));
+          process.exit(code);
+          NODE
+
+      - name: 브라우저·서버 로그 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-browser-core-logs
+          path: |
+            /tmp/portfolio-verify-backend.log
+            /tmp/portfolio-verify-frontend.log
+            frontend/test-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+
+      - name: 정리
+        if: always()
+        run: |
+          if [ -f /tmp/portfolio-verify-frontend.pid ]; then kill "$(cat /tmp/portfolio-verify-frontend.pid)" || true; fi
+          if [ -f /tmp/portfolio-verify-backend.pid ]; then kill "$(cat /tmp/portfolio-verify-backend.pid)" || true; fi
+          docker compose -f compose.verify.yml down -v || true

@@ -32,7 +32,7 @@ export const getAccessToken = (): string | null => {
  *
  * {
  *   sub: email,
- *   role: "ROLE_USER" | "ROLE_ADMIN",
+ *   role: "ROLE_USER" | "ROLE_ADMIN" | "ROLE_DEMO",
  *   exp: ...
  * }
  */
@@ -108,6 +108,17 @@ export const isAdminFromToken = (
 
   return payload.role === "ROLE_ADMIN" || payload.role === "ADMIN";
 };
+
+export const isDemoFromToken = (
+  token: string | null = inMemoryAccessToken
+): boolean => {
+  const payload = getAccessTokenPayload(token);
+  return payload?.role === "ROLE_DEMO";
+};
+
+export const canAccessPurchaseAnalytics = (
+  token: string | null = inMemoryAccessToken
+): boolean => isAdminFromToken(token) || isDemoFromToken(token);
 
 /**
  * Access Token 제거
@@ -793,8 +804,22 @@ export interface ProductImageUpload {
   sortOrder?: number;
 }
 
-export async function fetchAdminProducts(): Promise<AdminProduct[]> {
-  const response = await authSend("/api/admin/products", "GET");
+export interface AdminProductPage {
+  items: AdminProduct[];
+  totalCount: number;
+  page: number;
+  size: number;
+}
+
+export async function fetchAdminProducts(
+  page = 0,
+  size = 50
+): Promise<AdminProductPage> {
+  const query = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+  });
+  const response = await authSend(`/api/admin/products?${query}`, "GET");
   return response.json();
 }
 

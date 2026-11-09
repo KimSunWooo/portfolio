@@ -263,9 +263,15 @@ export default async function Home() {
 
               {/* Short Intro */}
               <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-black pt-5">
-                <p className="max-w-[680px] whitespace-pre-wrap text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
-                  {profile.shortIntro}
-                </p>
+                <div className="max-w-[680px]">
+                  <p className="whitespace-pre-wrap text-[17px] leading-[1.75] tracking-[-0.03em] max-sm:text-[14px]">
+                    {profile.shortIntro}
+                  </p>
+                  <p className="mt-4 text-[15px] leading-[1.7] tracking-[-0.02em] text-[#333] max-sm:text-[13px]">
+                    대표 프로젝트는 장바구니 정합성, 인증 갱신과 로그아웃 충돌, 배포 복구를
+                    코드와 테스트로 검증한 풀스택 웹 서비스입니다.
+                  </p>
+                </div>
 
                 <a
                   href="#experience"
@@ -274,6 +280,29 @@ export default async function Home() {
                   SCROLL TO RESUME ↓
                 </a>
               </div>
+
+              <nav
+                aria-label="대표 프로젝트 바로가기"
+                className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-black/15 pt-5 text-[11px] tracking-[0.12em]"
+              >
+                <a href="#projects" className="text-[#111] no-underline hover:opacity-50">
+                  대표 프로젝트
+                </a>
+                <a href="#troubleshooting" className="text-[#111] no-underline hover:opacity-50">
+                  트러블슈팅
+                </a>
+                <a
+                  href={profile.githubUrl || "https://github.com/KimSunWooo/portfolio"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#111] no-underline hover:opacity-50"
+                >
+                  GitHub
+                </a>
+                <a href="/shop" className="text-[#111] no-underline hover:opacity-50">
+                  쇼핑몰 데모
+                </a>
+              </nav>
             </div>
 
             {/* Profile Summary */}
@@ -460,6 +489,55 @@ export default async function Home() {
         </section>
 
         {/* ================================================================== */}
+        {/* TROUBLESHOOTING */}
+        {/* ================================================================== */}
+
+        <section
+          id="troubleshooting"
+          className="border-t border-black/10 px-7 py-[96px] max-sm:px-4 max-sm:py-14"
+        >
+          <div className="mx-auto max-w-[1440px]">
+            <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
+              05 · TROUBLESHOOTING
+            </p>
+            <h2 className="max-w-[900px] text-[clamp(28px,5vw,64px)] font-normal leading-[1.1] tracking-[-0.05em]">
+              대표 구현의 재현·원인·검증 근거
+            </h2>
+            <ul className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-3">
+              {[
+                {
+                  title: "장바구니 정합성",
+                  href: "https://github.com/KimSunWooo/portfolio#1-장바구니-병합-재전송으로-인한-수량-중복-반영-방지",
+                  body: "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았습니다.",
+                },
+                {
+                  title: "인증 갱신과 로그아웃 충돌",
+                  href: "https://github.com/KimSunWooo/portfolio#2-인증-갱신과-로그아웃의-경쟁으로-인한-세션-상태-불일치-해결",
+                  body: "늦게 도착한 Refresh 응답이 로그아웃 이후 세션을 되살리지 않도록 세대 번호로 폐기합니다.",
+                },
+                {
+                  title: "배포 복구",
+                  href: "https://github.com/KimSunWooo/portfolio#3-배포-준비-검사-실패-시-이전-서비스-복구와-실패-컨테이너-보존",
+                  body: "새 백엔드 준비 실패 시 이전 서비스로 되돌리고 실패 컨테이너를 보존합니다.",
+                },
+              ].map((item) => (
+                <li key={item.title} className="min-w-0">
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
+                  >
+                    {item.title} ↗
+                  </a>
+                  <p className="mt-3 text-[13px] leading-[1.7] text-[#555]">{item.body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ================================================================== */}
         {/* PROJECTS */}
         {/* ================================================================== */}
 
@@ -472,7 +550,7 @@ export default async function Home() {
             <div className="flex items-end justify-between gap-8 border-b border-black pb-6 max-sm:pb-4">
               <div>
                 <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-                  05 · PORTFOLIO DEMO
+                  06 · PORTFOLIO DEMO
                 </p>
                 <h2 className="text-[clamp(32px,6vw,84px)] font-normal tracking-[-0.06em]">
                   Selected Work
@@ -482,7 +560,7 @@ export default async function Home() {
                 href="/shop"
                 className="mb-2 text-[10px] tracking-[0.14em] text-[#111] no-underline hover:opacity-50"
               >
-                VIEW DEMO →
+                쇼핑몰 데모 →
               </a>
             </div>
 

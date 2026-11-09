@@ -1,6 +1,7 @@
 package com.project.backend_api.service;
 
 import com.project.backend_api.domain.product.*;
+import com.project.backend_api.dto.product.AdminProductPage;
 import com.project.backend_api.dto.product.ProductDetailResponse;
 import com.project.backend_api.dto.product.ProductImageResponse;
 import com.project.backend_api.dto.product.ProductListResponse;
@@ -32,8 +33,15 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -177,17 +185,18 @@ public class ProductService {
     // ADMIN PRODUCT CRUD
     // =========================================================
 
-    /**
-     * 관리자 상품 전체 목록
-     *
-     * SALE / SOLD_OUT / HIDDEN 전부 반환
-     */
-    public List<Product> getAdminProducts() {
-        return productRepository
-                .findAllByOrderByIdDesc()
-                .stream()
-                .peek(this::attachColors)
-                .toList();
+    public AdminProductPage getAdminProducts(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        Page<Product> result = productRepository.findAllByOrderByIdDesc(pageable);
+        attachColorsForPage(result.getContent());
+        return new AdminProductPage(
+                result.getContent(),
+                result.getTotalElements(),
+                result.getNumber(),
+                result.getSize()
+        );
     }
 
 
@@ -659,6 +668,24 @@ public class ProductService {
                 .map(ProductColor::getColorCode)
                 .toList();
         product.assignColors(codes);
+    }
+
+    private void attachColorsForPage(List<Product> products) {
+        if (products.isEmpty()) {
+            return;
+        }
+        List<Integer> ids = products.stream().map(Product::getId).toList();
+        Map<Integer, List<String>> colorsByProduct = new LinkedHashMap<>();
+        for (Integer id : ids) {
+            colorsByProduct.put(id, new ArrayList<>());
+        }
+        for (ProductColor color : productColorRepository.findByProductIdInOrderBySortOrderAscIdAsc(ids)) {
+            colorsByProduct.computeIfAbsent(color.getProductId(), ignored -> new ArrayList<>())
+                    .add(color.getColorCode());
+        }
+        for (Product product : products) {
+            product.assignColors(colorsByProduct.getOrDefault(product.getId(), List.of()));
+        }
     }
 
     private boolean isAdmin() {

@@ -44,11 +44,11 @@ function DashboardEditor() {
     let cancelled = false;
     void (async () => {
       const [products, usersRes] = await Promise.all([
-        fetchAdminProducts().catch(() => []),
+        fetchAdminProducts(0, 1).catch(() => ({ items: [], totalCount: 0, page: 0, size: 1 })),
         fetchAdminUsers(0, 1).catch(() => ({ content: [], totalPages: 0, totalElements: 0, number: 0 })),
       ]);
       if (cancelled) return;
-      setProductCount(products.length);
+      setProductCount(products.totalCount || 0);
       setUserCount(usersRes.totalElements || 0);
     })();
     return () => {
@@ -78,6 +78,9 @@ function DashboardEditor() {
 
 function ProductsEditor() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,12 +90,14 @@ function ProductsEditor() {
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const loadProducts = async () => {
+  const loadProducts = async (nextPage = page) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchAdminProducts();
-      setProducts(data);
+      const data = await fetchAdminProducts(nextPage, pageSize);
+      setProducts(data.items);
+      setTotalCount(data.totalCount);
+      setPage(data.page);
     } catch (error) {
       console.error(error);
       setError(
@@ -255,6 +260,32 @@ function ProductsEditor() {
                   </div>
                 </div>
               ))}
+
+            {!loading && !error && totalCount > pageSize && (
+              <div className="flex items-center justify-between gap-4 py-4 text-[10px] tracking-[0.12em] text-[#777]">
+                <span>
+                  총 {totalCount}건 · {page + 1}/{Math.max(1, Math.ceil(totalCount / pageSize))}페이지
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 0}
+                    onClick={() => void loadProducts(page - 1)}
+                    className="border border-black/20 px-3 py-2 disabled:opacity-40"
+                  >
+                    PREV
+                  </button>
+                  <button
+                    type="button"
+                    disabled={(page + 1) * pageSize >= totalCount}
+                    onClick={() => void loadProducts(page + 1)}
+                    className="border border-black/20 px-3 py-2 disabled:opacity-40"
+                  >
+                    NEXT
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

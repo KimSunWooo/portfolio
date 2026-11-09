@@ -56,14 +56,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/verify/mailbox", "/api/verify/fail-next-revoke", "/api/verify/fail-next-product").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/projects/**", "/api/resume/**", "/api/products/**", "/api/community/**").permitAll()
 
-                // 실제 관리자 API는 /api/admin/** 이다.
-                // /api/products/** 규칙으로는 /api/admin/products 가 일치하지 않는다.
+                // DEMO는 구매 분석 샘플 조회만. 쓰기·회원 조회를 포함한 나머지 관리자 API는 ADMIN만.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/admin/purchase-analytics",
+                        "/api/admin/purchase-analytics/filters")
+                    .hasAnyRole("ADMIN", "DEMO")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
+
                 .requestMatchers("/actuator/**", "/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/internal/product-list-observation").permitAll()
-                
-                // 그 외의 모든 요청은 로그인(인증)된 유저만 접근 가능
+
                 .anyRequest().authenticated()
             )
             // 4. 커스텀 필터 등록

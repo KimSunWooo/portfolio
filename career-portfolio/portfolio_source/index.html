@@ -64,13 +64,42 @@
     <hr class="rule" />
     <h1>김선우</h1>
     <p style="font-size:14pt; margin-top:4mm;">Backend / Full-stack Developer</p>
-    <p class="muted" style="max-width:150mm;">Java와 Spring Boot로 API·인증·데이터를 구성하고, Next.js와 배포 환경까지 한 서비스의 요청 흐름을 따라간 작업 기록입니다.</p>
+    <p class="muted" style="max-width:150mm;">장바구니 중복 반영 방지, 인증 갱신과 로그아웃 충돌, 배포 실패 복구를 Spring Boot·Next.js·배포 스크립트와 테스트로 검증한 풀스택 웹 서비스입니다.</p>
+    <h3 style="margin-top:8mm;">첫 장에서 확인할 대표 구현</h3>
+    <ul>
+      <li><strong>장바구니 중복 반영 방지</strong> — DB UNIQUE와 동일 트랜잭션 기록</li>
+      <li><strong>인증 갱신과 로그아웃 충돌</strong> — Refresh 세대 폐기와 늦은 응답 무시</li>
+      <li><strong>배포 실패 복구</strong> — 준비 검사 실패 시 이전 서비스 복구·컨테이너 보존</li>
+    </ul>
   </div>
   <div>
     <hr class="rule" />
-    <p class="small">기준 시점 2026-10-13 · 포트폴리오 서비스 HEAD 9fbcd64 · 자동매매 HEAD 52d1aaf</p>
-    <p class="small"><a href="https://swportfolioservices.com">https://swportfolioservices.com</a><br /><a href="https://github.com/KimSunWooo">https://github.com/KimSunWooo</a></p>
+    <p class="small">서비스 <a href="https://swportfolioservices.com">https://swportfolioservices.com</a> · 저장소 <a href="https://github.com/KimSunWooo/portfolio">KimSunWooo/portfolio</a></p>
+    <p class="small">근거 README: <a href="https://github.com/KimSunWooo/portfolio#핵심-문제-해결">핵심 문제 해결</a> · 장애 기록: <a href="https://github.com/KimSunWooo/portfolio/blob/main/docs/incidents/2026-10-13-backend-readiness.md">2026-10-13 backend readiness</a></p>
     <p class="small">kssgss@gmail.com · 010-7382-4100</p>
+  </div>
+</section>
+
+<section class="page">
+  <p class="kicker">00 · KEY CASES</p>
+  <h2>재현 증상 → 원인 → 핵심 코드 → 검증 결과</h2>
+  <h3>1. 장바구니 중복 반영 방지</h3>
+  <p><strong>재현:</strong> 로그인 병합 응답을 못 받아 같은 요청을 다시 보내면 수량이 중복 합산될 수 있었습니다.</p>
+  <p><strong>원인:</strong> 프로세스 메모리만으로 완료 여부를 구분하면 재시작·다중 인스턴스에서 같은 요청을 다시 적용합니다.</p>
+  <p><strong>핵심 코드:</strong> <span class="path">CartService</span>, <span class="path">cart_sync_requests</span> UNIQUE, 본문 SHA-256.</p>
+  <p><strong>검증:</strong> <span class="path">CartSyncMySqlTest</span>, Playwright <span class="path">merge-retry.spec.ts</span>. main에 커밋·테스트로 반영되어 있습니다.</p>
+  <h3>2. 인증 갱신과 로그아웃 충돌</h3>
+  <p><strong>재현:</strong> 로그아웃 전에 시작한 Refresh가 늦게 도착하면 로그인 상태가 되살아날 수 있었습니다.</p>
+  <p><strong>원인:</strong> Access는 메모리, Refresh는 쿠키·Redis이며 세대 번호 없이 늦게 온 응답을 그대로 적용했습니다.</p>
+  <p><strong>핵심 코드:</strong> <span class="path">frontend/src/lib/api.ts</span>의 <span class="path">authGeneration</span>, <span class="path">RefreshSessionService</span>, <span class="path">users.session_epoch</span>.</p>
+  <p><strong>검증:</strong> <span class="path">SessionLifecycleMySqlTest</span>, <span class="path">authSession.test.mts</span>, Playwright <span class="path">late-refresh.spec.ts</span>. Access Token은 만료(30분)까지 유효합니다.</p>
+  <h3>3. 배포 실패 복구</h3>
+  <p><strong>재현:</strong> 2026-10-13 배포에서 새 백엔드 준비 검사가 실패하고 <span class="path">rollback from phase backend</span>가 남았습니다.</p>
+  <p><strong>원인:</strong> 운영은 <span class="path">ddl-auto=validate</span>인데 새 엔티티 테이블을 Flyway가 만들지 않아 기동이 실패했습니다.</p>
+  <p><strong>핵심 코드:</strong> <span class="path">deploy.sh</span> 준비 검사·슬롯 전환·실패 컨테이너 보존, Flyway baseline 0.</p>
+  <p><strong>검증:</strong> <span class="path">ops/tests/run-deploy-checks.sh</span>, 장애 기록의 가설·수정, Actions mock 검사. 복구는 마이그레이션을 되돌리지 않으며 프런트 교체 중 짧은 중단이 있습니다.</p>
+  <div class="note">
+    <p class="small" style="margin:0;">캐시 측정: 격리 환경, k6 10 VU·30초, 600요청당 상품 목록 SELECT 관측값 591~595회 → 워밍 후 0회 (<span class="path">ops/perf/2026-10-29-cache-ab/summary.json</span>). 100원 테스트 결제와 구매 분석 DEMO 시드는 자동 연결되지 않습니다.</p>
   </div>
 </section>
 
@@ -112,7 +141,7 @@
       <tr>
         <td>웹 포트폴리오 서비스<br /><span class="small">KimSunWooo/portfolio</span></td>
         <td>Spring Boot API, Next.js, 인증, 장바구니, 캐시, EC2 배포</td>
-        <td>공개 서비스 운영 중. 장바구니 동기화의 DB 멱등은 로컬 작업 트리에만 있음</td>
+        <td>공개 서비스 운영 중. 장바구니 DB 멱등·인증 경쟁·배포 복구는 코드와 테스트로 검증</td>
       </tr>
       <tr>
         <td>KIS 자동매매<br /><span class="small">KimSunWooo/Auto-Trading-system</span></td>
@@ -139,7 +168,7 @@
     <li>자동매매의 REAL 매매와 수익률은 다루지 않습니다.</li>
   </ul>
   <div class="note">
-    <p class="small" style="margin:0;">분석에 사용한 자동매매 클론은 2026-10-12 커밋 52d1aaf의 shallow clone입니다. 포트폴리오 서비스는 로컬 main 9fbcd64와, 그 위에 있는 미커밋 장바구니 변경을 구분했습니다.</p>
+    <p class="small" style="margin:0;">자동매매 클론은 2026-10-12 커밋 52d1aaf 기준입니다. 웹 포트폴리오의 장바구니 DB 멱등은 main의 CartService·CartSyncMySqlTest·merge-retry 브라우저 테스트로 확인합니다.</p>
   </div>
 </section>
 
@@ -226,9 +255,8 @@
   <h3>Redis를 쓴 이유와 직렬화</h3>
   <p>상품 목록은 같은 조건으로 반복 조회됩니다. 캐시 이름은 <span class="path">productList</span>, 키는 정규화한 카테고리와 검색어입니다. 제네릭 리스트가 타입 없이 복원되는 문제를 피하려고 응답을 <span class="path">ProductListWrapper</span>로 감싸고, Redis 전용 ObjectMapper에 JavaTimeModule과 타입 정보를 넣었습니다. 상품 변경은 커밋 이후에 캐시를 비웁니다. <span class="path">ProductListCacheTest</span>가 키와 삭제 시점을 검사합니다.</p>
   <p class="small">비밀번호 재설정 코드는 별도 키 <span class="path">AUTH_CODE:</span> 로 3분만 저장합니다. 상품 캐시와 용도가 다릅니다.</p>
-  <h3>장바구니 동기화 — 커밋된 코드와 작업 트리</h3>
-  <p><strong>main 9fbcd64:</strong> Idempotency-Key가 있으면 그 프로세스 메모리 안에서만 한 번 합산합니다. 프로세스가 바뀌면 같은 키가 다시 더해질 수 있습니다.</p>
-  <p><strong>로컬 미커밋:</strong> <span class="path">cart_sync_requests</span> unique (user_email, operation, request_key)와 본문 해시로 재전송을 거절하거나 같은 요청으로 인정합니다. <span class="path">CartSyncMySqlTest</span>가 있습니다. 운영 DB 반영과 main 커밋은 이 문서 시점에 확인하지 못했습니다. 완료된 운영 기능으로 적지 않습니다.</p>
+  <h3>장바구니 동기화 — DB 멱등</h3>
+  <p><span class="path">cart_sync_requests</span> unique (user_email, operation, request_key)와 본문 해시로 재전송을 거절하거나 같은 요청으로 인정합니다. <span class="path">CartService</span>, <span class="path">CartSyncMySqlTest</span>, Playwright <span class="path">merge-retry.spec.ts</span>로 검증합니다.</p>
   <h3>100원 테스트 결제</h3>
   <p><span class="path">PaymentService</span>는 금액이 100원이 아니면 거절합니다. 승인 응답이 요청과 같아야 DONE을 기록하고, 이어서 자동 취소합니다. 승인 실패 시 DONE을 쓰지 않습니다. 취소가 실패하면 DONE 행은 남기되 완료 응답으로 끝내지 않습니다. 다른 사용자 결제 키는 403입니다. 화면에도 자동 취소와 장바구니 유지가 적혀 있습니다.</p>
 </section>
@@ -433,7 +461,7 @@
       <tr>
         <td>비회원 장바구니 재전송이 수량을 중복 합산</td>
         <td>main은 프로세스 내 키. 로컬 작업은 DB unique와 본문 해시</td>
-        <td>후자는 미커밋. 운영 반영은 미확인</td>
+        <td>CartSyncMySqlTest·merge-retry로 검증. 운영 배포는 main 경로</td>
       </tr>
       <tr>
         <td>테스트 결제를 성공 주문으로 오해</td>

@@ -55,7 +55,7 @@ class CartSyncFlywayMigrationTest {
                     .anyMatch(column -> column.startsWith("color_id|")));
             assertTrue(FlywaySchemaFixture.columnSnapshot(connection, "users").stream()
                     .anyMatch(column -> column.startsWith("session_epoch|")));
-            assertEquals(7, appliedMigrations(connection));
+            assertEquals(8, appliedMigrations(connection));
             assertTrue(tableExists(connection, "password_change_outbox"));
             assertTrue(tableExists(connection, "password_change_mail_delivery"));
             assertTrue(tableExists(connection, "product_detail_read_events"));
@@ -92,6 +92,10 @@ class CartSyncFlywayMigrationTest {
                 assertEquals("7", rows.getString(1));
                 assertEquals("SQL", rows.getString(2));
                 assertEquals("V7__purchase_bulk_demo.sql", rows.getString(3));
+                assertTrue(rows.next());
+                assertEquals("8", rows.getString(1));
+                assertEquals("SQL", rows.getString(2));
+                assertEquals("V8__demo_role.sql", rows.getString(3));
                 assertFalse(rows.next());
             }
             try (org.hibernate.SessionFactory factory = FlywaySchemaFixture.sessionFactory(
