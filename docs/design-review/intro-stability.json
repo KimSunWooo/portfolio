@@ -1,0 +1,126 @@
+[
+  {
+    "width": 1265,
+    "slidesVisited": 6,
+    "headerCols": "631.266px",
+    "titleLayout": {
+      "stacked": true,
+      "titleTop": 230.640625,
+      "leadTop": 337.828125,
+      "titleW": 631.265625,
+      "leadW": 631.265625
+    },
+    "photoDelta": 0,
+    "carouselDelta": 0,
+    "cardDelta": 0,
+    "photoStable": true,
+    "carouselStable": true,
+    "cardStable": true,
+    "overflow": false,
+    "photo": {
+      "x": 28,
+      "y": 177.14,
+      "w": 537.73,
+      "h": 672.16
+    },
+    "carousel": {
+      "x": 606.73,
+      "y": 525.5,
+      "w": 629.27,
+      "h": 675.8
+    }
+  },
+  {
+    "width": 1366,
+    "slidesVisited": 6,
+    "headerCols": "685.812px",
+    "titleLayout": {
+      "stacked": true,
+      "titleTop": 244.078125,
+      "leadTop": 351.265625,
+      "titleW": 685.8125,
+      "leadW": 685.8125
+    },
+    "photoDelta": 0,
+    "carouselDelta": 0,
+    "cardDelta": 0,
+    "photoStable": true,
+    "carouselStable": true,
+    "cardStable": true,
+    "overflow": false,
+    "photo": {
+      "x": 28,
+      "y": 190.58,
+      "w": 584.19,
+      "h": 730.23
+    },
+    "carousel": {
+      "x": 653.19,
+      "y": 538.94,
+      "w": 683.81,
+      "h": 649.91
+    }
+  },
+  {
+    "width": 1440,
+    "slidesVisited": 6,
+    "headerCols": "725.766px",
+    "titleLayout": {
+      "stacked": true,
+      "titleTop": 243.4375,
+      "leadTop": 350.625,
+      "titleW": 725.765625,
+      "leadW": 725.765625
+    },
+    "photoDelta": 0,
+    "carouselDelta": 0,
+    "cardDelta": 0,
+    "photoStable": true,
+    "carouselStable": true,
+    "cardStable": true,
+    "overflow": false,
+    "photo": {
+      "x": 28,
+      "y": 189.94,
+      "w": 618.23,
+      "h": 772.78
+    },
+    "carousel": {
+      "x": 687.23,
+      "y": 538.3,
+      "w": 723.77,
+      "h": 649.91
+    }
+  },
+  {
+    "width": 390,
+    "slidesVisited": 6,
+    "headerCols": "358px",
+    "titleLayout": {
+      "stacked": true,
+      "titleTop": 452.796875,
+      "leadTop": 569.578125,
+      "titleW": 358,
+      "leadW": 358
+    },
+    "photoDelta": 0,
+    "carouselDelta": 0,
+    "cardDelta": 0,
+    "photoStable": true,
+    "carouselStable": true,
+    "cardStable": true,
+    "overflow": false,
+    "photo": {
+      "x": 16,
+      "y": 128.64,
+      "w": 358,
+      "h": 238.66
+    },
+    "carousel": {
+      "x": 17,
+      "y": 791.81,
+      "w": 356,
+      "h": 759.27
+    }
+  }
+]

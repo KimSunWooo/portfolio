@@ -3,20 +3,30 @@ type HomeMediaPanelProps = {
   alt: string;
   title: string;
   className?: string;
+  imageClassName?: string;
 };
 
-export default function HomeMediaPanel({ src, alt, title, className }: HomeMediaPanelProps) {
+export default function HomeMediaPanel({
+  src,
+  alt,
+  title,
+  className,
+  imageClassName,
+}: HomeMediaPanelProps) {
   return (
     <figure
       className={[
-        "relative isolate min-h-[280px] overflow-hidden bg-[#242225]",
+        "relative isolate overflow-hidden bg-[#242225]",
         className ?? "",
       ].join(" ")}
     >
       <img
         src={src}
         alt={alt}
-        className="absolute inset-0 h-full w-full object-cover"
+        className={[
+          "absolute inset-0 h-full w-full object-cover",
+          imageClassName ?? "",
+        ].join(" ")}
       />
       <div
         aria-hidden="true"

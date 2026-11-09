@@ -3,7 +3,9 @@ import Header from "../components/header/Header";
 import Footer from "../components/layout/Footer";
 import MarkdownContent from "../components/common/MarkdownContent";
 import IntroductionCarousel from "../components/home/IntroductionCarousel";
-import HomeMediaPanel from "../components/home/HomeMediaPanel";
+import HomeSceneBanner from "../components/home/HomeSceneBanner";
+import bannerStyles from "../components/home/HomeSceneBanner.module.css";
+import { splitIntroductionSections } from "../components/home/introductionSections";
 import SkillStackSlider from "../components/home/SkillStackSlider";
 import ribbonStyles from "../components/home/homeRibbon.module.css";
 import {
@@ -213,21 +215,38 @@ export default async function Home() {
    * --------------------------------------------------------------------------
    */
 
+  const firstIntroduction = resume.introductions[0];
+  const introductionParts = firstIntroduction
+    ? splitIntroductionSections(firstIntroduction.content)
+    : { heading: undefined, lead: "", sections: [] };
+  const introductionHeading =
+    introductionParts.heading || firstIntroduction?.title || "자기소개";
+  const introductionLead = introductionParts.lead;
+
   const troubleshootingItems = [
     {
       title: "장바구니 정합성",
       href: "https://github.com/KimSunWooo/portfolio#1-장바구니-병합-재전송으로-인한-수량-중복-반영-방지",
       body: "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았습니다.",
+      external: true,
     },
     {
       title: "인증 갱신과 로그아웃 충돌",
       href: "https://github.com/KimSunWooo/portfolio#2-인증-갱신과-로그아웃의-경쟁으로-인한-세션-상태-불일치-해결",
       body: "늦게 도착한 Refresh 응답이 로그아웃 이후 세션을 되살리지 않도록 세대 번호로 폐기합니다.",
+      external: true,
     },
     {
       title: "배포 복구",
       href: "https://github.com/KimSunWooo/portfolio#3-배포-준비-검사-실패-시-이전-서비스-복구와-실패-컨테이너-보존",
       body: "새 백엔드 준비 실패 시 이전 서비스로 되돌리고 실패 컨테이너를 보존합니다.",
+      external: true,
+    },
+    {
+      title: "브랜치 전략과 배포 기록",
+      href: "/community/14",
+      body: "PR 검사와 운영 배포를 분리한 흐름과 복구 절차를 커뮤니티 게시글로 정리했습니다.",
+      external: false,
     },
   ] as const;
 
@@ -356,23 +375,21 @@ export default async function Home() {
 
               <div className={`${ribbonStyles.panel} p-5 sm:p-6`}>
                 <p className={`${ribbonStyles.panelTitle} text-[10px] tracking-[0.16em]`}>
-                  TROUBLESHOOTING
+                  FEATURED CASE
                 </p>
                 <h2 className={`${ribbonStyles.title} mt-3 text-[22px] tracking-[-0.03em] max-sm:text-[18px]`}>
-                  재현·원인·검증 요약
+                  상품 목록 Redis 캐시
                 </h2>
-                <ul className="mt-5 space-y-4">
-                  {troubleshootingItems.map((item) => (
-                    <li key={item.title}>
-                      <a href="#troubleshooting" className={`${ribbonStyles.link} text-[15px]`}>
-                        {item.title}
-                      </a>
-                      <p className={`${ribbonStyles.copy} mt-1 text-[13px] leading-6`}>
-                        {item.body}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <p className={`${ribbonStyles.copy} mt-3 text-[13px] leading-6`}>
+                  같은 조건의 반복 조회에서 DB SELECT를 줄이고, 캐시 OFF·워밍 응답을
+                  SHA-256으로 대조해 정합성을 확인했습니다.
+                </p>
+                <a href="#redis-cache" className={`${ribbonStyles.link} mt-4 inline-block text-[12px] tracking-[0.12em]`}>
+                  대표 사례 보기 →
+                </a>
+                <a href="#troubleshooting" className={`${ribbonStyles.link} mt-3 block text-[12px] tracking-[0.12em]`}>
+                  다른 트러블슈팅 →
+                </a>
               </div>
             </aside>
           </div>
@@ -501,19 +518,84 @@ export default async function Home() {
 
         <section
           id="introduction"
-          className="scroll-mt-20 border-y border-black/10 bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
+          className="scroll-mt-20 border-y border-black/10 bg-[#f4f1ef] font-[family-name:Pretendard]"
         >
-          <div className="mx-auto grid max-w-[1440px] gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-stretch lg:gap-10">
-            <HomeMediaPanel
-              src="/home/intro-desk.jpg"
-              alt="책상 위 노트북과 모니터가 보이는 작업 공간"
-              title="일하는 방식"
-              className="min-h-[320px] lg:min-h-full"
-            />
-            <div className="min-w-0">
-              <IntroductionCarousel introductions={resume.introductions} />
-            </div>
+          <HomeSceneBanner
+            src="/home/intro-desk.jpg"
+            alt="책상 위 노트북과 모니터가 보이는 작업 공간"
+            label="WORKSPACE"
+            title="일하는 방식"
+            imageClassName="object-[68%_42%]"
+          >
+            <p className={`${bannerStyles.lead} mt-4 text-[clamp(18px,2.2vw,24px)] font-medium leading-[1.35] text-[#f7f3ea]`}>
+              {introductionHeading}
+            </p>
+            {introductionLead ? (
+              <div className={bannerStyles.lead}>
+                <MarkdownContent content={introductionLead} variant="dark" />
+              </div>
+            ) : null}
+          </HomeSceneBanner>
+
+          <div className="mx-auto max-w-[1440px] px-7 py-14 max-sm:px-4 max-sm:py-10">
+            <p className="mb-6 text-[12px] tracking-[0.16em] text-[#a16e72]">04 / INTRODUCTION</p>
+            <IntroductionCarousel introductions={resume.introductions} showHeader={false} />
           </div>
+        </section>
+
+        {/* ================================================================== */}
+        {/* FEATURED REDIS CACHE */}
+        {/* ================================================================== */}
+
+        <section id="redis-cache" className="scroll-mt-20 border-t border-black/10">
+          <HomeSceneBanner
+            src="/home/cicd-concrete.jpg"
+            alt="빛과 그림자가 드리운 콘크리트 건축 공간"
+            label="REDIS CACHE"
+            title="상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선"
+            imageClassName="object-[62%_40%]"
+          >
+            <div className={bannerStyles.rows}>
+              <div>
+                <p className={bannerStyles.rowLabel}>문제</p>
+                <p className={bannerStyles.rowBody}>
+                  같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.
+                </p>
+              </div>
+              <div>
+                <p className={bannerStyles.rowLabel}>개선</p>
+                <p className={bannerStyles.rowBody}>
+                  카테고리·검색어별 Redis 캐시를 적용하고, 상품 변경이 DB에 커밋된 뒤
+                  목록 캐시를 비우도록 구성했습니다.
+                </p>
+              </div>
+              <div>
+                <p className={bannerStyles.rowLabel}>검증</p>
+                <p className={bannerStyles.rowBody}>
+                  캐시 OFF·MISS·HIT 응답을 SHA-256으로 대조했습니다. 격리 환경에서 k6
+                  10 VU·30초, 각 조건 3회 비교 결과 상품 목록 SELECT 관측값은 600요청
+                  기준 캐시 OFF 591~595회에서 워밍 후 0회로 줄었습니다.
+                </p>
+              </div>
+            </div>
+            <div className={bannerStyles.actions}>
+              <a
+                href="https://github.com/KimSunWooo/portfolio#상품-목록-캐시-성능-측정"
+                target="_blank"
+                rel="noreferrer"
+                className={bannerStyles.primary}
+              >
+                캐시 측정 결과 보기
+              </a>
+              <Link href="/community/10" className={bannerStyles.secondary}>
+                직렬화기 호환성 기록
+              </Link>
+            </div>
+            <p className={`${bannerStyles.rowBody} mt-4 text-[13px] opacity-80`}>
+              Jackson 2 ObjectMapper로 GenericJackson2JsonRedisSerializer를 구성해
+              Jackson 3 기반 직렬화기 생성자 호환성 문제를 피한 기록은 위 링크로 남겼습니다.
+            </p>
+          </HomeSceneBanner>
         </section>
 
         {/* ================================================================== */}
@@ -531,56 +613,30 @@ export default async function Home() {
             <h2 className="max-w-[900px] text-[clamp(28px,5vw,64px)] font-normal leading-[1.1] tracking-[-0.05em]">
               대표 구현의 재현·원인·검증 근거
             </h2>
-            <ul className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-3">
+            <ul className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-2 lg:grid-cols-4">
               {troubleshootingItems.map((item) => (
                 <li key={item.title} className="min-w-0">
-                  <a
-                    href={item.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
-                  >
-                    {item.title} ↗
-                  </a>
+                  {item.external ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
+                    >
+                      {item.title} ↗
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
+                    >
+                      {item.title} →
+                    </Link>
+                  )}
                   <p className="mt-3 text-[13px] leading-[1.7] text-[#555]">{item.body}</p>
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
-
-        {/* ================================================================== */}
-        {/* CI / CD */}
-        {/* ================================================================== */}
-
-        <section
-          id="cicd"
-          className="border-t border-black/10 bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
-        >
-          <div className="mx-auto grid max-w-[1440px] gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-stretch lg:gap-10">
-            <div className="order-2 flex min-w-0 flex-col justify-center lg:order-1">
-              <p className="text-[12px] tracking-[0.16em] text-[#a16e72]">DEPLOYMENT</p>
-              <h2 className="mt-4 break-keep text-[clamp(28px,4.5vw,48px)] font-medium leading-[1.15] tracking-[-0.045em] text-[#242225]">
-                운영 배포 절차를 검증 가능한 흐름으로 정리했습니다
-              </h2>
-              <p className="mt-5 max-w-[40rem] text-[15px] leading-[1.8] text-[#5e5759]">
-                PR 검사와 운영 배포를 분리하고, 준비 검사 실패 시 이전 서비스로 되돌리며
-                실패 컨테이너를 보존하는 절차를 모의 환경에서 확인했습니다. 배포 과정의
-                재현과 복구 근거는 커뮤니티 기록으로도 남겨 두었습니다.
-              </p>
-              <Link
-                href="/community/14"
-                className="mt-8 inline-flex w-fit items-center border border-[#242225] bg-[#242225] px-5 py-3 text-[11px] tracking-[0.14em] text-[#f7f3ea] no-underline hover:bg-transparent hover:text-[#242225]"
-              >
-                배포 사례 보기 →
-              </Link>
-            </div>
-            <HomeMediaPanel
-              src="/home/cicd-concrete.jpg"
-              alt="빛과 그림자가 드리운 콘크리트 건축 공간"
-              title="운영 배포 절차 개선"
-              className="order-1 min-h-[320px] lg:order-2 lg:min-h-full"
-            />
           </div>
         </section>
 

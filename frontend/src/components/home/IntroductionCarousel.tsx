@@ -17,7 +17,13 @@ type Drag = {
 
 const formatNumber = (value: number) => String(value).padStart(2, "0");
 
-export default function IntroductionCarousel({ introductions }: { introductions: ResumeIntroduction[] }) {
+export default function IntroductionCarousel({
+  introductions,
+  showHeader = true,
+}: {
+  introductions: ResumeIntroduction[];
+  showHeader?: boolean;
+}) {
   const entries = useMemo(
     () => introductions.map((item) => ({ ...item, ...splitIntroductionSections(item.content) }))
       .filter((item) => item.sections.length > 0),
@@ -86,28 +92,30 @@ export default function IntroductionCarousel({ introductions }: { introductions:
     goTo(gesture.index + step);
   }
 
+  const heading = firstEntry?.heading || firstEntry?.title || "자기소개";
+
   return (
-    <section aria-labelledby={titleId} className="mx-auto max-w-[1260px]">
-      <header className="grid gap-7 border-t border-black/25 pt-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.18em] text-[#53534a]">04 / INTRODUCTION</p>
-          <h2 id={titleId} className="mt-4 max-w-[18ch] break-keep [overflow-wrap:anywhere] text-[clamp(26px,4.5vw,60px)] font-medium leading-[1.14] tracking-[-0.06em] text-[#171713]">
-            {firstEntry?.heading || firstEntry?.title || "자기소개"}
+    <section aria-labelledby={showHeader ? titleId : undefined} aria-label={showHeader ? undefined : "자기소개 슬라이드"} className={styles.root}>
+      {showHeader && (
+        <header className={styles.header}>
+          <p className={styles.kicker}>04 / INTRODUCTION</p>
+          <h2 id={titleId} className={styles.title}>
+            {heading}
           </h2>
-        </div>
-        {firstEntry?.lead && (
-          <div className="max-w-[52ch] pb-1">
-            <MarkdownContent content={firstEntry.lead} />
-          </div>
-        )}
-      </header>
+          {firstEntry?.lead && (
+            <div className={styles.lead}>
+              <MarkdownContent content={firstEntry.lead} />
+            </div>
+          )}
+        </header>
+      )}
 
       {count === 0 ? (
         <p className="mt-8 rounded-3xl border border-black/15 p-6 text-sm text-[#53534a]">
           자기소개를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.
         </p>
       ) : (
-        <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-black/20 sm:mt-12 sm:rounded-[2rem]">
+        <div className={showHeader ? styles.card : `${styles.card} mt-0`}>
           {count > 1 && (
             <div className="flex items-center justify-between gap-3 border-b border-black/15 px-5 py-3 sm:px-8 sm:py-4">
               <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
@@ -166,7 +174,7 @@ export default function IntroductionCarousel({ introductions }: { introductions:
                 aria-hidden={slideIndex !== index}
                 aria-label={(slideIndex + 1) + " / " + count + " · " + slide.title}
               >
-                <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:justify-between">
+                <div className={styles.chapter}>
                   <div className={styles.orbit} aria-hidden="true">
                     <svg viewBox="0 0 192 192" fill="none" className="absolute inset-0 h-full w-full">
                       <circle cx="96" cy="96" r="77" stroke="currentColor" strokeOpacity=".28" />
@@ -174,18 +182,16 @@ export default function IntroductionCarousel({ introductions }: { introductions:
                       <path d="M154 45v24m-12-12h24m-20-8 16 16m0-16-16 16" stroke="currentColor" strokeOpacity=".6" />
                       <circle cx="40" cy="137" r="3" fill="currentColor" fillOpacity=".72" />
                     </svg>
-                    <span className="relative font-mono text-[clamp(22px,4vw,56px)] font-medium tracking-[-0.09em]">
-                      {formatNumber(slideIndex + 1)}
-                    </span>
+                    <span className={styles.orbitNumber}>{formatNumber(slideIndex + 1)}</span>
                   </div>
-                  <p aria-hidden="true" className="font-mono text-[10px] tracking-[0.2em] text-[#53534a]">CHAPTER / {formatNumber(slideIndex + 1)}</p>
+                  <p aria-hidden="true" className={styles.chapterLabel}>
+                    CHAPTER / {formatNumber(slideIndex + 1)}
+                  </p>
                 </div>
-                <div className="min-w-0 border-t border-black/15 pt-5 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
-                  {slide.entryTitle && <p className="mb-2 text-xs text-[#53534a]">{slide.entryTitle}</p>}
-                  <h3 className="mb-6 break-keep [overflow-wrap:anywhere] text-[clamp(24px,3.6vw,46px)] font-medium leading-[1.16] tracking-[-0.055em] text-[#171713]">
-                    {slide.title}
-                  </h3>
-                  <div className="max-w-[65ch] break-words">
+                <div className={styles.slideCopy}>
+                  {slide.entryTitle && <p className={styles.entryTitle}>{slide.entryTitle}</p>}
+                  <h3 className={styles.slideTitle}>{slide.title}</h3>
+                  <div className={styles.body}>
                     <MarkdownContent content={[slide.lead, slide.body].filter(Boolean).join("\n\n")} />
                   </div>
                 </div>
