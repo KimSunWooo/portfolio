@@ -1,0 +1,362 @@
+[
+  {
+    "width": 1265,
+    "metrics": {
+      "overflowX": 0,
+      "gutter": "clamp(16px, 2.6vw, 48px)",
+      "introTitle": {
+        "text": "일하는 방식",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "introBody": {
+        "text": "백엔드 경험을 바탕으로 웹 서비스 전체를 연결하는 개발자 김선우입니다",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "slideTitle": {
+        "text": "실무에서 맡은 일",
+        "fontSize": "29.71px",
+        "lineHeight": "37.1375px"
+      },
+      "slideBody": {
+        "text": "제약회사 웨비나 페이지인 **‘엔허투’**에서는 JWT 기반 로그인·회원가입 기능과 M",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "tsTitle": {
+        "text": "대표 구현의 재현·원인·검증 근거",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "tsBody": {
+        "text": "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisTitle": {
+        "text": "상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "redisBody": {
+        "text": "같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisMetric": {
+        "text": "측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교",
+        "fontSize": "15px",
+        "lineHeight": "24.75px"
+      },
+      "heroCards": false,
+      "heroName": {
+        "text": "김선우",
+        "fontSize": "88px",
+        "lineHeight": "92.4px"
+      }
+    },
+    "stability": {
+      "bannerDh": 0,
+      "bannerDw": 0,
+      "imgDh": 0,
+      "imgDw": 0,
+      "nextDh": 0,
+      "ok": true
+    },
+    "skills": [
+      {
+        "text": "1 / 1 기술 스택 페이지",
+        "cards": 0
+      }
+    ]
+  },
+  {
+    "width": 1366,
+    "metrics": {
+      "overflowX": 0,
+      "gutter": "clamp(16px, 2.6vw, 48px)",
+      "introTitle": {
+        "text": "일하는 방식",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "introBody": {
+        "text": "백엔드 경험을 바탕으로 웹 서비스 전체를 연결하는 개발자 김선우입니다",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "slideTitle": {
+        "text": "실무에서 맡은 일",
+        "fontSize": "30px",
+        "lineHeight": "37.5px"
+      },
+      "slideBody": {
+        "text": "제약회사 웨비나 페이지인 **‘엔허투’**에서는 JWT 기반 로그인·회원가입 기능과 M",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "tsTitle": {
+        "text": "대표 구현의 재현·원인·검증 근거",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "tsBody": {
+        "text": "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisTitle": {
+        "text": "상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "redisBody": {
+        "text": "같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisMetric": {
+        "text": "측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교",
+        "fontSize": "15px",
+        "lineHeight": "24.75px"
+      },
+      "heroCards": false,
+      "heroName": {
+        "text": "김선우",
+        "fontSize": "88px",
+        "lineHeight": "92.4px"
+      }
+    },
+    "stability": {
+      "bannerDh": 0,
+      "bannerDw": 0,
+      "imgDh": 0,
+      "imgDw": 0,
+      "nextDh": 0,
+      "ok": true
+    },
+    "skills": [
+      {
+        "text": "1 / 1 기술 스택 페이지",
+        "cards": 0
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "metrics": {
+      "overflowX": 0,
+      "gutter": "clamp(16px, 2.6vw, 48px)",
+      "introTitle": {
+        "text": "일하는 방식",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "introBody": {
+        "text": "백엔드 경험을 바탕으로 웹 서비스 전체를 연결하는 개발자 김선우입니다",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "slideTitle": {
+        "text": "실무에서 맡은 일",
+        "fontSize": "30px",
+        "lineHeight": "37.5px"
+      },
+      "slideBody": {
+        "text": "제약회사 웨비나 페이지인 **‘엔허투’**에서는 JWT 기반 로그인·회원가입 기능과 M",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "tsTitle": {
+        "text": "대표 구현의 재현·원인·검증 근거",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "tsBody": {
+        "text": "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisTitle": {
+        "text": "상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "redisBody": {
+        "text": "같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisMetric": {
+        "text": "측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교",
+        "fontSize": "15px",
+        "lineHeight": "24.75px"
+      },
+      "heroCards": false,
+      "heroName": {
+        "text": "김선우",
+        "fontSize": "88px",
+        "lineHeight": "92.4px"
+      }
+    },
+    "stability": {
+      "bannerDh": 0,
+      "bannerDw": 0,
+      "imgDh": 0,
+      "imgDw": 0,
+      "nextDh": 0,
+      "ok": true
+    },
+    "skills": [
+      {
+        "text": "1 / 1 기술 스택 페이지",
+        "cards": 0
+      }
+    ]
+  },
+  {
+    "width": 1920,
+    "metrics": {
+      "overflowX": 0,
+      "gutter": "clamp(16px, 2.6vw, 48px)",
+      "introTitle": {
+        "text": "일하는 방식",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "introBody": {
+        "text": "백엔드 경험을 바탕으로 웹 서비스 전체를 연결하는 개발자 김선우입니다",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "slideTitle": {
+        "text": "실무에서 맡은 일",
+        "fontSize": "30px",
+        "lineHeight": "37.5px"
+      },
+      "slideBody": {
+        "text": "제약회사 웨비나 페이지인 **‘엔허투’**에서는 JWT 기반 로그인·회원가입 기능과 M",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "tsTitle": {
+        "text": "대표 구현의 재현·원인·검증 근거",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "tsBody": {
+        "text": "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisTitle": {
+        "text": "상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선",
+        "fontSize": "42px",
+        "lineHeight": "50.4px"
+      },
+      "redisBody": {
+        "text": "같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.",
+        "fontSize": "18px",
+        "lineHeight": "30.6px"
+      },
+      "redisMetric": {
+        "text": "측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교",
+        "fontSize": "15px",
+        "lineHeight": "24.75px"
+      },
+      "heroCards": false,
+      "heroName": {
+        "text": "김선우",
+        "fontSize": "88px",
+        "lineHeight": "92.4px"
+      }
+    },
+    "stability": {
+      "bannerDh": 0,
+      "bannerDw": 0,
+      "imgDh": 0,
+      "imgDw": 0,
+      "nextDh": 0,
+      "ok": true
+    },
+    "skills": [
+      {
+        "text": "1 / 1 기술 스택 페이지",
+        "cards": 0
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "metrics": {
+      "overflowX": 0,
+      "gutter": "clamp(16px, 2.6vw, 48px)",
+      "introTitle": {
+        "text": "일하는 방식",
+        "fontSize": "26px",
+        "lineHeight": "31.2px"
+      },
+      "introBody": {
+        "text": "백엔드 경험을 바탕으로 웹 서비스 전체를 연결하는 개발자 김선우입니다",
+        "fontSize": "15.365px",
+        "lineHeight": "26.1205px"
+      },
+      "slideTitle": {
+        "text": "실무에서 맡은 일",
+        "fontSize": "20px",
+        "lineHeight": "25px"
+      },
+      "slideBody": {
+        "text": "제약회사 웨비나 페이지인 **‘엔허투’**에서는 JWT 기반 로그인·회원가입 기능과 M",
+        "fontSize": "15.365px",
+        "lineHeight": "26.1205px"
+      },
+      "tsTitle": {
+        "text": "대표 구현의 재현·원인·검증 근거",
+        "fontSize": "26px",
+        "lineHeight": "31.2px"
+      },
+      "tsBody": {
+        "text": "동일 병합 요청 재전송에도 수량이 중복되지 않도록 DB UNIQUE와 트랜잭션으로 막았",
+        "fontSize": "15.365px",
+        "lineHeight": "26.1205px"
+      },
+      "redisTitle": {
+        "text": "상품 목록 Redis 캐시의 응답 정합성과 조회 성능 개선",
+        "fontSize": "26px",
+        "lineHeight": "31.2px"
+      },
+      "redisBody": {
+        "text": "같은 조건으로 상품 목록을 반복 조회할 때 DB 조회가 반복됐습니다.",
+        "fontSize": "15.365px",
+        "lineHeight": "26.1205px"
+      },
+      "redisMetric": {
+        "text": "측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교",
+        "fontSize": "13px",
+        "lineHeight": "21.45px"
+      },
+      "heroCards": false,
+      "heroName": {
+        "text": "김선우",
+        "fontSize": "46.8px",
+        "lineHeight": "49.14px"
+      }
+    },
+    "stability": {
+      "bannerDh": 0,
+      "bannerDw": 0,
+      "imgDh": 0,
+      "imgDw": 0,
+      "nextDh": 0,
+      "ok": true
+    },
+    "skills": [
+      {
+        "text": "1 / 1 기술 스택 페이지",
+        "cards": 0
+      }
+    ]
+  }
+]

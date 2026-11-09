@@ -2,7 +2,8 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  min-height: clamp(28rem, 62vw, 40rem);
+  width: 100%;
+  min-height: clamp(28rem, 58vw, 38rem);
   background: #242225;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
@@ -41,20 +42,21 @@
   display: flex;
   align-items: flex-end;
   min-height: inherit;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 5.5rem) clamp(1rem, 4vw, 1.75rem);
+  width: 100%;
+  padding:
+    clamp(2.5rem, 6vw, 5.5rem)
+    var(--home-gutter, clamp(16px, 2.6vw, 48px));
 }
 
 .copy {
-  width: min(100%, 36rem);
+  width: min(100%, 42rem);
   color: #f7f3ea;
 }
 
 .label {
   margin: 0;
   color: #a16e72;
-  font-size: 11px;
+  font-size: var(--home-meta, clamp(13px, 0.25vw + 12px, 15px));
   letter-spacing: 0.18em;
 }
 
@@ -68,7 +70,7 @@
 .title {
   margin: 1rem 0 0;
   color: #f7f3ea;
-  font-size: clamp(28px, 4.2vw, 41px);
+  font-size: var(--home-section-title, clamp(26px, 2.6vw + 12px, 42px));
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.04em;
@@ -79,8 +81,8 @@
 .lead {
   margin-top: 1.1rem;
   color: rgb(247 243 234 / 90%);
-  font-size: 15.5px;
-  line-height: 1.7;
+  font-size: var(--home-body, clamp(15px, 0.35vw + 14px, 18px));
+  line-height: var(--home-leading, 1.7);
   overflow-wrap: anywhere;
   word-break: keep-all;
 }
@@ -102,16 +104,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 1.5rem;
+  margin-top: 1.6rem;
 }
 
 .primary,
 .secondary {
   display: inline-flex;
   align-items: center;
-  padding: 0.8rem 1.15rem;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  padding: 0.85rem 1.2rem;
+  font-size: var(--home-meta, 14px);
+  letter-spacing: 0.12em;
   text-decoration: none;
 }
 
@@ -133,29 +135,38 @@
 
 .rows {
   display: grid;
-  gap: 0.95rem;
-  margin-top: 1.35rem;
+  gap: 1.15rem;
+  margin-top: 1.5rem;
 }
 
 .rowLabel {
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.35rem;
   color: #a16e72;
-  font-size: 11px;
+  font-size: var(--home-meta, clamp(13px, 0.25vw + 12px, 15px));
   letter-spacing: 0.14em;
 }
 
 .rowBody {
   margin: 0;
-  color: rgb(247 243 234 / 90%);
-  font-size: 15px;
-  line-height: 1.7;
+  color: rgb(247 243 234 / 92%);
+  font-size: var(--home-body, clamp(15px, 0.35vw + 14px, 18px));
+  line-height: var(--home-leading, 1.7);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.metric {
+  margin: 0.55rem 0 0;
+  color: rgb(247 243 234 / 82%);
+  font-size: var(--home-meta, clamp(13px, 0.25vw + 12px, 15px));
+  line-height: 1.65;
   overflow-wrap: anywhere;
   word-break: keep-all;
 }
 
 @media (max-width: 767px) {
   .root {
-    min-height: 34rem;
+    min-height: 32rem;
   }
 
   .shade {

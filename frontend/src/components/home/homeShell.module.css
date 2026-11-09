@@ -1,0 +1,85 @@
+.page {
+  --home-gutter: clamp(16px, 2.6vw, 48px);
+  --home-section-title: clamp(26px, 2.6vw + 12px, 42px);
+  --home-slide-title: clamp(20px, 1.4vw + 12px, 30px);
+  --home-body: clamp(15px, 0.35vw + 14px, 18px);
+  --home-meta: clamp(13px, 0.25vw + 12px, 15px);
+  --home-leading: 1.7;
+  --home-ink: #242225;
+  --home-muted: #5e5759;
+  --home-accent: #a16e72;
+  --home-surface: #f4f1ef;
+  --home-ivory: #f7f3ea;
+  background: var(--portfolio-surface, var(--home-surface));
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: var(--home-ink);
+}
+
+.inset {
+  width: 100%;
+  padding-inline: var(--home-gutter);
+}
+
+.section {
+  width: 100%;
+  padding-block: clamp(3.5rem, 7vw, 6rem);
+}
+
+.sectionCompact {
+  width: 100%;
+  padding-block: clamp(2.75rem, 5vw, 4.5rem);
+}
+
+.kicker {
+  margin: 0 0 0.85rem;
+  color: var(--home-muted);
+  font-size: var(--home-meta);
+  letter-spacing: 0.16em;
+}
+
+.sectionTitle {
+  margin: 0;
+  max-width: 48rem;
+  color: var(--home-ink);
+  font-size: var(--home-section-title);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.slideTitle {
+  margin: 0;
+  color: var(--home-ink);
+  font-size: var(--home-slide-title);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.body {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--home-muted);
+  font-size: var(--home-body);
+  line-height: var(--home-leading);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.meta {
+  margin: 0;
+  color: var(--home-muted);
+  font-size: var(--home-meta);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.wide {
+  width: 100%;
+  max-width: none;
+}

@@ -8,6 +8,7 @@ import bannerStyles from "../components/home/HomeSceneBanner.module.css";
 import { splitIntroductionSections } from "../components/home/introductionSections";
 import SkillStackSlider from "../components/home/SkillStackSlider";
 import ribbonStyles from "../components/home/homeRibbon.module.css";
+import shell from "../components/home/homeShell.module.css";
 import {
   fetchProjects,
   fetchResume,
@@ -21,6 +22,7 @@ const fallback: ResumeData = {
     name: "김선우",
     jobTitle: "Backend / Full-stack Developer",
     githubUrl: "https://github.com/KimSunWooo",
+    profileImage: "/uploads/profile/87c022a8-51c9-42f6-8eed-217884d03cf8.png",
     shortIntro:
       "Java를 중심으로 웹 서비스를 개발하고, 데이터베이스부터 화면까지 서비스의 전체 흐름을 이해하며 구현하는 개발자 김선우입니다.",
   },
@@ -159,7 +161,20 @@ export default async function Home() {
       fetched.educations.length ||
       fetched.introductions.length
     ) {
-      resume = fetched;
+      resume = {
+        ...fetched,
+        profile: fetched.profile ?? fallback.profile,
+        skills: fetched.skills.length ? fetched.skills : fallback.skills,
+        experiences: fetched.experiences.length
+          ? fetched.experiences
+          : fallback.experiences,
+        educations: fetched.educations.length
+          ? fetched.educations
+          : fallback.educations,
+        introductions: fetched.introductions.length
+          ? fetched.introductions
+          : fallback.introductions,
+      };
     }
   } catch (error) {
     console.error("[SSR Fetch Error]:", error);
@@ -188,11 +203,7 @@ export default async function Home() {
   const profile = resume.profile ?? fallback.profile!;
 
   const displayName = profile.name || "김선우";
-
-  const englishName =
-    displayName === "김선우"
-      ? ["KIM", "SUN WOO"]
-      : [displayName, ""];
+  const englishName = displayName === "김선우" ? "KIM SUN WOO" : "";
 
   /**
    * --------------------------------------------------------------------------
@@ -251,18 +262,11 @@ export default async function Home() {
   ] as const;
 
   return (
-    <div className="bg-[var(--portfolio-surface)] [--portfolio-surface:#f4f1ef]">
+    <div className={`${shell.page} [--portfolio-surface:#f4f1ef]`}>
       <Header />
 
       <main className="overflow-x-hidden pt-[76px] max-sm:pt-[62px]">
-        {/* ================================================================== */}
-        {/* ABOUT */}
-        {/* ================================================================== */}
-
-        <section
-          id="about"
-          className={`${ribbonStyles.hero} border-b border-black/10 px-7 py-[72px] max-sm:px-4 max-sm:py-12`}
-        >
+        <section id="about" className={`${ribbonStyles.hero} ${shell.section} border-b border-black/10`}>
           <svg
             className={ribbonStyles.ribbon}
             viewBox="0 0 1440 320"
@@ -274,252 +278,92 @@ export default async function Home() {
             <path fill="#e9dddc" fillOpacity="0.85" d="M0 240 C220 200 340 270 520 230 C700 190 860 160 1040 210 C1200 250 1320 270 1440 230 L1440 320 L0 320 Z" />
           </svg>
 
-          <div className={`${ribbonStyles.inner} mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start lg:gap-16`}>
-            <div>
-              <div className="flex items-start justify-between gap-6 text-[10px] tracking-[0.14em] text-[#5e5759] max-sm:flex-col max-sm:gap-2">
-                <span>PORTFOLIO · 2026</span>
-                <span>
-                  {profile.jobTitle?.toUpperCase() ??
-                    "BACKEND / FULL-STACK DEVELOPER"}
-                </span>
-              </div>
-
-              <div className={`${ribbonStyles.accentRule} mt-8`} />
-              <p className={`${ribbonStyles.role} mt-6 text-[14px] tracking-[0.18em] max-sm:text-[12px]`}>
-                DEVELOPER
-              </p>
-
-              <div className="mt-5 grid grid-cols-[minmax(0,1fr)_minmax(140px,280px)] items-end gap-8 max-md:grid-cols-1 max-md:gap-8">
-                <h1 className={`${ribbonStyles.title} text-[clamp(42px,9vw,128px)] font-medium leading-[0.92] tracking-[-0.07em]`}>
-                  {englishName[0]}
-                  {englishName[1] && (
-                    <>
-                      <br />
-                      {englishName[1]}
-                    </>
-                  )}
-                </h1>
-
-                {profileImageUrl && (
-                  <div className="flex justify-end max-md:justify-start">
-                    <div className={`${ribbonStyles.profileFrame} relative w-full max-w-[280px] overflow-hidden max-md:max-w-[220px]`}>
-                      <img
-                        src={profileImageUrl}
-                        alt={profile.name ?? "Profile"}
-                        className="aspect-[3/4] w-full object-cover object-[center_18%]"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-9 max-w-[42rem] border-t border-[#242225]/15 pt-5">
-                <p className={`${ribbonStyles.copy} whitespace-pre-wrap text-[15px] leading-[1.8] tracking-[-0.02em]`}>
-                  {profile.shortIntro}
-                </p>
-                <p className={`${ribbonStyles.copy} mt-4 text-[15px] leading-[1.75] tracking-[-0.02em]`}>
-                  대표 프로젝트는 장바구니 정합성, 인증 갱신과 로그아웃 충돌, 배포 복구를
-                  코드와 테스트로 검증한 풀스택 웹 서비스입니다.
-                </p>
-              </div>
-
-              <nav
-                aria-label="대표 프로젝트 바로가기"
-                className="mt-8 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#242225]/15 pt-5 text-[11px] tracking-[0.12em]"
-              >
-                <a href="#projects" className={ribbonStyles.link}>
-                  대표 프로젝트
-                </a>
-                <a href="#troubleshooting" className={ribbonStyles.link}>
-                  트러블슈팅
-                </a>
-                <a
-                  href={profile.githubUrl || "https://github.com/KimSunWooo/portfolio"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={ribbonStyles.link}
-                >
-                  GitHub
-                </a>
-                <a href="/shop" className={ribbonStyles.link}>
-                  쇼핑몰 데모
-                </a>
-              </nav>
-            </div>
-
-            <aside className="grid gap-4 self-stretch">
-              <div className={`${ribbonStyles.panel} p-5 sm:p-6`}>
-                <p className={`${ribbonStyles.panelTitle} text-[10px] tracking-[0.16em]`}>
-                  SELECTED WORK
-                </p>
-                <h2 className={`${ribbonStyles.title} mt-3 text-[22px] tracking-[-0.03em] max-sm:text-[18px]`}>
-                  대표 프로젝트
-                </h2>
-                <ul className="mt-5 space-y-4">
-                  {(projects.length > 0 ? projects.slice(0, 3) : [
-                    { id: 0, title: "Portfolio Demo", subtitle: "장바구니·결제·배포 검증" },
-                  ]).map((item) => (
-                    <li key={item.id} className="border-t border-[#242225]/10 pt-4 first:border-t-0 first:pt-0">
-                      <a href="#projects" className={`${ribbonStyles.link} text-[15px] tracking-[-0.02em]`}>
-                        {item.title}
-                      </a>
-                      {item.subtitle && (
-                        <p className={`${ribbonStyles.copy} mt-1 text-[13px] leading-6`}>
-                          {item.subtitle}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className={`${ribbonStyles.panel} p-5 sm:p-6`}>
-                <p className={`${ribbonStyles.panelTitle} text-[10px] tracking-[0.16em]`}>
-                  FEATURED CASE
-                </p>
-                <h2 className={`${ribbonStyles.title} mt-3 text-[22px] tracking-[-0.03em] max-sm:text-[18px]`}>
-                  상품 목록 Redis 캐시
-                </h2>
-                <p className={`${ribbonStyles.copy} mt-3 text-[13px] leading-6`}>
-                  같은 조건의 반복 조회에서 DB SELECT를 줄이고, 캐시 OFF·워밍 응답을
-                  SHA-256으로 대조해 정합성을 확인했습니다.
-                </p>
-                <a href="#redis-cache" className={`${ribbonStyles.link} mt-4 inline-block text-[12px] tracking-[0.12em]`}>
-                  대표 사례 보기 →
-                </a>
-                <a href="#troubleshooting" className={`${ribbonStyles.link} mt-3 block text-[12px] tracking-[0.12em]`}>
-                  다른 트러블슈팅 →
-                </a>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        {/* ================================================================== */}
-        {/* SKILLS */}
-        {/* ================================================================== */}
-
-        <section
-          id="skills"
-          className="bg-[#f4f1ef] px-7 py-[96px] font-[family-name:Pretendard] max-sm:px-4 max-sm:py-16"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="mb-12 grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5 max-sm:mb-8">
-              <p className="text-[25px] tracking-[0.16em] text-[#5e5759] max-sm:text-[18px]">
-                01 · SKILLS
-              </p>
-              <h2 className="max-w-[900px] text-[clamp(28px,5.2vw,78px)] font-normal leading-[1.1] tracking-[-0.055em] text-[#242225]">
-                기술은 목적이 아니라,
-                <br />
-                문제를 해결하기 위한 도구라고 생각합니다.
-              </h2>
-            </div>
-
-            <SkillStackSlider skills={resume.skills} />
-          </div>
-        </section>
-
-        {/* ================================================================== */}
-        {/* EXPERIENCE */}
-        {/* ================================================================== */}
-
-        <section
-          id="experience"
-          className="border-t border-black/10 px-7 py-[120px] max-sm:px-4 max-sm:py-16"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-                02 · EXPERIENCE
-              </p>
+          <div className={`${shell.inset} ${ribbonStyles.inner}`}>
+            <div className={ribbonStyles.heroGrid}>
               <div>
-                <h2 className="text-[clamp(32px,6vw,88px)] font-normal tracking-[-0.06em]">
-                  Career
-                </h2>
-                <div className="mt-14 border-t border-black max-sm:mt-8">
-                  {resume.experiences.map((item) => (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-[180px_1fr] gap-8 border-b border-black/15 py-8 max-md:grid-cols-1 max-md:gap-3 max-sm:py-6"
-                    >
-                      <div className="text-[11px] tracking-[0.06em] text-[#666]">
-                        {formatPeriod(item.startDate, item.endDate)}
-                      </div>
-                      <div>
-                        <p className="mb-2 text-[15px] tracking-[0.12em] text-[#777] max-sm:text-[13px]">
-                          {item.companyName}
-                        </p>
-                        <h3 className="text-[20px] tracking-[-0.03em] max-sm:text-[18px]">
-                          {item.position}
-                        </h3>
-                        {item.description && (
-                          <div className="mt-5 max-w-[720px]">
-                            <MarkdownContent
-                              content={item.description}
-                              variant="light"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <p className={ribbonStyles.role}>
+                  {(profile.jobTitle || "Backend / Full-stack Developer").toUpperCase()}
+                </p>
+                <div className={`${ribbonStyles.accentRule} mt-5`} />
+                <h1 className={`${ribbonStyles.name} mt-6`}>{displayName}</h1>
+                {englishName ? <p className={ribbonStyles.english}>{englishName}</p> : null}
+                <div className="mt-8 border-t border-[#242225]/15 pt-5">
+                  <p className={`${ribbonStyles.copy} whitespace-pre-wrap`}>{profile.shortIntro}</p>
                 </div>
               </div>
+
+              {profileImageUrl ? (
+                <div className={ribbonStyles.profileFrame}>
+                  <img src={profileImageUrl} alt={profile.name ?? "Profile"} />
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
 
-        {/* ================================================================== */}
-        {/* EDUCATION */}
-        {/* ================================================================== */}
+        <section id="skills" className={`${shell.section} bg-[#f4f1ef]`}>
+          <div className={shell.inset}>
+            <p className={shell.kicker}>01 · SKILLS</p>
+            <h2 className={shell.sectionTitle}>
+              기술은 목적이 아니라, 문제를 해결하기 위한 도구라고 생각합니다.
+            </h2>
+            <div className="mt-10">
+              <SkillStackSlider skills={resume.skills} />
+            </div>
+          </div>
+        </section>
 
-        <section
-          id="education"
-          className="px-7 py-[120px] max-sm:px-4 max-sm:py-16"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid grid-cols-[220px_1fr] gap-10 max-md:grid-cols-1 max-md:gap-5">
-              <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-                03 · EDUCATION
-              </p>
-              <div className="border-t border-black">
-                {resume.educations.map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[1fr_auto] gap-8 border-b border-black/15 py-8 max-sm:grid-cols-1 max-sm:gap-4 max-sm:py-6"
-                  >
-                    <div>
-                      <h2 className="text-[28px] tracking-[-0.04em] max-sm:text-[20px]">
-                        {item.schoolName}
-                      </h2>
-                      <p className="mt-3 text-[12px] text-[#666] max-sm:text-[11px]">
-                        {[
-                          item.major,
-                          item.description,
-                          formatPeriod(item.startDate, item.endDate),
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    </div>
-                    <span className="text-[10px] tracking-[0.12em] text-[#777]">
-                      EDUCATION
-                    </span>
+        <section id="experience" className={`${shell.section} border-t border-black/10`}>
+          <div className={shell.inset}>
+            <p className={shell.kicker}>02 · EXPERIENCE</p>
+            <h2 className={shell.sectionTitle}>Career</h2>
+            <div className="mt-10 border-t border-black">
+              {resume.experiences.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)] gap-8 border-b border-black/15 py-8 max-md:grid-cols-1 max-md:gap-3"
+                >
+                  <div className={shell.meta}>{formatPeriod(item.startDate, item.endDate)}</div>
+                  <div>
+                    <p className={`${shell.meta} mb-2 tracking-[0.12em]`}>{item.companyName}</p>
+                    <h3 className={shell.slideTitle}>{item.position}</h3>
+                    {item.description ? (
+                      <div className={`${shell.body} mt-5`}>
+                        <MarkdownContent content={item.description} variant="light" />
+                      </div>
+                    ) : null}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ================================================================== */}
-        {/* INTRODUCTION */}
-        {/* ================================================================== */}
+        <section id="education" className={shell.section}>
+          <div className={shell.inset}>
+            <p className={shell.kicker}>03 · EDUCATION</p>
+            <div className="mt-6 border-t border-black">
+              {resume.educations.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[1fr_auto] gap-8 border-b border-black/15 py-8 max-sm:grid-cols-1 max-sm:gap-3"
+                >
+                  <div>
+                    <h2 className={shell.sectionTitle}>{item.schoolName}</h2>
+                    <p className={`${shell.meta} mt-3`}>
+                      {[item.major, item.description, formatPeriod(item.startDate, item.endDate)]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <span className={shell.meta}>EDUCATION</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-        <section
-          id="introduction"
-          className="scroll-mt-20 border-y border-black/10 bg-[#f4f1ef] font-[family-name:Pretendard]"
-        >
+        <section id="introduction" className="scroll-mt-20 border-y border-black/10 bg-[#f4f1ef]">
           <HomeSceneBanner
             src="/home/intro-desk.jpg"
             alt="책상 위 노트북과 모니터가 보이는 작업 공간"
@@ -527,9 +371,7 @@ export default async function Home() {
             title="일하는 방식"
             imageClassName="object-[68%_42%]"
           >
-            <p className={`${bannerStyles.lead} mt-4 text-[clamp(18px,2.2vw,24px)] font-medium leading-[1.35] text-[#f7f3ea]`}>
-              {introductionHeading}
-            </p>
+            <p className={`${bannerStyles.lead} mt-4 font-medium`}>{introductionHeading}</p>
             {introductionLead ? (
               <div className={bannerStyles.lead}>
                 <MarkdownContent content={introductionLead} variant="dark" />
@@ -537,15 +379,13 @@ export default async function Home() {
             ) : null}
           </HomeSceneBanner>
 
-          <div className="mx-auto max-w-[1440px] px-7 py-14 max-sm:px-4 max-sm:py-10">
-            <p className="mb-6 text-[12px] tracking-[0.16em] text-[#a16e72]">04 / INTRODUCTION</p>
+          <div className={`${shell.inset} ${shell.sectionCompact}`}>
+            <p className={shell.kicker} style={{ color: "var(--home-accent)" }}>
+              04 / INTRODUCTION
+            </p>
             <IntroductionCarousel introductions={resume.introductions} showHeader={false} />
           </div>
         </section>
-
-        {/* ================================================================== */}
-        {/* FEATURED REDIS CACHE */}
-        {/* ================================================================== */}
 
         <section id="redis-cache" className="scroll-mt-20 border-t border-black/10">
           <HomeSceneBanner
@@ -572,9 +412,11 @@ export default async function Home() {
               <div>
                 <p className={bannerStyles.rowLabel}>검증</p>
                 <p className={bannerStyles.rowBody}>
-                  캐시 OFF·MISS·HIT 응답을 SHA-256으로 대조했습니다. 격리 환경에서 k6
-                  10 VU·30초, 각 조건 3회 비교 결과 상품 목록 SELECT 관측값은 600요청
-                  기준 캐시 OFF 591~595회에서 워밍 후 0회로 줄었습니다.
+                  캐시 OFF·MISS·HIT 응답을 SHA-256으로 대조했습니다. 상품 목록 SELECT
+                  관측값은 600요청 기준 캐시 OFF 591~595회에서 워밍 후 0회로 줄었습니다.
+                </p>
+                <p className={bannerStyles.metric}>
+                  측정 조건: 격리 환경 · k6 10 VU · 30초 · 각 조건 3회 비교
                 </p>
               </div>
             </div>
@@ -591,29 +433,18 @@ export default async function Home() {
                 직렬화기 호환성 기록
               </Link>
             </div>
-            <p className={`${bannerStyles.rowBody} mt-4 text-[13px] opacity-80`}>
+            <p className={`${bannerStyles.metric} mt-4`}>
               Jackson 2 ObjectMapper로 GenericJackson2JsonRedisSerializer를 구성해
               Jackson 3 기반 직렬화기 생성자 호환성 문제를 피한 기록은 위 링크로 남겼습니다.
             </p>
           </HomeSceneBanner>
         </section>
 
-        {/* ================================================================== */}
-        {/* TROUBLESHOOTING */}
-        {/* ================================================================== */}
-
-        <section
-          id="troubleshooting"
-          className="border-t border-black/10 px-7 py-[96px] max-sm:px-4 max-sm:py-14"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-              05 · TROUBLESHOOTING
-            </p>
-            <h2 className="max-w-[900px] text-[clamp(28px,5vw,64px)] font-normal leading-[1.1] tracking-[-0.05em]">
-              대표 구현의 재현·원인·검증 근거
-            </h2>
-            <ul className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-2 lg:grid-cols-4">
+        <section id="troubleshooting" className={`${shell.section} border-t border-black/10`}>
+          <div className={shell.inset}>
+            <p className={shell.kicker}>05 · TROUBLESHOOTING</p>
+            <h2 className={shell.sectionTitle}>대표 구현의 재현·원인·검증 근거</h2>
+            <ul className="mt-10 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-2 xl:grid-cols-4">
               {troubleshootingItems.map((item) => (
                 <li key={item.title} className="min-w-0">
                   {item.external ? (
@@ -621,57 +452,37 @@ export default async function Home() {
                       href={item.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
+                      className={`${shell.slideTitle} no-underline hover:opacity-60`}
                     >
                       {item.title} ↗
                     </a>
                   ) : (
-                    <Link
-                      href={item.href}
-                      className="text-[15px] tracking-[-0.02em] text-[#111] no-underline hover:opacity-50"
-                    >
+                    <Link href={item.href} className={`${shell.slideTitle} no-underline hover:opacity-60`}>
                       {item.title} →
                     </Link>
                   )}
-                  <p className="mt-3 text-[13px] leading-[1.7] text-[#555]">{item.body}</p>
+                  <p className={`${shell.body} mt-3`}>{item.body}</p>
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* ================================================================== */}
-        {/* PROJECTS */}
-        {/* ================================================================== */}
-
-        <section
-          id="projects"
-          className="px-7 py-[120px] max-sm:px-4 max-sm:py-16"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            {/* Header */}
-            <div className="flex items-end justify-between gap-8 border-b border-black pb-6 max-sm:pb-4">
+        <section id="projects" className={shell.section}>
+          <div className={shell.inset}>
+            <div className="flex items-end justify-between gap-8 border-b border-black pb-6">
               <div>
-                <p className="mb-4 text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-                  06 · PORTFOLIO DEMO
-                </p>
-                <h2 className="text-[clamp(32px,6vw,84px)] font-normal tracking-[-0.06em]">
-                  Selected Work
-                </h2>
+                <p className={shell.kicker}>06 · PORTFOLIO DEMO</p>
+                <h2 className={shell.sectionTitle}>Selected Work</h2>
               </div>
-              <a
-                href="/shop"
-                className="mb-2 text-[10px] tracking-[0.14em] text-[#111] no-underline hover:opacity-50"
-              >
+              <a href="/shop" className={`${shell.meta} mb-1 no-underline hover:opacity-60`}>
                 쇼핑몰 데모 →
               </a>
             </div>
 
-            {/* Project Cards */}
             <div className="grid grid-cols-2 max-md:grid-cols-1">
               {(
                 [
-                  // 1. Trouble Shooting이 Product Archive 위로 올라오도록 배열 순서 변경
                   {
                     id: -2,
                     title: "Trouble Shooting",
@@ -700,12 +511,8 @@ export default async function Home() {
                 ] as PortfolioProject[]
               ).map((project, index) => {
                 const href =
-                  project.id > 0
-                    ? `/projects/${project.id}`
-                    : project.projectUrl || "#";
-
+                  project.id > 0 ? `/projects/${project.id}` : project.projectUrl || "#";
                 const isExternal = href.startsWith("http");
-                
                 const isHighlight = project.id === -2;
 
                 return (
@@ -714,34 +521,27 @@ export default async function Home() {
                     href={href}
                     target={isExternal ? "_blank" : undefined}
                     rel={isExternal ? "noreferrer" : undefined}
-                    className="group min-h-[310px] border-b border-r border-black/15 p-7 text-[#171713] no-underline transition-colors hover:bg-black/[0.035] max-md:border-r-0 max-sm:min-h-[220px] max-sm:p-5"
+                    className="group min-h-[280px] border-b border-r border-black/15 p-7 text-[#171713] no-underline transition-colors hover:bg-black/[0.035] max-md:border-r-0 max-sm:min-h-[220px] max-sm:p-5"
                   >
-                    {/* Card Meta */}
-                    <div className="flex items-center justify-between gap-4 text-[10px] tracking-[0.12em] text-[#53534a]">
+                    <div className={`flex items-center justify-between gap-4 ${shell.meta}`}>
                       <span>
                         {String(index + 1).padStart(2, "0")} ·{" "}
                         {project.subtitle?.toUpperCase() || "PROJECT"}
                       </span>
                       <span>{project.status.replace("_", " ")}</span>
                     </div>
-
-                    {/* Title */}
-                    <h3 className="mt-24 flex items-center gap-3 text-[30px] tracking-[-0.04em] max-sm:mt-12 max-sm:text-[22px]">
+                    <h3 className={`${shell.slideTitle} mt-16 flex flex-wrap items-center gap-3 max-sm:mt-10`}>
                       {project.title}
-                      {isHighlight && (
-                        <span className="rounded-full border border-black/30 px-2 py-1 text-[9px] font-bold tracking-[0.1em]">
+                      {isHighlight ? (
+                        <span className="rounded-full border border-black/30 px-2 py-1 text-[10px] font-bold tracking-[0.1em]">
                           MAIN FOCUS
                         </span>
-                      )}
+                      ) : null}
                     </h3>
-
-                    {/* Tech Stack */}
-                    <p className="mt-4 text-[12px] leading-6 text-[#53534a] max-sm:text-[11px] max-sm:leading-5">
+                    <p className={`${shell.meta} mt-4`}>
                       {project.techStack || project.description}
                     </p>
-
-                    {/* Link */}
-                    <div className="mt-8 text-[11px] transition-transform group-hover:translate-x-2 max-sm:mt-6 max-sm:text-[10px]">
+                    <div className={`${shell.meta} mt-8 transition-transform group-hover:translate-x-2`}>
                       OPEN PROJECT →
                     </div>
                   </a>
@@ -751,46 +551,31 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* ================================================================== */}
-        {/* CONTACT */}
-        {/* ================================================================== */}
-
-        <section
-          id="contact"
-          className="px-7 pb-[80px] pt-[40px] max-sm:px-4 max-sm:pb-[60px] max-sm:pt-[20px]"
-        >
-          <div className="mx-auto max-w-[1440px] border-t border-black pt-7 max-sm:pt-5">
-            <p className="text-[25px] tracking-[0.16em] text-[#777] max-sm:text-[18px]">
-              CONTACT
-            </p>
-
-            <div className="mt-10 flex items-end justify-between gap-10 max-md:flex-col max-md:items-start max-md:gap-6 max-sm:mt-6">
-              <h2 className="text-[clamp(36px,8vw,120px)] font-medium leading-[1] tracking-[-0.07em]">
+        <section id="contact" className={`${shell.sectionCompact} pb-[4.5rem]`}>
+          <div className={`${shell.inset} border-t border-black pt-7`}>
+            <p className={shell.kicker}>CONTACT</p>
+            <div className="mt-8 flex items-end justify-between gap-10 max-md:flex-col max-md:items-start">
+              <h2 className={`${shell.sectionTitle} !max-w-none text-[clamp(36px,6vw,72px)] leading-[1.05]`}>
                 LET&apos;S
                 <br />
                 WORK TOGETHER.
               </h2>
-
-              <div className="flex flex-col items-end gap-3 text-[12px] max-md:items-start max-sm:text-[11px]">
-                {profile.email && (
-                  <a
-                    href={`mailto:${profile.email}`}
-                    className="border-b border-black pb-1 text-[#111] no-underline"
-                  >
+              <div className="flex flex-col items-end gap-3 max-md:items-start">
+                {profile.email ? (
+                  <a href={`mailto:${profile.email}`} className={`${shell.meta} border-b border-black pb-1 no-underline`}>
                     {profile.email}
                   </a>
-                )}
-
-                {profile.githubUrl && (
+                ) : null}
+                {profile.githubUrl ? (
                   <a
                     href={profile.githubUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="border-b border-black pb-1 tracking-[0.08em] text-[#111] no-underline"
+                    className={`${shell.meta} border-b border-black pb-1 tracking-[0.08em] no-underline`}
                   >
                     GITHUB ↗
                   </a>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  width: 100%;
   background:
     linear-gradient(115deg, var(--home-warm) 0%, var(--home-warm) 46%, var(--home-rose) 100%);
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -26,6 +27,13 @@
   z-index: 1;
 }
 
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(140px, 280px);
+  align-items: end;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+}
+
 .accentRule {
   height: 3px;
   width: 4.5rem;
@@ -33,37 +41,67 @@
 }
 
 .role {
+  margin: 0;
   color: var(--home-muted);
+  font-size: var(--home-meta, 14px);
+  letter-spacing: 0.16em;
 }
 
-.title {
+.name {
+  margin: 0;
   color: var(--home-ink);
+  font-size: clamp(42px, 7vw, 88px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.english {
+  margin: 0.65rem 0 0;
+  color: var(--home-muted);
+  font-size: var(--home-meta, 14px);
+  letter-spacing: 0.18em;
 }
 
 .copy {
+  margin: 0;
+  max-width: 40rem;
   color: var(--home-muted);
-}
-
-.panel {
-  border: 1px solid rgba(36, 34, 37, 0.12);
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(4px);
-}
-
-.panelTitle {
-  color: var(--home-accent);
-}
-
-.link {
-  color: var(--home-ink);
-  text-decoration: none;
-}
-
-.link:hover {
-  opacity: 0.6;
+  font-size: var(--home-body, clamp(15px, 0.35vw + 14px, 18px));
+  line-height: var(--home-leading, 1.7);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .profileFrame {
   border: 1px solid rgba(36, 34, 37, 0.12);
   background: #fff;
+  width: 100%;
+  max-width: 280px;
+  overflow: hidden;
+}
+
+.profileFrame img {
+  display: block;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+@media (max-width: 767px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .profileFrame {
+    max-width: 220px;
+  }
+
+  .name {
+    font-size: clamp(36px, 12vw, 56px);
+  }
 }

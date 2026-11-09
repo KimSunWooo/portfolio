@@ -20,7 +20,7 @@ type SkillStackSliderProps = {
 
 function pageSizeForWidth(width: number) {
   if (width >= 1100) return 4;
-  if (width >= 768) return 3;
+  if (width >= 700) return 3;
   return 2;
 }
 
@@ -38,21 +38,28 @@ export default function SkillStackSlider({ skills }: SkillStackSliderProps) {
   const safePage = Math.min(page, pageCount - 1);
 
   useEffect(() => {
-    const element = rootRef.current;
-    if (!element) return;
     const update = () => {
-      const next = pageSizeForWidth(element.clientWidth);
-      setPageSize((current) => (current === next ? current : next));
+      const nextSize = pageSizeForWidth(window.innerWidth);
+      setPageSize((currentSize) => {
+        if (currentSize === nextSize) return currentSize;
+        setPage((currentPage) => {
+          const firstIndex = currentPage * currentSize;
+          const nextCount = Math.max(1, Math.ceil(ordered.length / nextSize));
+          return Math.min(Math.floor(firstIndex / nextSize), nextCount - 1);
+        });
+        return nextSize;
+      });
     };
+
     update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [ordered.length]);
 
   const goTo = useCallback(
     (next: number) => {
-      setPage(Math.max(0, Math.min(next, pageCount - 1)));
+      const target = Math.max(0, Math.min(next, pageCount - 1));
+      setPage((current) => (current === target ? current : target));
     },
     [pageCount],
   );
@@ -75,6 +82,12 @@ export default function SkillStackSlider({ skills }: SkillStackSliderProps) {
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest("a, button, input, textarea, select, [contenteditable]")
+    ) {
+      return;
+    }
     drag.current = { pointerId: event.pointerId, x: event.clientX, page: safePage };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -88,8 +101,13 @@ export default function SkillStackSlider({ skills }: SkillStackSliderProps) {
     goTo(gesture.page + (delta < 0 ? 1 : -1));
   }
 
-  const start = safePage * pageSize;
-  const visible = ordered.slice(start, start + pageSize);
+  const pages = useMemo(() => {
+    const groups: ResumeSkill[][] = [];
+    for (let i = 0; i < ordered.length; i += pageSize) {
+      groups.push(ordered.slice(i, i + pageSize));
+    }
+    return groups.length > 0 ? groups : [[]];
+  }, [ordered, pageSize]);
 
   return (
     <div ref={rootRef} className={styles.root}>
@@ -132,33 +150,40 @@ export default function SkillStackSlider({ skills }: SkillStackSliderProps) {
           drag.current = null;
         }}
       >
-        <ul
+        <div
           className={styles.track}
-          style={{
-            gridTemplateColumns: `repeat(${pageSize}, minmax(0, 1fr))`,
-          }}
+          style={{ transform: `translate3d(-${safePage * 100}%, 0, 0)` }}
         >
-          {visible.map((skill) => {
-            const visual = skillVisual(skill.name, skill.category);
-            return (
-              <li key={skill.id} className={styles.card}>
-                <div className={styles.logoWrap}>
-                  <img
-                    src={visual.logoSrc}
-                    alt={visual.logoAlt}
-                    className={styles.logo}
-                    loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.style.visibility = "hidden";
-                    }}
-                  />
-                </div>
-                <p className={styles.name}>{skill.name}</p>
-                <p className={styles.usage}>{visual.usage}</p>
-              </li>
-            );
-          })}
-        </ul>
+          {pages.map((group, pageIndex) => (
+            <ul
+              key={`page-${pageIndex}`}
+              className={styles.page}
+              style={{ gridTemplateColumns: `repeat(${pageSize}, minmax(0, 1fr))` }}
+              aria-hidden={pageIndex !== safePage}
+            >
+              {group.map((skill) => {
+                const visual = skillVisual(skill.name, skill.category);
+                return (
+                  <li key={skill.id} className={styles.card}>
+                    <div className={styles.logoWrap}>
+                      <img
+                        src={visual.logoSrc}
+                        alt={visual.logoAlt}
+                        className={styles.logo}
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.visibility = "hidden";
+                        }}
+                      />
+                    </div>
+                    <p className={styles.name}>{skill.name}</p>
+                    <p className={styles.usage}>{visual.usage}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          ))}
+        </div>
       </div>
 
       {pageCount > 1 && (
