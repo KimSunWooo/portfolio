@@ -120,18 +120,17 @@ jobs:
       - name: 프런트 기동
         working-directory: frontend
         run: |
-          nohup npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/portfolio-verify-frontend.log 2>&1 &
+          nohup npm run dev -- --hostname localhost --port 3000 > /tmp/portfolio-verify-frontend.log 2>&1 &
           echo $! > /tmp/portfolio-verify-frontend.pid
         env:
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8080
+          NEXT_PUBLIC_API_URL: http://localhost:8080
           INTERNAL_API_URL: http://127.0.0.1:8080
 
       - name: 핵심 브라우저 시나리오
         working-directory: frontend
         run: |
-          node <<'NODE'
-          const { execFileSync, spawn } = require("node:child_process");
-          const fs = require("node:fs");
+          node --input-type=module <<'NODE'
+          import { execFileSync, spawn } from "node:child_process";
           async function wait(stage, probe, timeoutMs = 180000) {
             const started = Date.now();
             let last = "no response";
@@ -156,7 +155,7 @@ jobs:
             return response.ok ? true : `status ${response.status}`;
           });
           await wait("frontend-http", async () => {
-            const response = await fetch("http://127.0.0.1:3000/login");
+            const response = await fetch("http://localhost:3000/login");
             return response.ok ? true : `status ${response.status}`;
           });
           const child = spawn("npx", [

@@ -15,7 +15,7 @@ test("splits markdown by h2 headings and keeps lead", () => {
 
 둘째 본문입니다.
 `);
-  assert.match(lead, /도입 문단/);
+  assert.equal(lead, "도입 문단입니다.");
   assert.equal(sections.length, 2);
   assert.equal(sections[0].title, "첫 섹션");
   assert.match(sections[0].preview, /첫 본문/);

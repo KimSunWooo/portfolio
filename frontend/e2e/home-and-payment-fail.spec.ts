@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("home first viewport and payment fail", () => {
   test("home shows featured project links and shop demo label", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "KIM SUN WOO" })).toBeVisible();
     const nav = page.getByRole("navigation", { name: "대표 프로젝트 바로가기" });
     await expect(nav.getByRole("link", { name: "대표 프로젝트" })).toHaveAttribute("href", "#projects");
     await expect(nav.getByRole("link", { name: "트러블슈팅" })).toHaveAttribute("href", "#troubleshooting");

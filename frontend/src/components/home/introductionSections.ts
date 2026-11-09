@@ -23,7 +23,7 @@ export function splitIntroductionSections(content: string): {
     };
   }
 
-  const lead = parts[0].startsWith("## ") ? "" : parts[0].trim();
+  const lead = parts[0].startsWith("## ") ? "" : stripLeadingAtxH1(parts[0].trim());
   const sectionParts = parts[0].startsWith("## ") ? parts : parts.slice(1);
   const sections = sectionParts.map((part, index) => {
     const lines = part.split("\n");
@@ -37,6 +37,10 @@ export function splitIntroductionSections(content: string): {
     };
   });
   return { lead, sections };
+}
+
+function stripLeadingAtxH1(markdown: string): string {
+  return markdown.replace(/^#\s+[^\n]*\n+/, "").trim();
 }
 
 function plainPreview(markdown: string): string {
