@@ -29,14 +29,6 @@ function MyPageContent() {
   const router = useRouter();
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("demoOrderNotice");
-    if (saved) {
-      setNotice(saved);
-      sessionStorage.removeItem("demoOrderNotice");
-    }
-  }, []);
-
-  useEffect(() => {
     const loadHistory = async () => {
       setLoading(true);
       try {
@@ -44,6 +36,11 @@ function MyPageContent() {
         if (!isAccessTokenValid(token)) {
           router.replace("/login?next=/mypage");
           return;
+        }
+        const savedNotice = sessionStorage.getItem("demoOrderNotice");
+        if (savedNotice) {
+          sessionStorage.removeItem("demoOrderNotice");
+          setNotice(savedNotice);
         }
         if (activeTab === "ORDERS") {
           setOrders(await fetchDemoOrders());
