@@ -7,6 +7,7 @@ import HomeSceneBanner from "../components/home/HomeSceneBanner";
 import bannerStyles from "../components/home/HomeSceneBanner.module.css";
 import { splitIntroductionSections } from "../components/home/introductionSections";
 import SkillStackSlider from "../components/home/SkillStackSlider";
+import CacheMetricsPanel from "../components/home/CacheMetricsPanel";
 import ribbonStyles from "../components/home/homeRibbon.module.css";
 import shell from "../components/home/homeShell.module.css";
 import {
@@ -28,48 +29,19 @@ const fallback: ResumeData = {
   },
 
   skills: [
-    {
-      id: 1,
-      name: "Java",
-      category: "Backend",
-      level: "Intermediate",
-      sortOrder: 1,
-    },
-    {
-      id: 2,
-      name: "Spring",
-      category: "Backend",
-      level: "Intermediate",
-      sortOrder: 2,
-    },
-    {
-      id: 3,
-      name: "MySQL",
-      category: "Database",
-      level: "Intermediate",
-      sortOrder: 3,
-    },
-    {
-      id: 4,
-      name: "JavaScript",
-      category: "Frontend",
-      level: "Intermediate",
-      sortOrder: 4,
-    },
-    {
-      id: 5,
-      name: "React",
-      category: "Frontend",
-      level: "Intermediate",
-      sortOrder: 5,
-    },
-    {
-      id: 6,
-      name: "Next.js",
-      category: "Frontend",
-      level: "Intermediate",
-      sortOrder: 6,
-    },
+    { id: 1, name: "Java", category: "Backend", level: "Intermediate", sortOrder: 1 },
+    { id: 2, name: "Spring Boot", category: "Backend", level: "Intermediate", sortOrder: 2 },
+    { id: 3, name: "MySQL", category: "Database", level: "Intermediate", sortOrder: 3 },
+    { id: 4, name: "JavaScript", category: "Frontend", level: "Intermediate", sortOrder: 4 },
+    { id: 5, name: "React", category: "Frontend", level: "Intermediate", sortOrder: 5 },
+    { id: 6, name: "Next.js", category: "Frontend", level: "Intermediate", sortOrder: 6 },
+    { id: 7, name: "Git", category: "Tools", level: "Intermediate", sortOrder: 7 },
+    { id: 8, name: "Python", category: "Tools", level: "Intermediate", sortOrder: 8 },
+    { id: 9, name: "Aws EC2 Cloud", category: "Infra", level: "Intermediate", sortOrder: 9 },
+    { id: 10, name: "Docker", category: "Infra", level: "Intermediate", sortOrder: 10 },
+    { id: 11, name: "Git action", category: "Infra", level: "Intermediate", sortOrder: 11 },
+    { id: 12, name: "Aws S3 Storage", category: "Infra", level: "Intermediate", sortOrder: 12 },
+    { id: 13, name: "Linux", category: "OS", level: "Intermediate", sortOrder: 13 },
   ],
 
   experiences: [
@@ -280,20 +252,29 @@ export default async function Home() {
 
           <div className={`${shell.inset} ${ribbonStyles.inner}`}>
             <div className={ribbonStyles.heroGrid}>
-              <div>
-                <p className={ribbonStyles.role}>
-                  {(profile.jobTitle || "Backend / Full-stack Developer").toUpperCase()}
-                </p>
-                <div className={`${ribbonStyles.accentRule} mt-5`} />
+              <div className={ribbonStyles.heroCopy}>
+                <div className={ribbonStyles.roleBlock}>
+                  <p className={ribbonStyles.role}>
+                    {(profile.jobTitle || "Backend / Full-stack Developer").toUpperCase()}
+                  </p>
+                  <div className={ribbonStyles.accentRule} aria-hidden="true" />
+                </div>
                 <h1 className={`${ribbonStyles.name} mt-6`}>{displayName}</h1>
                 {englishName ? <p className={ribbonStyles.english}>{englishName}</p> : null}
                 <div className="mt-8 border-t border-[#242225]/15 pt-5">
                   <p className={`${ribbonStyles.copy} whitespace-pre-wrap`}>{profile.shortIntro}</p>
                 </div>
+                {profileImageUrl ? (
+                  <div className={`${ribbonStyles.profileSlot} md:hidden`}>
+                    <div className={ribbonStyles.profileFrame}>
+                      <img src={profileImageUrl} alt={profile.name ?? "Profile"} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {profileImageUrl ? (
-                <div className={ribbonStyles.profileFrame}>
+                <div className={`${ribbonStyles.profileFrame} max-md:hidden`}>
                   <img src={profileImageUrl} alt={profile.name ?? "Profile"} />
                 </div>
               ) : null}
@@ -420,15 +401,8 @@ export default async function Home() {
                 </p>
               </div>
             </div>
-            <div className={bannerStyles.actions}>
-              <a
-                href="https://github.com/KimSunWooo/portfolio#상품-목록-캐시-성능-측정"
-                target="_blank"
-                rel="noreferrer"
-                className={bannerStyles.primary}
-              >
-                캐시 측정 결과 보기
-              </a>
+            <CacheMetricsPanel />
+            <div className={`${bannerStyles.actions} mt-3`}>
               <Link href="/community/10" className={bannerStyles.secondary}>
                 직렬화기 호환성 기록
               </Link>

@@ -79,6 +79,7 @@
 }
 
 .logoWrap {
+  position: relative;
   display: grid;
   place-items: center;
   width: 3rem;
@@ -87,10 +88,28 @@
   background: #f4f1ef;
 }
 
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #5e5759;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .logo {
+  position: relative;
+  z-index: 1;
   width: 1.75rem;
   height: 1.75rem;
   object-fit: contain;
+  background: #f4f1ef;
+}
+
+.logo[data-failed="true"] {
+  opacity: 0;
 }
 
 .name {

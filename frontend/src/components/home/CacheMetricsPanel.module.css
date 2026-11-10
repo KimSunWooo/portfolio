@@ -1,0 +1,109 @@
+.root {
+  margin-top: 1.6rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.2rem;
+  font-size: var(--home-meta, 14px);
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  border: 1px solid rgb(247 243 234 / 55%);
+  background: transparent;
+  color: #f7f3ea;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.primary {
+  border-color: #f7f3ea;
+  background: #f7f3ea;
+  color: #242225;
+}
+
+.primary:hover,
+.secondary:hover {
+  opacity: 0.82;
+}
+
+.panel,
+.panelOpen {
+  margin-top: 1rem;
+}
+
+.panel {
+  display: none;
+}
+
+.panelOpen {
+  display: block;
+}
+
+.inner {
+  border: 1px solid rgb(247 243 234 / 28%);
+  background: rgb(12 10 12 / 55%);
+  padding: 1rem 1.1rem;
+}
+
+.kicker {
+  margin: 0 0 0.85rem;
+  color: #a16e72;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.list li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.label {
+  color: rgb(247 243 234 / 68%);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.list strong {
+  color: #f7f3ea;
+  font-size: var(--home-body, 16px);
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.note,
+.footnote {
+  margin: 0;
+  color: rgb(247 243 234 / 72%);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.note {
+  margin-top: 0.15rem;
+}
+
+.footnote {
+  margin-top: 1rem;
+}
+
+.footnote a {
+  color: #f7f3ea;
+}

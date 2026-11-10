@@ -11,7 +11,7 @@ import {
   type PointerEvent,
 } from "react";
 import type { ResumeSkill } from "../../lib/api";
-import { skillVisual } from "./skillMeta";
+import { skillInitials, skillVisual } from "./skillMeta";
 import styles from "./SkillStackSlider.module.css";
 
 type SkillStackSliderProps = {
@@ -163,16 +163,20 @@ export default function SkillStackSlider({ skills }: SkillStackSliderProps) {
             >
               {group.map((skill) => {
                 const visual = skillVisual(skill.name, skill.category);
+                const initials = skillInitials(skill.name);
                 return (
                   <li key={skill.id} className={styles.card}>
                     <div className={styles.logoWrap}>
+                      <span className={styles.fallback} aria-hidden="true">
+                        {initials}
+                      </span>
                       <img
                         src={visual.logoSrc}
                         alt={visual.logoAlt}
                         className={styles.logo}
                         loading="lazy"
                         onError={(event) => {
-                          event.currentTarget.style.visibility = "hidden";
+                          event.currentTarget.dataset.failed = "true";
                         }}
                       />
                     </div>

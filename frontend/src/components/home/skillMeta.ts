@@ -63,7 +63,7 @@ const BY_NAME: Record<string, SkillVisual> = {
     usage: "상품 목록 캐시와 무효화 검증",
   },
   docker: {
-    logoSrc: "https://cdn.simpleicons.org/docker/2496ED",
+    logoSrc: "/home/skills/docker.svg",
     logoAlt: "Docker",
     usage: "verify·배포 컨테이너와 블루·그린 전환",
   },
@@ -73,9 +73,39 @@ const BY_NAME: Record<string, SkillVisual> = {
     usage: "리버스 프록시와 정적 프론트 서빙",
   },
   aws: {
-    logoSrc: "https://cdn.simpleicons.org/amazonaws/232F3E",
+    logoSrc: "/home/skills/amazonaws.svg",
     logoAlt: "AWS",
     usage: "EC2·RDS·S3 기반 운영 배포",
+  },
+  "aws ec2": {
+    logoSrc: "/home/skills/amazonec2.svg",
+    logoAlt: "AWS EC2",
+    usage: "운영 서버 실행과 배포 호스트",
+  },
+  "aws ec2 cloud": {
+    logoSrc: "/home/skills/amazonec2.svg",
+    logoAlt: "AWS EC2",
+    usage: "운영 서버 실행과 배포 호스트",
+  },
+  ec2: {
+    logoSrc: "/home/skills/amazonec2.svg",
+    logoAlt: "AWS EC2",
+    usage: "운영 서버 실행과 배포 호스트",
+  },
+  "aws s3": {
+    logoSrc: "/home/skills/amazons3.svg",
+    logoAlt: "AWS S3",
+    usage: "프로필·상품 이미지 저장",
+  },
+  "aws s3 storage": {
+    logoSrc: "/home/skills/amazons3.svg",
+    logoAlt: "AWS S3",
+    usage: "프로필·상품 이미지 저장",
+  },
+  s3: {
+    logoSrc: "/home/skills/amazons3.svg",
+    logoAlt: "AWS S3",
+    usage: "프로필·상품 이미지 저장",
   },
   kafka: {
     logoSrc: "https://cdn.simpleicons.org/apachekafka/231F20",
@@ -97,18 +127,38 @@ const BY_NAME: Record<string, SkillVisual> = {
     logoAlt: "Hibernate",
     usage: "엔티티 매핑과 Fetch Join 조회 개선",
   },
+  git: {
+    logoSrc: "/home/skills/git.svg",
+    logoAlt: "Git",
+    usage: "소스 버전 관리와 브랜치 전략",
+  },
   github: {
     logoSrc: "/home/github-logo.png",
     logoAlt: "GitHub",
     usage: "포트폴리오 저장소와 Actions PR·배포",
   },
   "github actions": {
-    logoSrc: "/home/github-logo.png",
+    logoSrc: "/home/skills/githubactions.svg",
     logoAlt: "GitHub Actions",
     usage: "PR 검사와 운영 배포 워크플로",
   },
+  "git action": {
+    logoSrc: "/home/skills/githubactions.svg",
+    logoAlt: "GitHub Actions",
+    usage: "PR 검사와 운영 배포 워크플로",
+  },
+  "git actions": {
+    logoSrc: "/home/skills/githubactions.svg",
+    logoAlt: "GitHub Actions",
+    usage: "PR 검사와 운영 배포 워크플로",
+  },
+  python: {
+    logoSrc: "/home/skills/python.svg",
+    logoAlt: "Python",
+    usage: "캐시 측정·배포 mock 자동화 스크립트",
+  },
   linux: {
-    logoSrc: "https://cdn.simpleicons.org/linux/FCC624",
+    logoSrc: "/home/skills/linux.svg",
     logoAlt: "Linux",
     usage: "서버 상태 점검과 crontab 운영",
   },
@@ -129,14 +179,37 @@ const BY_NAME: Record<string, SkillVisual> = {
   },
 };
 
+function normalizeSkillKey(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 export function skillVisual(name: string, category?: string | null): SkillVisual {
-  const key = name.trim().toLowerCase();
+  const key = normalizeSkillKey(name);
   const found = BY_NAME[key];
   if (found) return found;
+
+  if (key.includes("ec2")) return BY_NAME["aws ec2"];
+  if (key.includes("s3")) return BY_NAME["aws s3"];
+  if (key.includes("action")) return BY_NAME["github actions"];
+  if (key.includes("docker")) return BY_NAME.docker;
+  if (key.includes("aws")) return BY_NAME.aws;
+  if (key === "git" || key.startsWith("git ")) return BY_NAME.git;
+
   const slug = key.replace(/\s+/g, "").replace(/\./g, "dot");
   return {
     logoSrc: `https://cdn.simpleicons.org/${encodeURIComponent(slug)}/5e5759`,
     logoAlt: name,
     usage: category ? `${category} 영역에서 ${DEFAULT_USAGE}` : DEFAULT_USAGE,
   };
+}
+
+export function skillInitials(name: string) {
+  const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }

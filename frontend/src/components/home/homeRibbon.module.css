@@ -16,7 +16,7 @@
 .ribbon {
   pointer-events: none;
   position: absolute;
-  inset: auto -8% 8% -8%;
+  inset: auto -8% 4% -8%;
   height: min(34vw, 280px);
   z-index: 0;
   opacity: 0.9;
@@ -34,10 +34,20 @@
   gap: clamp(1.5rem, 4vw, 3.5rem);
 }
 
+.heroCopy {
+  min-width: 0;
+}
+
+.roleBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .accentRule {
-  height: 3px;
-  width: 4.5rem;
-  background: var(--home-accent);
+  display: none;
 }
 
 .role {
@@ -45,6 +55,8 @@
   color: var(--home-muted);
   font-size: var(--home-meta, 14px);
   letter-spacing: 0.16em;
+  border-bottom: 3px solid var(--home-accent);
+  padding-bottom: 0.55rem;
 }
 
 .name {
@@ -81,6 +93,8 @@
   width: 100%;
   max-width: 280px;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 .profileFrame img {
@@ -92,16 +106,59 @@
 }
 
 @media (max-width: 767px) {
+  .hero {
+    padding-bottom: clamp(2.5rem, 8vw, 3.5rem);
+  }
+
+  .ribbon {
+    inset: auto -12% -6% -12%;
+    height: min(42vw, 180px);
+    opacity: 0.55;
+  }
+
   .heroGrid {
     grid-template-columns: 1fr;
     align-items: start;
+    gap: 1.35rem;
   }
 
-  .profileFrame {
-    max-width: 220px;
+  .heroCopy {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .roleBlock {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .role {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    line-height: 1.45;
+    word-break: keep-all;
+  }
+
+  .accentRule {
+    width: 100%;
+    margin: 0;
   }
 
   .name {
     font-size: clamp(36px, 12vw, 56px);
+  }
+
+  .profileSlot {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.15rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid rgba(36, 34, 37, 0.12);
+  }
+
+  .profileFrame {
+    max-width: 156px;
+    width: min(42vw, 156px);
   }
 }
