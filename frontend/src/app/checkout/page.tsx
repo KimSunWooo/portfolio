@@ -6,7 +6,7 @@ import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
 import { fetchCartItems, resolveAssetUrl, type CartItemResponse, resolveAuthState, getGuestCart } from "../../lib/api";
 import DaumPostcodeEmbed, { type Address } from "react-daum-postcode";
-import { loadTossPayments } from '@tosspayments/payment-sdk'; // 💡 토스 결제 SDK 임포트
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -14,7 +14,6 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
 
-  // 💡 폼 데이터 상태 관리
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -23,7 +22,7 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
   
-  const [paymentMethod, setPaymentMethod] = useState("카드"); // 💡 결제수단 상태
+  const [paymentMethod, setPaymentMethod] = useState("카드");
   const [isPostOpen, setIsPostOpen] = useState(false);
 
   const SHIPPING_FEE = 3000;
@@ -60,7 +59,6 @@ export default function CheckoutPage() {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + SHIPPING_FEE;
 
-  // 💡 주문 제출 시 토스 결제창 호출
   const handlePlaceOrder = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!authenticated) {
@@ -81,7 +79,7 @@ export default function CheckoutPage() {
         : cartItems[0]?.productName || "포트폴리오 테스트 결제";
 
       await tossPayments.requestPayment(paymentMethod as "카드" | "가상계좌", {
-        amount: 100, // 💡 현재 테스트를 위해 100원으로 고정. 실제 서비스 시 `total` 로 변경
+        amount: 100, // 테스트 결제 고정 금액. 실서비스에서는 total 사용
         orderId: `ORDER_${new Date().getTime()}`,
         orderName: orderName,
         customerName: customerName,
@@ -269,7 +267,6 @@ export default function CheckoutPage() {
         </div>
       </main>
       
-      {/* 💡 우편번호 검색 모달 오버레이 */}
       {isPostOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-5">
           <div className="relative w-full max-w-[500px] bg-white p-5 shadow-lg">

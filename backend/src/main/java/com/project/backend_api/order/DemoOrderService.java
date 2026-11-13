@@ -2,10 +2,13 @@ package com.project.backend_api.order;
 
 import com.project.backend_api.domain.user.User;
 import com.project.backend_api.repository.UserRepository;
+import com.project.backend_api.service.ProductListCache;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,15 +34,24 @@ public class DemoOrderService {
     private final UserRepository userRepository;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
+    private final ProductListCache productListCache;
 
+    @Autowired
     public DemoOrderService(
             UserRepository userRepository,
             JdbcTemplate jdbc,
-            DataSource dataSource
+            DataSource dataSource,
+            @Nullable ProductListCache productListCache
     ) {
         this.userRepository = userRepository;
         this.jdbc = jdbc;
         this.transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        this.productListCache = productListCache;
+    }
+
+    /** Test helper when ProductListCache is not on the Spring context. */
+    public DemoOrderService(UserRepository userRepository, JdbcTemplate jdbc, DataSource dataSource) {
+        this(userRepository, jdbc, dataSource, null);
     }
 
     public DemoOrderResponse confirm(String email, String requestKey, String requestId) {
@@ -149,6 +161,7 @@ public class DemoOrderService {
         }
 
         jdbc.update("DELETE FROM cart_items WHERE cart_id = ?", cartId);
+        evictProductListCacheAfterCommit();
         return loadOrder(orderKey, requestId);
     }
 
@@ -158,8 +171,10 @@ public class DemoOrderService {
     }
 
     private DemoOrderResponse cancelInTransaction(User user, String orderKey, String requestId) {
+        // Serialize cancel attempts for the same order so stock restore cannot double-apply.
         List<Map<String, Object>> orders = jdbc.queryForList("""
                 SELECT order_key, user_id FROM purchase_orders WHERE order_key = ?
+                FOR UPDATE
                 """, orderKey);
         if (orders.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다.");
@@ -172,23 +187,36 @@ public class DemoOrderService {
         List<Map<String, Object>> lines = jdbc.queryForList("""
                 SELECT id, product_id, color_id, quantity, line_status, stock_restored
                 FROM purchase_lines WHERE order_key = ?
+                FOR UPDATE
                 """, orderKey);
+        boolean restoredAny = false;
         for (Map<String, Object> line : lines) {
-            String status = String.valueOf(line.get("line_status"));
-            boolean restored = asBoolean(line.get("stock_restored"));
-            if ("PAID".equals(status) && !restored) {
-                Integer productId = line.get("product_id") == null ? null : ((Number) line.get("product_id")).intValue();
-                Integer colorId = line.get("color_id") == null ? null : ((Number) line.get("color_id")).intValue();
-                int quantity = ((Number) line.get("quantity")).intValue();
-                restoreStock(productId, colorId, quantity);
-                jdbc.update("""
-                        UPDATE purchase_lines
-                        SET line_status = 'CANCELLED', stock_restored = 1
-                        WHERE id = ?
-                        """, line.get("id"));
+            Object lineId = line.get("id");
+            // Claim the cancel transition atomically; only the winner restores stock.
+            int claimed = jdbc.update("""
+                    UPDATE purchase_lines
+                    SET line_status = 'CANCELLED', stock_restored = 1
+                    WHERE id = ? AND line_status = 'PAID' AND stock_restored = 0
+                    """, lineId);
+            if (claimed != 1) {
+                continue;
             }
+            Integer productId = line.get("product_id") == null ? null : ((Number) line.get("product_id")).intValue();
+            Integer colorId = line.get("color_id") == null ? null : ((Number) line.get("color_id")).intValue();
+            int quantity = ((Number) line.get("quantity")).intValue();
+            restoreStock(productId, colorId, quantity);
+            restoredAny = true;
+        }
+        if (restoredAny) {
+            evictProductListCacheAfterCommit();
         }
         return loadOrder(orderKey, requestId);
+    }
+
+    private void evictProductListCacheAfterCommit() {
+        if (productListCache != null) {
+            productListCache.evictAfterCommit();
+        }
     }
 
     public List<DemoOrderResponse> listMine(String email) {

@@ -33,7 +33,7 @@ public class ProductController {
 
     // 👉 GET /api/products
     @GetMapping("/products")
-    public List<ProductListResponse> getProducts( // 🌟 반환 타입은 List<ProductListResponse> 그대로 유지!
+    public List<ProductListResponse> getProducts(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search
     ) {

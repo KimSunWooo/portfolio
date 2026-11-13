@@ -108,8 +108,16 @@ class ProductListCacheProxyTest {
         }
 
         @Bean
-        CacheManager cacheManager() {
-            return new ConcurrentMapCacheManager(ProductListCache.NAME);
+        ProductListCacheGeneration productListCacheGeneration() {
+            return new ProductListCacheGeneration();
+        }
+
+        @Bean
+        CacheManager cacheManager(ProductListCacheGeneration generation) {
+            return new GenerationAwareCacheManager(
+                    new ConcurrentMapCacheManager(ProductListCache.NAME),
+                    generation
+            );
         }
 
         @Bean
@@ -118,14 +126,18 @@ class ProductListCacheProxyTest {
         }
 
         @Bean
-        ProductService productService(ProductRepository productRepository, CacheManager cacheManager) {
+        ProductService productService(
+                ProductRepository productRepository,
+                CacheManager cacheManager,
+                ProductListCacheGeneration generation
+        ) {
             return new ProductService(
                     productRepository,
                     mock(ProductDetailRepository.class),
                     mock(ProductImageRepository.class),
                     mock(ProductColorRepository.class),
                     mock(com.amazonaws.services.s3.AmazonS3.class),
-                    new ProductListCache(cacheManager),
+                    new ProductListCache(cacheManager, generation),
                     mock(AfterCommit.class),
                     emptyPublisher(),
                     emptyObservation()
@@ -143,8 +155,16 @@ class ProductListCacheProxyTest {
         }
 
         @Bean
-        CacheManager cacheManager() {
-            return new ConcurrentMapCacheManager(ProductListCache.NAME);
+        ProductListCacheGeneration productListCacheGeneration() {
+            return new ProductListCacheGeneration();
+        }
+
+        @Bean
+        CacheManager cacheManager(ProductListCacheGeneration generation) {
+            return new GenerationAwareCacheManager(
+                    new ConcurrentMapCacheManager(ProductListCache.NAME),
+                    generation
+            );
         }
 
         @Bean
@@ -153,14 +173,18 @@ class ProductListCacheProxyTest {
         }
 
         @Bean
-        ProductService productService(ProductRepository productRepository, CacheManager cacheManager) {
+        ProductService productService(
+                ProductRepository productRepository,
+                CacheManager cacheManager,
+                ProductListCacheGeneration generation
+        ) {
             return new ProductService(
                     productRepository,
                     mock(ProductDetailRepository.class),
                     mock(ProductImageRepository.class),
                     mock(ProductColorRepository.class),
                     mock(com.amazonaws.services.s3.AmazonS3.class),
-                    new ProductListCache(cacheManager),
+                    new ProductListCache(cacheManager, generation),
                     mock(AfterCommit.class),
                     emptyPublisher(),
                     emptyObservation()

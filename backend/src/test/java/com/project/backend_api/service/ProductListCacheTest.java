@@ -68,4 +68,24 @@ class ProductListCacheTest {
         }
         assertNull(cache.get("lip_none"));
     }
+
+    @Test
+    void staleLoaderCannotRepopulateAfterEviction() throws Exception {
+        ProductListCacheGeneration generation = new ProductListCacheGeneration();
+        SimpleCacheManager manager = new SimpleCacheManager();
+        ConcurrentMapCache raw = new ConcurrentMapCache(ProductListCache.NAME);
+        manager.setCaches(List.of(raw));
+        manager.initializeCaches();
+        GenerationAwareCacheManager aware = new GenerationAwareCacheManager(manager, generation);
+        ProductListCache productListCache = new ProductListCache(aware, generation);
+
+        long observed = productListCache.generation();
+        productListCache.evictAfterCommit();
+        assertTrue(productListCache.generation() > observed);
+        assertFalse(productListCache.putIfGenerationMatches("ALL_NONE", "stale-stock", observed));
+        assertNull(aware.getCache(ProductListCache.NAME).get("ALL_NONE"));
+
+        assertTrue(productListCache.putIfGenerationMatches("ALL_NONE", "fresh", productListCache.generation()));
+        assertEquals("fresh", aware.getCache(ProductListCache.NAME).get("ALL_NONE", String.class));
+    }
 }

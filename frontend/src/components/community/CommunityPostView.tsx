@@ -11,6 +11,7 @@ import {
   type CommunityCategory,
 } from "../../lib/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import MarkdownContent from "../common/MarkdownContent";
 
 function formatDate(value: string) {
   if (!value) return "-";
@@ -67,7 +68,6 @@ export default function CommunityPostView({ id }: { id: string }) {
   const handleEditClick = () => {
     if (!post) return;
     
-    // 🌟 안전한 기본값 할당 (비제어 컴포넌트 에러 방지)
     setEditCategory((post.category as CommunityCategory | "TECH") || "TECH");
     setEditTitle(post.title || "");
     setEditIsPinned(post.isPinned || false);
@@ -126,7 +126,6 @@ export default function CommunityPostView({ id }: { id: string }) {
         author: post?.author || "ADMIN",
         isPinned: editIsPinned,
         
-        // 🌟 null 대신 undefined로 수정하여 타입스크립트 에러 해결
         occurrenceDate: editCategory === "TECH" ? (editOccurrenceDate || undefined) : undefined,
         status: editCategory === "TECH" ? (editStatus || undefined) : undefined,
         severity: editCategory === "TECH" ? (editSeverity || undefined) : undefined,
@@ -147,7 +146,7 @@ export default function CommunityPostView({ id }: { id: string }) {
       }
 
       setIsEditing(false);
-      router.refresh(); // 🌟 Next.js 서버 캐시 갱신 (목록으로 돌아갔을 때 반영되게 함)
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "게시글 수정에 실패했습니다.");
     } finally {
@@ -174,7 +173,7 @@ export default function CommunityPostView({ id }: { id: string }) {
         {!isEditing && isAdmin && (
           <div className="flex gap-4">
             <button 
-              type="button" // 🌟 form 안의 button 처럼 동작하지 않도록 명시
+              type="button"
               onClick={handleEditClick} 
               disabled={submitting}
               className="text-blue-600 hover:underline transition-colors disabled:opacity-50"
@@ -203,7 +202,6 @@ export default function CommunityPostView({ id }: { id: string }) {
                 onChange={(e) => setEditCategory(e.target.value as CommunityCategory | "TECH")}
                 className="h-11 border border-black/20 bg-white px-3 text-[12px] outline-none focus:border-black"
               >
-                {/* 🌟 value가 중복되면 버그가 생기므로 명확하게 정리 */}
                 <option value="TECH">TECH (트러블슈팅 / 개선사항)</option>
                 <option value="NOTICE">NOTICE</option>
               </select>
@@ -386,8 +384,8 @@ export default function CommunityPostView({ id }: { id: string }) {
 
                   <section>
                     <h2 className="text-[11px] font-bold tracking-[0.08em] text-[#555]">RESOLUTION (해결 과정)</h2>
-                    <div className="mt-3 whitespace-pre-wrap text-[13px] leading-[2] text-[#333]">
-                      {post.content}
+                    <div className="mt-3">
+                      <MarkdownContent content={post.content} variant="light" />
                     </div>
                   </section>
                 </div>

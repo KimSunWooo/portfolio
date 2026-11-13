@@ -139,7 +139,6 @@ export default function ProjectAdmin() {
   );
 }
 
-// 💡 모바일 친화적으로 개선된 ProjectListItem
 function ProjectListItem({ item, isActive, onEdit, onDelete }: { item: PortfolioProject; isActive: boolean; onEdit: () => void; onDelete: () => void; }) {
   const [firstMediaUrl, setFirstMediaUrl] = useState<string | null>(null);
 

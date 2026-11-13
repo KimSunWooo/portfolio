@@ -1,12 +1,11 @@
 "use client";
 
 import {
-  resolveAssetUrl, // 💡 BACKEND_BASE_URL 대신 이것을 직접 가져옵니다.
+  resolveAssetUrl,
   type PortfolioProject,
   type ProjectMedia,
 } from "../../../lib/api";
 
-// 💡 여기에 있던 중복된 resolveAssetUrl 함수는 삭제했습니다.
 
 function formatPeriod(
   start?: string | null,

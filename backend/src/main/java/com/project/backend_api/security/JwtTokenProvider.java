@@ -30,7 +30,7 @@ public class JwtTokenProvider {
     private final long accessTokenValidityInMilliseconds = 1000L * 60 * 30;
     private final long refreshTokenValidityInMilliseconds = 1000L * 60 * 60 * 24 * 14;
 
-    // 💡 Key 대신 SecretKey 타입 사용 (최신 권장 사항)
+    // JJWT 권장 SecretKey 타입
     private SecretKey secretKey;
 
     @PostConstruct
@@ -42,7 +42,6 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date validity = new Date(now.getTime() + accessTokenValidityInMilliseconds);
 
-        // 💡 set 접두사가 모두 사라지고, claim()으로 직관적인 데이터 주입
         return Jwts.builder()
                 .subject(email)
                 .claim("role", role)
@@ -121,7 +120,6 @@ public class JwtTokenProvider {
     }
 
     public String getEmailFromToken(String token) {
-        // 💡 parserBuilder() 대신 parser() 사용, getBody() 대신 getPayload() 사용
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
@@ -139,7 +137,6 @@ public class JwtTokenProvider {
         }
     }
 
-    // 💡 1. HTTP 헤더에서 토큰을 추출하는 메서드
     public String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         // "Bearer "로 시작하는지 확인 후, 실제 토큰 문자열만 잘라서 반환
@@ -149,7 +146,6 @@ public class JwtTokenProvider {
         return null;
     }
 
-    // 💡 2. 토큰을 복호화하여 Spring Security용 인증(Authentication) 객체를 만드는 메서드
     public Authentication getAuthentication(String token) {
         // 토큰의 알맹이(Payload) 복호화
         Claims claims = Jwts.parser()

@@ -3,11 +3,13 @@ package com.project.backend_api.order;
 import com.project.backend_api.domain.cart.Cart;
 import com.project.backend_api.domain.cart.CartItem;
 import com.project.backend_api.domain.product.Product;
+import com.project.backend_api.domain.product.ProductColor;
 import com.project.backend_api.domain.user.User;
 import com.project.backend_api.domain.user.UserRole;
 import com.project.backend_api.dto.product.ProductRequest;
 import com.project.backend_api.repository.CartItemRepository;
 import com.project.backend_api.repository.CartRepository;
+import com.project.backend_api.repository.ProductColorRepository;
 import com.project.backend_api.repository.ProductRepository;
 import com.project.backend_api.repository.UserRepository;
 import com.project.backend_api.support.SimpleCacheTestConfiguration;
@@ -33,9 +35,12 @@ import org.testcontainers.mysql.MySQLContainer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -85,6 +90,8 @@ class DemoOrderMySqlTest {
     UserRepository userRepository;
     @Autowired
     ProductRepository productRepository;
+    @Autowired
+    ProductColorRepository productColorRepository;
     @Autowired
     CartRepository cartRepository;
     @Autowired
@@ -173,6 +180,99 @@ class DemoOrderMySqlTest {
         service.cancel(ownerEmail, won.orderKey(), "cancel-again");
         assertEquals(1, count("SELECT stock FROM products WHERE id = " + contested.getId()));
         assertTrue(service.listMine(ownerEmail).stream().anyMatch(order -> order.orderKey().equals(won.orderKey())));
+    }
+
+    @Test
+    void concurrentCancelRestoresStockExactlyOnce() throws Exception {
+        jdbc.update("DELETE FROM cart_items");
+        Product bulk = productRepository.save(Product.create(new ProductRequest(
+                "Bulk Lip", null, "demo", "LIP", 3000, null, null, true, false, 10, "SALE", null)));
+        Cart cart = cartRepository.findByUserEmailWithProducts(buyer.getEmail())
+                .orElseGet(() -> cartRepository.save(Cart.builder().user(buyer).build()));
+        cartItemRepository.save(CartItem.builder().cart(cart).product(bulk).quantity(3).build());
+
+        DemoOrderService.DemoOrderResponse order = service.confirm(buyer.getEmail(), "cancel-race-key", "req");
+        assertEquals(7, count("SELECT stock FROM products WHERE id = " + bulk.getId()));
+
+        int threads = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger cancelled = new AtomicInteger();
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                ready.countDown();
+                start.await(5, TimeUnit.SECONDS);
+                DemoOrderService.DemoOrderResponse response =
+                        service.cancel(buyer.getEmail(), order.orderKey(), "cancel-" + Thread.currentThread().threadId());
+                if ("CANCELLED".equals(response.status())) {
+                    cancelled.incrementAndGet();
+                }
+                return null;
+            }));
+        }
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        for (Future<?> future : futures) {
+            future.get(10, TimeUnit.SECONDS);
+        }
+        pool.shutdownNow();
+
+        assertEquals(threads, cancelled.get());
+        assertEquals(10, count("SELECT stock FROM products WHERE id = " + bulk.getId()));
+        assertEquals(1, count("""
+                SELECT COUNT(*) FROM purchase_lines
+                WHERE order_key = '%s' AND line_status = 'CANCELLED' AND stock_restored = 1
+                """.formatted(order.orderKey())));
+    }
+
+    @Test
+    void concurrentCancelWithColorStockRestoresBothLevelsOnce() throws Exception {
+        jdbc.update("DELETE FROM cart_items");
+        Product colored = productRepository.save(Product.create(new ProductRequest(
+                "Color Lip", null, "demo", "LIP", 4000, null, null, true, false, 5, "SALE", null)));
+        ProductColor color = productColorRepository.save(ProductColor.create(colored.getId(), "red", 0));
+        jdbc.update("UPDATE product_colors SET stock = 5 WHERE id = ?", color.getId());
+
+        Cart cart = cartRepository.findByUserEmailWithProducts(buyer.getEmail())
+                .orElseGet(() -> cartRepository.save(Cart.builder().user(buyer).build()));
+        cartItemRepository.save(CartItem.builder().cart(cart).product(colored).color(color).quantity(2).build());
+
+        DemoOrderService.DemoOrderResponse order = service.confirm(buyer.getEmail(), "color-cancel", "req");
+        assertEquals(3, count("SELECT stock FROM products WHERE id = " + colored.getId()));
+        assertEquals(3, count("SELECT stock FROM product_colors WHERE id = " + color.getId()));
+
+        ExecutorService pool = Executors.newFixedThreadPool(6);
+        CountDownLatch ready = new CountDownLatch(6);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            futures.add(pool.submit(() -> {
+                ready.countDown();
+                start.await(5, TimeUnit.SECONDS);
+                service.cancel(buyer.getEmail(), order.orderKey(), "c");
+                return null;
+            }));
+        }
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        for (Future<?> future : futures) {
+            future.get(10, TimeUnit.SECONDS);
+        }
+        pool.shutdownNow();
+
+        assertEquals(5, count("SELECT stock FROM products WHERE id = " + colored.getId()));
+        assertEquals(5, count("SELECT stock FROM product_colors WHERE id = " + color.getId()));
+    }
+
+    @Test
+    void otherUserCannotCancelAndDoesNotChangeStock() {
+        DemoOrderService.DemoOrderResponse order = service.confirm(buyer.getEmail(), "forbid-cancel", "req");
+        int stockAfterConfirm = count("SELECT stock FROM products WHERE id = " + product.getId());
+        assertThrows(ResponseStatusException.class,
+                () -> service.cancel(other.getEmail(), order.orderKey(), "x"));
+        assertEquals(stockAfterConfirm, count("SELECT stock FROM products WHERE id = " + product.getId()));
     }
 
     private int count(String sql) {

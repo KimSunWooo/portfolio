@@ -10,6 +10,11 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 | 인증 복구와 세션 폐기 | 동시 Refresh와 로그아웃 이후 늦게 도착한 응답의 상태 충돌 | [프런트 인증 처리](frontend/src/lib/api.ts), [세션 통합 테스트](backend/src/test/java/com/project/backend_api/security/SessionLifecycleMySqlTest.java) |
 | 배포 준비 검사와 복구 | 새 컨테이너 또는 Nginx 전환 실패 시 이전 서비스로 복구 | [배포 스크립트](deploy.sh), [실패 조건 테스트](ops/tests/run-deploy-checks.sh) |
 | 상품 목록 Redis 캐시 | 반복 조회의 DB 접근과 응답 지연 감소 | [캐시 구현](backend/src/main/java/com/project/backend_api/service/ProductListCache.java), [측정 원본](ops/perf/2026-10-29-cache-ab/summary.json) |
+| 데모 주문 동시 취소·재고 | 동일 주문 동시 취소 시 재고 중복 복구 방지 | [DemoOrderService](backend/src/main/java/com/project/backend_api/order/DemoOrderService.java), [DemoOrderMySqlTest](backend/src/test/java/com/project/backend_api/order/DemoOrderMySqlTest.java) |
+| 주문 후 목록 캐시 정합성 | 재고 변경 커밋 후 목록 캐시 세대 무효화 | [ProductListCache](backend/src/main/java/com/project/backend_api/service/ProductListCache.java), [캐시 MySQL 테스트](backend/src/test/java/com/project/backend_api/order/DemoOrderProductListCacheMySqlTest.java) |
+| 구매 분석 SQL 집계 | 대량 행 Java 합산 비용 감소(좁은 필터에서 확인) | [PurchaseAnalyticsService](backend/src/main/java/com/project/backend_api/purchase/PurchaseAnalyticsService.java), [측정 원본](ops/perf/2026-11-13-purchase-analytics/) |
+| 테스트 결제 다중 인스턴스 복구 | JVM 잠금만으로는 부족했던 승인 중복·불확실 상태 복구 | [PaymentService](backend/src/main/java/com/project/backend_api/service/PaymentService.java), [PaymentRecoveryMySqlTest](backend/src/test/java/com/project/backend_api/service/PaymentRecoveryMySqlTest.java) |
+| 홈 SSR 장애 격리 | 이력·프로젝트 API 지연/실패 시에도 폴백으로 첫 화면 유지 | [homeData](frontend/src/lib/homeData.mts), [단위 테스트](frontend/src/lib/homeData.test.mts) |
 
 ## 서비스와 구현 범위
 
@@ -31,7 +36,7 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 
 ### 담당 범위와 개발 방식
 
-Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, Redis 캐시, Docker 이미지, GitHub Actions와 배포 스크립트를 구현했습니다. 기능 구현과 리팩터링에 Cursor를 활용했으며, 요구사항 정의·설계 선택·생성 코드 검토와 수정·테스트를 통해 결과를 검증했습니다.
+Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, Redis 캐시, Docker 이미지, GitHub Actions와 배포 스크립트를 구현했습니다. 요구사항 정의·설계·구현·검토·테스트까지 직접 검증했습니다.
 
 ## 핵심 문제 해결
 
@@ -86,6 +91,46 @@ Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, R
 [배포 구현](deploy.sh) · [실패 조건 테스트](ops/tests/run-deploy-checks.sh) · [배포 실패 조사 기록](docs/incidents/2026-10-13-backend-readiness.md)
 
 **처리 경계:** 실패 조건 테스트는 mock 환경에서 실행합니다. 배포 복구는 DB 마이그레이션을 되돌리지 않으며, 프런트 컨테이너 교체 중에는 짧은 중단이 있습니다. 100원 테스트 결제 이력과 구매 분석(`purchase_orders`)은 자동 연결되지 않으며, 구매 분석 DEMO는 별도 시드로 넣습니다.
+
+### 4. 데모 주문 동시 취소와 재고 정합성
+
+**문제:** 취소 경로가 주문 라인을 읽은 뒤 재고를 복구하고 상태를 바꿔, 같은 주문에 대한 동시 취소가 재고를 두 번 되돌릴 수 있었습니다.
+
+**해결:** 주문·라인에 `FOR UPDATE`를 걸고, `line_status = 'PAID' AND stock_restored = 0`일 때만 상태를 `CANCELLED`로 바꾼 뒤 그 요청만 재고를 복구합니다.
+
+**검증:** MySQL Testcontainers에서 재고 10·주문 3에 대해 8개 동시 취소 후 최종 재고 10, 색상 재고 동시 취소, 타 사용자 취소 거부를 확인했습니다. (`DemoOrderMySqlTest`)
+
+### 5. 데모 주문 이후 상품 목록 캐시 정합성
+
+**문제:** 관리자 상품 변경만 목록 캐시를 비워, 데모 주문 확정·취소 후에도 캐시가 이전 재고를 반환할 수 있었습니다. 무효화 직후 늦게 끝난 조회가 옛 스냅샷을 다시 넣을 수도 있습니다.
+
+**해결:** 확정·취소 커밋 후 `ProductListCache`를 비우고 generation을 올립니다. `GenerationBoundCache`는 무효화 이전에 시작한 put을 거부합니다. 롤백된 확정은 캐시를 비우지 않습니다.
+
+**검증:** `DemoOrderProductListCacheMySqlTest`, `ProductListCacheTest`로 확정·취소 후 재고 일치와 stale put 거부를 확인했습니다.
+
+### 6. 구매 분석 SQL 집계와 규모별 측정
+
+**문제:** 기간 필터 뒤 행을 Java에서 합산해 데이터가 늘수록 전송·메모리 비용이 커졌습니다.
+
+**해결:** 필터·합산을 MySQL CTE 한 문장으로 옮기고, 빈 기간 채움·`String.compareTo` 정렬·top N은 Java에 남겼습니다. 여러 문장 방식은 1만 주문에서 더 느려져 폐기했습니다.
+
+**측정(로컬 Testcontainers MySQL 8.4, 워밍 3회):** 10k·S3 p50 52.4→22.1ms, 100k·S3 396.0→105.0ms. 100k·S1(365일 전체)은 2145.9→2297.9ms로 개선되지 않았습니다. 원본은 [ops/perf/2026-11-13-purchase-analytics/](ops/perf/2026-11-13-purchase-analytics/)입니다.
+
+### 7. 테스트 결제 다중 인스턴스 클레임과 불확실 상태 복구
+
+**문제:** `ConcurrentHashMap` 잠금은 프로세스 안에서만 동작하고, 승인 응답 유실·취소 실패 시 재승인 위험이 있었습니다.
+
+**해결:** `test_payment_claims`로 paymentKey를 원자적으로 점유하고, 상태가 불확실하면 결제사 `lookup` 결과를 기준으로 복구합니다. 재승인·재취소는 하지 않습니다.
+
+**검증:** 두 `PaymentService` 인스턴스가 같은 MySQL을 쓰는 `PaymentRecoveryMySqlTest`에서 동시 승인 1회, UNCERTAIN→DONE 복구, 취소 실패 후 재시도 시 재승인 없음을 확인했습니다. 실제 Toss 운영 호출은 사용하지 않았습니다.
+
+### 8. 홈 SSR 이력·프로젝트 장애 격리
+
+**문제:** 이력과 프로젝트를 순차 조회해 한쪽이 느리면 전체가 기다렸고, 프로젝트 실패 시 섹션이 비었습니다.
+
+**해결:** `loadHomeContent`가 두 API를 병렬로 호출하고 요청당 4초 타임아웃을 둡니다. 실패 시 검증된 공개 폴백을 쓰며 내부 오류 문구는 노출하지 않습니다.
+
+**검증:** `homeData.test.mts`에서 병렬 시작, 한쪽 실패·타임아웃 시 폴백을 확인했습니다.
 
 ## 상품 목록 캐시 성능 측정
 
@@ -191,11 +236,12 @@ bash ops/tests/run-deploy-checks.sh
 
 | 항목 | 현재 구현 | 후속 개선 |
 | --- | --- | --- |
-| 결제 | 100원 승인·자동 취소, `/payment/fail` 안내. Toss 이력과 구매 분석 테이블은 분리 | 다중 인스턴스·실패 후 재시도 처리 |
-| 데모 주문 | 장바구니 → `POST /api/demo-orders/confirm` → `purchase_*`(DEMO, seed_batch_id NULL) → 마이페이지·구매 분석. Idempotency-Key·재고 차감/복구 | 색상 단위 재고 UI |
-| 구매 분석 | DB 집계. `ROLE_DEMO`는 DEMO만. 자연어→필터 변환 후 기존 집계 API 사용 | SQL 집계와 조회 계획 비교 |
+| 결제 | DB `test_payment_claims`로 인스턴스 간 클레임, 불확실 시 결제사 lookup 후 복구. Toss 이력과 구매 분석은 분리 | 실제 Toss 운영 장애 시나리오 추가 확인 |
+| 데모 주문 | 확정 Idempotency-Key, 취소 시 주문/라인 `FOR UPDATE` + 조건부 `stock_restored`, 커밋 후 목록 캐시 무효화 | 색상 단위 재고 UI |
+| 구매 분석 | SQL CTE 집계. 좁은 필터(S3/S4)에서 10k·100k 지연 개선 확인. 1년 전체·100k는 동등하거나 소폭 느림 | RDS 네트워크 환경 재측정 |
+| 홈 SSR | 이력·프로젝트 병렬 조회 + 4초 타임아웃 + 공개 폴백 | 타임아웃 시 서버 fetch 취소를 AbortSignal로 연동 |
 | 관리자 상품 목록 | 페이지네이션과 페이지 내 상품 ID 기준 색상 일괄 조회 | 목록 필터·정렬 UX 확장 |
 | 프런트 API 모듈 | 인증·상품·장바구니 등의 API가 `api.ts`에 함께 위치 | 인증 상태의 단일 소유를 유지하며 도메인별 분리 |
-| CI | PR 검사에 핵심 브라우저 시나리오 포함. 운영 배포는 `main`/수동 | 브라우저 전체 suite와 성능 측정의 PR 게이트화 |
+| CI | PR 검사에 demo-order·purchase-analytics·product-network 포함, 필수 백엔드 스위트 가드 | 성능 벤치마크의 PR 게이트화 |
 
 구현 범위의 상세 기록은 [구현·설명 대조 문서](docs/implementation-scope.md), 콘텐츠 초안·이력 관리의 확장 방향은 [후속 설계](docs/follow-up-content-workflow.md)에 있습니다. 날짜가 있는 문서와 측정 원본은 해당 시점의 기록입니다.

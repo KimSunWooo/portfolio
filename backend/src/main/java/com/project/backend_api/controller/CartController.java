@@ -72,7 +72,7 @@ public class CartController {
         
         List<CartItemResponse> items = cartService.getCartItems(email);
         
-        // 스트림 대신 향상된 for문을 사용하여 Null 경고를 완벽하게 원천 차단합니다.
+        // null 경고를 피하기 위해 향상된 for문 사용
         int totalQuantity = 0;
         if (items != null) {
             for (CartItemResponse item : items) {

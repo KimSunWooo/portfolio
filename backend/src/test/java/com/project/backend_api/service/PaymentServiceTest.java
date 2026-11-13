@@ -163,8 +163,10 @@ class PaymentServiceTest {
     private static final class FakePaymentGateway implements PaymentGateway {
         private int approvals;
         private int cancels;
+        private int lookups;
         private boolean failApproval;
         private boolean failCancel;
+        private boolean approvedAtProvider;
 
         @Override
         public PaymentApproval approve(String paymentKey, String orderId, long amount) {
@@ -172,6 +174,7 @@ class PaymentServiceTest {
             if (failApproval) {
                 throw new PaymentGatewayException("승인 실패");
             }
+            approvedAtProvider = true;
             return new PaymentApproval(paymentKey, orderId, amount);
         }
 
@@ -181,6 +184,16 @@ class PaymentServiceTest {
             if (failCancel) {
                 throw new PaymentGatewayException("취소 실패");
             }
+            approvedAtProvider = false;
+        }
+
+        @Override
+        public ProviderPayment lookup(String paymentKey) {
+            lookups++;
+            if (approvedAtProvider) {
+                return new ProviderPayment(ProviderStatus.DONE, paymentKey, "ORDER-1", PaymentService.TEST_AMOUNT);
+            }
+            return ProviderPayment.notFound(paymentKey);
         }
     }
 }

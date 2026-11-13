@@ -21,7 +21,6 @@ public class PaymentHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 💡 마이페이지 조회를 위해 추가! (결제한 유저 식별)
     @Column(nullable = false)
     private String userEmail; 
 
@@ -34,7 +33,6 @@ public class PaymentHistory {
     @Column(nullable = false)
     private Long amount;
 
-    // 💡 이 컬럼으로 결제(DONE)인지 취소(CANCELED)인지 구분합니다.
     @Column(nullable = false)
     private String status; 
 

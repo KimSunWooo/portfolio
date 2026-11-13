@@ -16,6 +16,10 @@ import {
   type PortfolioProject,
   type ResumeData,
 } from "../lib/api";
+import {
+  PUBLIC_FEATURED_PROJECT_FALLBACK,
+  loadHomeContent,
+} from "../lib/homeData.mts";
 export const dynamic = "force-dynamic";
 
 const fallback: ResumeData = {
@@ -116,61 +120,17 @@ function formatPeriod(start?: string | null, end?: string | null) {
 
 export default async function Home() {
   /**
-   * --------------------------------------------------------------------------
-   * Resume
-   * --------------------------------------------------------------------------
+   * Resume + featured projects load in parallel with a per-request timeout.
+   * One slow/failed API must not blank the other; verified public fallbacks keep
+   * the first viewport readable. Admin edits still win on the next successful fetch
+   * because this page is force-dynamic with no-store project requests.
    */
-
-  let resume = fallback;
-
-  try {
-    const fetched = await fetchResume();
-
-    if (
-      fetched.profile ||
-      fetched.skills.length ||
-      fetched.experiences.length ||
-      fetched.educations.length ||
-      fetched.introductions.length
-    ) {
-      resume = {
-        ...fetched,
-        profile: fetched.profile ?? fallback.profile,
-        skills: fetched.skills.length ? fetched.skills : fallback.skills,
-        experiences: fetched.experiences.length
-          ? fetched.experiences
-          : fallback.experiences,
-        educations: fetched.educations.length
-          ? fetched.educations
-          : fallback.educations,
-        introductions: fetched.introductions.length
-          ? fetched.introductions
-          : fallback.introductions,
-      };
-    }
-  } catch (error) {
-    console.error("[SSR Fetch Error]:", error);
-  }
-
-  /**
-   * --------------------------------------------------------------------------
-   * Projects
-   * --------------------------------------------------------------------------
-   */
-
-  let projects: PortfolioProject[] = [];
-
-  try {
-    projects = await fetchProjects(true);
-  } catch {
-    projects = [];
-  }
-
-  /**
-   * --------------------------------------------------------------------------
-   * Profile
-   * --------------------------------------------------------------------------
-   */
+  const { resume, projects } = await loadHomeContent({
+    fetchResume,
+    fetchProjects: () => fetchProjects(true),
+    fallbackResume: fallback,
+    fallbackProjects: PUBLIC_FEATURED_PROJECT_FALLBACK as PortfolioProject[],
+  });
 
   const profile = resume.profile ?? fallback.profile!;
 

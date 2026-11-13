@@ -24,7 +24,6 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     Optional<CartItem> findByCart_IdAndProduct_IdAndColor_Id(Long cartId, Integer productId, Integer colorId);
 
-    // 💡 헤더 장바구니 뱃지용: 특정 카트에 담긴 전체 상품 수량 합계 조회
     @Query("SELECT COALESCE(SUM(c.quantity), 0) FROM CartItem c WHERE c.cart.id = :cartId")
     int sumQuantityByCartId(@Param("cartId") Long cartId);
 }

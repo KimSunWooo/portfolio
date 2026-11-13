@@ -8,7 +8,7 @@ import {
   type CommunityCategory,
   type CommunityPostListItem,
 } from "../../lib/api";
-import { useAuthStore } from "../../store/useAuthStore"; // 💡 Zustand 스토어 임포트
+import { useAuthStore } from "../../store/useAuthStore";
 
 const categories: ("ALL" | CommunityCategory)[] = ["ALL", "NOTICE", "FAQ", "EVENT", "QNA", "TECH"];
 
@@ -62,9 +62,8 @@ export default function CommunityBoard() {
 
   const postCount = useMemo(() => posts.length, [posts]);
 
-  // 💡 목록에서 개별 삭제하는 핸들러
   const handleDelete = async (e: React.MouseEvent, id: number) => {
-    e.preventDefault(); // 💡 Link 클릭되어 상세 페이지로 넘어가는 것 방지
+    e.preventDefault();
     
     if (isDeleting) return; // 이미 삭제 중이면 리턴
     if (!window.confirm("정말 이 게시글을 삭제하시겠습니까?\n복구할 수 없습니다.")) return;
@@ -118,7 +117,6 @@ export default function CommunityBoard() {
       </div>
 
       <div className="border-b border-[#ddd]">
-        {/* 💡 헤더 그리드 (관리자일 때만 맨 끝에 ADMIN 컬럼 추가) */}
         <div className={`grid border-b border-[#ddd] py-4 text-[9px] tracking-[0.08em] text-[#888] max-md:hidden ${isAdmin ? 'grid-cols-[76px_100px_1fr_110px_70px_60px]' : 'grid-cols-[76px_100px_1fr_110px_70px]'}`}>
           <span>NO.</span><span>TYPE</span><span>TITLE</span><span>DATE</span><span>VIEW</span>
           {isAdmin && <span className="text-right">ADMIN</span>}
@@ -142,7 +140,6 @@ export default function CommunityBoard() {
           <Link
             key={post.id}
             href={`/community/${post.id}`}
-            // 💡 본문 그리드 (관리자일 때만 맨 끝에 삭제 버튼 영역 추가)
             className={`grid items-center border-b border-[#e9e9e9] py-[22px] text-[#111] no-underline transition-opacity hover:opacity-50 max-md:grid-cols-[56px_82px_1fr_92px] max-md:[&>*:nth-last-child(2)]:hidden max-sm:block max-sm:py-5 relative ${isAdmin ? 'grid-cols-[76px_100px_1fr_110px_70px_60px]' : 'grid-cols-[76px_100px_1fr_110px_70px]'}`}
           >
             <span className="text-[10px] text-[#888] max-sm:hidden">{post.id}</span>
@@ -153,7 +150,6 @@ export default function CommunityBoard() {
             <span className="text-[10px] text-[#888] max-sm:mt-2 max-sm:block">{formatDate(post.createdAt)}</span>
             <span className="text-[10px] text-[#888] max-sm:hidden">{post.viewCount ?? 0}</span>
             
-            {/* 💡 관리자 전용 삭제 버튼 */}
             {isAdmin && (
               <button 
                 onClick={(e) => handleDelete(e, post.id)}

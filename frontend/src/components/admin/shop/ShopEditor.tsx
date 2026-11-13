@@ -393,7 +393,6 @@ function OrdersEditor() {
   return (
     <div>
       <EditorHeader label="03 · ORDERS" title="Orders" description="고객의 주문 내역과 주문 상태를 관리합니다. (현재 가짜 데이터로 노출됩니다)" />
-      {/* 💡 주문내역 테이블 모바일 가로 스크롤 */}
       <div className="mt-8 border-t border-black overflow-x-auto custom-scrollbar md:mt-10">
         <div className="min-w-[600px]">
           <div className="grid grid-cols-[120px_120px_1fr_120px_100px] gap-4 border-b border-black/10 py-4 text-[9px] tracking-[0.14em] text-[#777]">
@@ -467,7 +466,6 @@ function UsersEditor() {
     <div>
       <EditorHeader label="04 · CUSTOMERS" title="Customers" description="Shop에 가입한 고객을 검색하고 등급을 관리합니다." />
       
-      {/* 💡 폼 요소 모바일 유연성 강화 */}
       <form onSubmit={handleSearch} className="mt-8 flex flex-col gap-3 border-b border-black/10 pb-6 sm:flex-row md:mt-10 md:gap-4">
         <select value={searchTier} onChange={(e) => setSearchTier(e.target.value)} className="h-11 border border-black/20 bg-white px-4 text-[11px] outline-none focus:border-black">
           <option value="">ALL TIERS (전체 등급)</option>
@@ -483,7 +481,6 @@ function UsersEditor() {
       <div className="mt-2">
         <p className="py-4 text-[10px] text-[#777]">총 <strong className="text-black">{totalElements}</strong>명의 고객이 있습니다.</p>
         
-        {/* 💡 유저 목록 테이블 모바일 가로 스크롤 */}
         <div className="overflow-x-auto custom-scrollbar">
           <div className="min-w-[700px]">
             <div className="grid grid-cols-[60px_1fr_120px_100px_120px_100px] gap-4 border-b border-black py-4 text-[9px] tracking-[0.14em] text-[#777]">
@@ -677,7 +674,6 @@ function ProductForm({
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
           </FormField>
           
-          {/* 💡 폼 필드 모바일 정렬: 모바일 세로 1줄, PC 가로 2줄 */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="CATEGORY">
               <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />
@@ -728,7 +724,6 @@ function ProductForm({
             setRemovedDetailImageIds((prev) => prev.includes(imageId) ? prev : [...prev, imageId]);
           }} />
 
-          {/* 💡 가격 및 옵션 입력부 반응형 */}
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="PRICE">
               <input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="h-11 w-full border border-black/20 px-3 text-sm outline-none focus:border-black" />

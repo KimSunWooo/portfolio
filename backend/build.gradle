@@ -56,7 +56,37 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'benchmark'
+	}
+}
+
+// Before/after purchase analytics benchmark on an isolated Testcontainers MySQL (needs Docker).
+// ./gradlew purchaseAnalyticsBenchmark -PbenchSizes=1000,10000,100000
+tasks.register('purchaseAnalyticsBenchmark', Test) {
+	group = 'verification'
+	description = 'Benchmark purchase analytics SQL aggregation against the legacy Java aggregation'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'benchmark'
+	}
+	filter {
+		includeTestsMatching '*PurchaseAnalyticsBenchmarkTest'
+	}
+	maxHeapSize = '1g'
+	outputs.upToDateWhen { false }
+	testLogging {
+		showStandardStreams = true
+	}
+	['bench.sizes': project.findProperty('benchSizes') ?: '1000,10000',
+	 'bench.runs': project.findProperty('benchRuns') ?: '30',
+	 'bench.warmup': project.findProperty('benchWarmup') ?: '3',
+	 'bench.explain': project.findProperty('benchExplain') ?: 'false',
+	 'bench.candidateIndexes': project.findProperty('benchCandidateIndexes') ?: 'false',
+	 'bench.candidateSql': project.findProperty('benchCandidateSql') ?: ''].each { key, value ->
+		systemProperty key, value.toString()
+	}
 }
 
 tasks.register('seedBulkDemoPurchases', JavaExec) {

@@ -40,6 +40,7 @@ public class TossPaymentGatewayConfig {
                     "amount", amount
             );
             Map<String, Object> response = exchange(
+                    HttpMethod.POST,
                     "https://api.tosspayments.com/v1/payments/confirm",
                     body
             );
@@ -53,12 +54,36 @@ public class TossPaymentGatewayConfig {
         @Override
         public void cancel(String paymentKey, String reason) {
             exchange(
+                    HttpMethod.POST,
                     "https://api.tosspayments.com/v1/payments/" + paymentKey + "/cancel",
                     Map.of("cancelReason", reason)
             );
         }
 
-        private Map<String, Object> exchange(String url, Map<String, Object> body) {
+        @Override
+        public ProviderPayment lookup(String paymentKey) {
+            try {
+                Map<String, Object> response = exchange(
+                        HttpMethod.GET,
+                        "https://api.tosspayments.com/v1/payments/" + paymentKey,
+                        null
+                );
+                return new ProviderPayment(
+                        mapStatus(stringValue(response.get("status"))),
+                        stringValue(response.get("paymentKey")),
+                        stringValue(response.get("orderId")),
+                        longValue(response.get("totalAmount"))
+                );
+            } catch (PaymentGatewayException exception) {
+                String message = exception.getMessage() == null ? "" : exception.getMessage();
+                if (message.contains("404") || message.toLowerCase().contains("not found")) {
+                    return ProviderPayment.notFound(paymentKey);
+                }
+                throw exception;
+            }
+        }
+
+        private Map<String, Object> exchange(HttpMethod method, String url, Map<String, Object> body) {
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(Base64.getEncoder().encodeToString(
                     (secretKey + ":").getBytes(StandardCharsets.UTF_8)
@@ -67,7 +92,7 @@ public class TossPaymentGatewayConfig {
             try {
                 Map<String, Object> response = restTemplate.exchange(
                         url,
-                        HttpMethod.POST,
+                        method,
                         new HttpEntity<>(body, headers),
                         new ParameterizedTypeReference<Map<String, Object>>() {}
                 ).getBody();
@@ -80,6 +105,20 @@ public class TossPaymentGatewayConfig {
             } catch (RestClientException exception) {
                 throw new PaymentGatewayException("결제사 요청에 실패했습니다.", exception);
             }
+        }
+
+        private static ProviderStatus mapStatus(String status) {
+            if (status == null || status.isBlank()) {
+                return ProviderStatus.UNKNOWN;
+            }
+            return switch (status.toUpperCase()) {
+                case "READY" -> ProviderStatus.READY;
+                case "IN_PROGRESS", "WAITING_FOR_DEPOSIT" -> ProviderStatus.IN_PROGRESS;
+                case "DONE" -> ProviderStatus.DONE;
+                case "CANCELED", "PARTIAL_CANCELED" -> ProviderStatus.CANCELED;
+                case "ABORTED", "EXPIRED" -> ProviderStatus.ABORTED;
+                default -> ProviderStatus.UNKNOWN;
+            };
         }
 
         private String stringValue(Object value) {
