@@ -1,6 +1,5 @@
 package com.project.backend_api.service;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -22,17 +21,15 @@ public class JdbcPaymentClaimStore implements PaymentClaimStore {
     @Override
     public Claim tryBegin(String paymentKey, String orderId, String userEmail) {
         LocalDateTime now = LocalDateTime.now();
-        try {
-            jdbc.update("""
-                    INSERT INTO test_payment_claims
-                    (payment_key, order_id, user_email, state, provider_status, updated_at)
-                    VALUES (?, ?, ?, ?, NULL, ?)
-                    """, paymentKey, orderId, userEmail, State.PROCESSING.name(), Timestamp.valueOf(now));
-            return new Claim(paymentKey, orderId, userEmail, State.PROCESSING, null, now);
-        } catch (DuplicateKeyException ignored) {
-            return findForUpdate(paymentKey).orElseThrow(() ->
-                    new IllegalStateException("payment claim missing after duplicate key: " + paymentKey));
-        }
+        // Acquire the duplicate-key exclusive lock without a shared-lock upgrade.
+        jdbc.update("""
+                INSERT INTO test_payment_claims
+                (payment_key, order_id, user_email, state, provider_status, updated_at)
+                VALUES (?, ?, ?, ?, NULL, ?)
+                ON DUPLICATE KEY UPDATE payment_key = payment_key
+                """, paymentKey, orderId, userEmail, State.PROCESSING.name(), Timestamp.valueOf(now));
+        return findForUpdate(paymentKey).orElseThrow(() ->
+                new IllegalStateException("payment claim missing after insert: " + paymentKey));
     }
 
     @Override

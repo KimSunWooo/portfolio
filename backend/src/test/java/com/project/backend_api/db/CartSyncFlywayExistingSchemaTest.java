@@ -113,7 +113,8 @@ class CartSyncFlywayExistingSchemaTest {
                 "7|SQL",
                 "8|SQL",
                 "9|SQL",
-                "10|SQL"
+                "10|SQL",
+                "11|SQL"
         ), history());
         assertTrue(tableExists("password_change_outbox"));
         assertTrue(tableExists("mock_purchase_orders"));
@@ -122,6 +123,9 @@ class CartSyncFlywayExistingSchemaTest {
         assertTrue(tableExists("purchase_demo_member_profiles"));
         assertTrue(tableExists("purchase_seed_batches"));
         assertTrue(tableExists("project_revisions"));
+        assertTrue(tableExists("test_payment_claims"));
+        assertEquals("V11__test_payment_claims.sql", scriptForVersion("11"));
+        assertNotNull(checksumForVersion("11"));
         try (Connection connection = connect();
              ResultSet project = connection.createStatement().executeQuery("""
                      SELECT description, draft_description, published_at FROM projects

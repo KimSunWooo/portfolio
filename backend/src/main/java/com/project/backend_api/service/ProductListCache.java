@@ -1,5 +1,6 @@
 package com.project.backend_api.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ public class ProductListCache {
     private final CacheManager cacheManager;
     private final ProductListCacheGeneration generation;
 
+    @Autowired
     public ProductListCache(CacheManager cacheManager, ProductListCacheGeneration generation) {
         this.cacheManager = cacheManager;
         this.generation = generation;

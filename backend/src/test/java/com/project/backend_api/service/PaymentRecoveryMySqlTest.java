@@ -7,11 +7,13 @@ import com.project.backend_api.support.SimpleCacheTestConfiguration;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -19,6 +21,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -102,7 +105,7 @@ class PaymentRecoveryMySqlTest {
         instanceB = new PaymentService(gateway, paymentHistoryRepository, claimsB, transactionManager);
     }
 
-    @Test
+    @RepeatedTest(10)
     void concurrentConfirmAcrossInstancesApprovesOnce() throws Exception {
         int threads = 6;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -110,31 +113,61 @@ class PaymentRecoveryMySqlTest {
         CountDownLatch start = new CountDownLatch(1);
         AtomicInteger success = new AtomicInteger();
         List<Future<?>> futures = new ArrayList<>();
-        for (int i = 0; i < threads; i++) {
-            PaymentService service = i % 2 == 0 ? instanceA : instanceB;
-            futures.add(pool.submit(() -> {
-                ready.countDown();
-                start.await(5, TimeUnit.SECONDS);
-                PaymentConfirmResponse response = service.confirmTestPayment(request("pay-race"), "buyer@example.com");
-                if ("CANCELED".equals(response.status())) {
-                    success.incrementAndGet();
-                }
-                return null;
-            }));
+        try {
+            for (int i = 0; i < threads; i++) {
+                PaymentService service = i % 2 == 0 ? instanceA : instanceB;
+                futures.add(pool.submit(() -> {
+                    ready.countDown();
+                    start.await(5, TimeUnit.SECONDS);
+                    PaymentConfirmResponse response = service.confirmTestPayment(request("pay-race"), "buyer@example.com");
+                    if ("CANCELED".equals(response.status())) {
+                        success.incrementAndGet();
+                    }
+                    return null;
+                }));
+            }
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            for (Future<?> future : futures) {
+                future.get(15, TimeUnit.SECONDS);
+            }
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
         }
-        assertTrue(ready.await(5, TimeUnit.SECONDS));
-        start.countDown();
-        for (Future<?> future : futures) {
-            future.get(15, TimeUnit.SECONDS);
-        }
-        pool.shutdownNow();
 
         assertEquals(1, gateway.approvals.get());
+        assertEquals(1, gateway.cancels.get());
         assertEquals(threads, success.get());
         assertEquals(1, count("SELECT COUNT(*) FROM payment_histories WHERE status = 'DONE'"));
         assertEquals(1, count("SELECT COUNT(*) FROM payment_histories WHERE status = 'CANCELED'"));
         assertEquals("CANCELED", jdbc.queryForObject(
                 "SELECT state FROM test_payment_claims WHERE payment_key = 'pay-race'", String.class));
+    }
+
+    @Test
+    void existingClaimCannotBeTakenByAnotherOwnerOrOrder() {
+        PaymentConfirmRequest request = request("pay-owner");
+        instanceA.confirmTestPayment(request, "buyer@example.com");
+
+        ResponseStatusException otherOwner = assertThrows(ResponseStatusException.class,
+                () -> instanceB.confirmTestPayment(request, "other@example.com"));
+        assertEquals(HttpStatus.FORBIDDEN, otherOwner.getStatusCode());
+
+        PaymentConfirmRequest otherOrder = request("pay-owner");
+        otherOrder.setOrderId("ORDER-different");
+        ResponseStatusException orderMismatch = assertThrows(ResponseStatusException.class,
+                () -> instanceB.confirmTestPayment(otherOrder, "buyer@example.com"));
+        assertEquals(HttpStatus.CONFLICT, orderMismatch.getStatusCode());
+
+        assertEquals(1, gateway.approvals.get());
+        assertEquals(1, gateway.cancels.get());
+        assertEquals("buyer@example.com", jdbc.queryForObject(
+                "SELECT user_email FROM test_payment_claims WHERE payment_key = 'pay-owner'", String.class));
+        assertEquals("ORDER-pay-owner", jdbc.queryForObject(
+                "SELECT order_id FROM test_payment_claims WHERE payment_key = 'pay-owner'", String.class));
+        assertEquals("CANCELED", jdbc.queryForObject(
+                "SELECT state FROM test_payment_claims WHERE payment_key = 'pay-owner'", String.class));
     }
 
     @Test
