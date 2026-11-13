@@ -11,6 +11,7 @@ import {
   type CommunityCategory,
 } from "../../lib/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import MarkdownContent from "../common/MarkdownContent";
 
 function formatDate(value: string) {
   if (!value) return "-";
@@ -383,8 +384,8 @@ export default function CommunityPostView({ id }: { id: string }) {
 
                   <section>
                     <h2 className="text-[11px] font-bold tracking-[0.08em] text-[#555]">RESOLUTION (해결 과정)</h2>
-                    <div className="mt-3 whitespace-pre-wrap text-[13px] leading-[2] text-[#333]">
-                      {post.content}
+                    <div className="mt-3">
+                      <MarkdownContent content={post.content} variant="light" />
                     </div>
                   </section>
                 </div>
