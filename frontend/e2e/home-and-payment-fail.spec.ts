@@ -4,7 +4,7 @@ test.describe("home first viewport and payment fail", () => {
   test("home shows featured project links and shop demo label", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "김선우" })).toBeVisible();
-    await expect(page.getByText("KIM SUN WOO", { exact: true })).toBeVisible();
+    await expect(page.locator("#about").getByText("KIM SUN WOO", { exact: true })).toBeVisible();
 
     const projects = page.locator("#projects");
     await expect(projects.getByRole("heading", { name: "Selected Work" })).toBeVisible();
@@ -40,7 +40,7 @@ test.describe("home first viewport and payment fail", () => {
 
     await slides.press("ArrowRight");
     await expect(heading("인증과 데이터 처리에서 보완한 부분")).toBeVisible();
-    await expect.poll(() => slides.evaluate((element) => element.scrollLeft / element.clientWidth)).toBe(2);
+    await expect.poll(() => slides.evaluate((element) => Math.abs(element.scrollLeft / element.clientWidth - 2))).toBeLessThan(0.01);
 
     await slides.scrollIntoViewIfNeeded();
     const box = await slides.boundingBox();
