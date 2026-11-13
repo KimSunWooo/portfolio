@@ -17,7 +17,8 @@ REQUIRED=(
   "$PREFIX.order.DemoOrderProductListCacheMySqlTest"
   # product list cache (generation, proxy, eviction)
   "$PREFIX.service.ProductListCacheTest"
-  "$PREFIX.service.ProductListCacheProxyTest"
+  "$PREFIX.service.ProductListCacheProxyTest\$Enabled"
+  "$PREFIX.service.ProductListCacheProxyTest\$Disabled"
   # purchase analytics: math, access (admin / demo), MySQL aggregates
   "$PREFIX.purchase.PurchaseAnalyticsMathTest"
   "$PREFIX.purchase.PurchaseAnalyticsAccessTest"

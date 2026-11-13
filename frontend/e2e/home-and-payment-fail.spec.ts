@@ -3,24 +3,31 @@ import { expect, test } from "@playwright/test";
 test.describe("home first viewport and payment fail", () => {
   test("home shows featured project links and shop demo label", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: "KIM SUN WOO" })).toBeVisible();
-    const nav = page.getByRole("navigation", { name: "대표 프로젝트 바로가기" });
-    await expect(nav.getByRole("link", { name: "대표 프로젝트" })).toHaveAttribute("href", "#projects");
-    await expect(nav.getByRole("link", { name: "트러블슈팅" })).toHaveAttribute("href", "#troubleshooting");
-    await expect(nav.getByRole("link", { name: "GitHub" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "쇼핑몰 데모" })).toHaveAttribute("href", "/shop");
+    await expect(page.getByRole("heading", { level: 1, name: "김선우" })).toBeVisible();
+    await expect(page.getByText("KIM SUN WOO", { exact: true })).toBeVisible();
 
-    await nav.getByRole("link", { name: "트러블슈팅" }).click();
-    await expect(page.locator("#troubleshooting")).toBeVisible();
-    await expect(page.getByRole("link", { name: "장바구니 정합성 ↗" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "인증 갱신과 로그아웃 충돌 ↗" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "배포 복구 ↗" })).toBeVisible();
+    const projects = page.locator("#projects");
+    await expect(projects.getByRole("heading", { name: "Selected Work" })).toBeVisible();
+    await expect(projects.getByRole("link", { name: /Trouble Shooting/ })).toHaveAttribute("href", "/community");
+    await expect(projects.getByRole("link", { name: /E-Commerce Demo/ })).toHaveAttribute("href", "/shop");
+    const shopDemo = projects.getByRole("link", { name: "쇼핑몰 데모 →" });
+    await expect(shopDemo).toHaveAttribute("href", "/shop");
+
+    const troubleshooting = page.locator("#troubleshooting");
+    await expect(troubleshooting).toBeVisible();
+    await expect(troubleshooting.getByRole("link", { name: "장바구니 정합성 ↗" })).toBeVisible();
+    await expect(troubleshooting.getByRole("link", { name: "인증 갱신과 로그아웃 충돌 ↗" })).toBeVisible();
+    await expect(troubleshooting.getByRole("link", { name: "배포 복구 ↗" })).toBeVisible();
+
+    await shopDemo.click();
+    await expect(page).toHaveURL(/\/shop$/);
+    await expect(page.getByRole("heading", { level: 1, name: "SHOP" })).toBeVisible();
   });
 
   test("the introduction shows one slide and advances by buttons, keyboard and drag", async ({ page }) => {
     await page.goto("/#introduction");
     const introduction = page.locator("#introduction");
-    const slides = introduction.getByRole("region", { name: "자기소개 슬라이드" });
+    const slides = introduction.locator('[role="region"][aria-label="자기소개 슬라이드"]');
     const previous = introduction.getByRole("button", { name: "이전 자기소개" });
     const next = introduction.getByRole("button", { name: "다음 자기소개" });
     const heading = (name: string) => slides.getByRole("heading", { name, exact: true });
