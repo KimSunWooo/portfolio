@@ -63,3 +63,6 @@ __pycache__/
 
 # Local Properties (보안 파일 제외)
 application-local.properties
+
+# Community post exports and backups are managed outside the repository
+/docs/community/
