@@ -1,5 +1,7 @@
 package com.project.backend_api.purchase;
 
+import com.project.backend_api.observability.OperationLog;
+import com.project.backend_api.observability.OperationLog.Operation;
 import com.project.backend_api.security.SecurityRoles;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,22 +44,27 @@ public class PurchaseAnalyticsController {
             @RequestParam(required = false) List<String> category,
             @RequestParam(required = false) List<String> ageBand
     ) {
-        try {
-            String effectiveSource = SecurityRoles.isDemo() ? "DEMO" : recordSource;
-            return purchaseAnalyticsService.query(new PurchaseAnalyticsQuery(
-                    LocalDate.parse(from),
-                    LocalDate.parse(to),
-                    grain,
-                    metric,
-                    topN,
-                    product,
-                    category,
-                    ageBand,
-                    effectiveSource
-            ));
-        } catch (IllegalArgumentException | DateTimeParseException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
-        }
+        return OperationLog.observe(Operation.PURCHASE_ANALYTICS_QUERY, scope -> {
+            try {
+                scope.stage("parse");
+                String effectiveSource = SecurityRoles.isDemo() ? "DEMO" : recordSource;
+                PurchaseAnalyticsQuery query = new PurchaseAnalyticsQuery(
+                        LocalDate.parse(from),
+                        LocalDate.parse(to),
+                        grain,
+                        metric,
+                        topN,
+                        product,
+                        category,
+                        ageBand,
+                        effectiveSource
+                );
+                scope.stage("query");
+                return purchaseAnalyticsService.query(query);
+            } catch (IllegalArgumentException | DateTimeParseException exception) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+            }
+        });
     }
 
     @GetMapping("/filters")

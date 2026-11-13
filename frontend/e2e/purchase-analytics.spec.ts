@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { newAccount, seedServerCart } from "./support/browser-account";
+import { bulkSeedDay, demoDaySummary } from "./support/isolated-db";
 
 function verifyAdmin(): { email: string; password: string; productId: number } {
   const file = path.resolve(process.cwd(), "../backend/build/verify-accounts.properties");
@@ -94,13 +95,18 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
     await expect(page.getByText("조회 오류")).toHaveCount(0);
   });
 
-  await test.step("bulk DEMO day has 300 paid orders", async () => {
-    await page.getByLabel("시작일").fill("2026-10-29");
-    await page.getByLabel("종료일").fill("2026-10-29");
+  await test.step("bulk DEMO day matches the database rows seeded for that day", async () => {
+    // CI seeds the bulk batch as of today (Seoul), so the default last-30-days view is never empty.
+    // The day, quantity, and amount depend on the run date and catalog, so read them back from MySQL.
+    const day = await bulkSeedDay();
+    const expected = await demoDaySummary(day);
+    expect(expected.orderCount).toBeGreaterThan(0);
+    await page.getByLabel("시작일").fill(day);
+    await page.getByLabel("종료일").fill(day);
     const analytics = page.waitForResponse((response) =>
       response.url().includes("/api/admin/purchase-analytics?")
-      && response.url().includes("from=2026-10-29")
-      && response.url().includes("to=2026-10-29")
+      && response.url().includes(`from=${day}`)
+      && response.url().includes(`to=${day}`)
       && response.url().includes("recordSource=DEMO")
       && response.ok());
     await page.getByLabel("기록 출처").selectOption("DEMO");
@@ -108,9 +114,10 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
       dataBasis: string;
       summary: { orderCount: number; quantity: number; salesAmount: number };
     };
-    expect(body.summary.orderCount).toBe(300);
-    expect(body.summary.quantity).toBe(582);
-    expect(body.summary.salesAmount).toBe(6804967);
+    expect(body.dataBasis).toBe("DATABASE");
+    expect(body.summary.orderCount).toBe(expected.orderCount);
+    expect(body.summary.quantity).toBe(expected.quantity);
+    expect(body.summary.salesAmount).toBe(expected.salesAmount);
   });
 });
 

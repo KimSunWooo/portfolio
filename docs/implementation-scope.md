@@ -7,7 +7,7 @@
 | 주장 | 상태 | 근거 |
 | --- | --- | --- |
 | 콘텐츠 서비스에 상품·장바구니·테스트 결제가 붙어 있다 | 구현 및 검증 확인 | 화면 경로와 `CartService`, `PaymentService`. 결제는 100원 승인 후 취소 |
-| 구매 분석이 DB에서 집계한 값을 반환한다 | 과거 기록으로 현재 상태와 불일치 | `PurchaseAnalyticsService.load`가 행을 읽고 `aggregate`가 Java에서 합산한다. SQL `GROUP BY`가 아니다 |
+| 구매 분석이 DB에서 집계한 값을 반환한다 | 구현 확인, 운영 DB 실행 미확인 | `PurchaseAnalyticsService`가 `WITH ... GROUP BY` 한 문장으로 합계·상품·분류·연령·추이를 집계하고 바인딩 파라미터를 쓴다. 정렬·상위 N·빈 구간 채움은 Java. 이전 Java 합산은 테스트 오라클(`LegacyJavaPurchaseAnalytics`)로만 남아 있다 |
 | 결제 성공이 `purchase_*`로 자동 적재된다 | 계획 또는 미구현 | `PaymentService`는 `payment_histories`만 다룬다. `purchase_orders` 참조가 없다 |
 | 차트 데이터는 시연 삽입과 실제 결제를 구분한다 | 구현 확인, 실행 검증 없음 | `record_source`가 `DEMO`/`LIVE`. 시드 스크립트는 DEMO만 넣는다. 운영 DB에 어떤 행이 있는지는 미확인 |
 | RabbitMQ·Kafka가 기본으로 동작한다 | 과거 기록으로 현재 상태와 불일치 | `application.properties`에서 둘 다 `enabled=false`이고 자동 설정이 빠져 있다 |
@@ -22,7 +22,7 @@
 
 ## 구매 분석
 
-조회는 `purchase_lines`와 `purchase_orders`를 기간으로 읽고, 상품·카테고리·연령 필터와 합계는 Java에서 계산한다. 최대 366일이다. 결제 성공에서 이 테이블로 복사하는 코드는 없다. DEMO 행은 `backend/scripts/seed-demo-purchases.sh`와 `seed-bulk-demo-purchases.sh`로 넣고, clear 스크립트는 DEMO 또는 해당 배치만 지운다. 건수와 금액의 대조 값은 스크립트 주석과 `PurchaseAnalyticsMySqlTest`에 있다.
+조회는 `purchase_lines`와 `purchase_orders`를 기간·출처·상품·카테고리·연령 조건으로 걸러 MySQL에서 한 번에 집계하고(문자열 비교는 `utf8mb4_0900_bin`이라 대소문자·끝 공백을 구분한다), 서버는 집계 행 수백 개만 받아 정렬·상위 N·빈 구간 채움만 한다. 최대 366일이다. 한 문장이라 한 스냅숏을 읽고, `filterOptions`의 두 문장은 REPEATABLE READ 읽기 전용 트랜잭션으로 묶는다. 같은 데이터에서 이전 Java 합산과 결과가 같은지는 `PurchaseAnalyticsSqlEquivalenceMySqlTest`가 본다. 로컬 Testcontainers 지연 측정은 `ops/perf/2026-11-13-purchase-analytics/`에 있고, 좁은 조건에서 빨라지지만 1년 전체 조회는 10만 주문에서 같거나 느리다. 네트워크가 있는 RDS에서의 값은 측정하지 않았다. 결제 성공에서 이 테이블로 복사하는 코드는 없다. DEMO 행은 `backend/scripts/seed-demo-purchases.sh`와 `seed-bulk-demo-purchases.sh`로 넣고, clear 스크립트는 DEMO 또는 해당 배치만 지운다. 건수와 금액의 대조 값은 스크립트 주석과 `PurchaseAnalyticsMySqlTest`에 있다.
 
 ## 메시징
 

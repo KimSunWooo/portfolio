@@ -1,5 +1,7 @@
 package com.project.backend_api.order;
 
+import com.project.backend_api.observability.OperationLog;
+import com.project.backend_api.observability.OperationLog.Operation;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,8 +32,12 @@ public class DemoOrderController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
         String requestId = currentRequestId();
-        DemoOrderService.DemoOrderResponse body = demoOrderService.confirm(
-                currentEmail(authentication), idempotencyKey, requestId);
+        DemoOrderService.DemoOrderResponse body = OperationLog.observe(Operation.DEMO_ORDER_CONFIRM, scope -> {
+            scope.stage("auth");
+            String email = currentEmail(authentication);
+            scope.stage("confirm");
+            return demoOrderService.confirm(email, idempotencyKey, requestId);
+        });
         return ResponseEntity.ok()
                 .header("X-Request-Id", requestId)
                 .body(body);
@@ -40,9 +46,15 @@ public class DemoOrderController {
     @GetMapping
     public ResponseEntity<List<DemoOrderService.DemoOrderResponse>> list(Authentication authentication) {
         String requestId = currentRequestId();
+        List<DemoOrderService.DemoOrderResponse> body = OperationLog.observe(Operation.DEMO_ORDER_LIST, scope -> {
+            scope.stage("auth");
+            String email = currentEmail(authentication);
+            scope.stage("list");
+            return demoOrderService.listMine(email);
+        });
         return ResponseEntity.ok()
                 .header("X-Request-Id", requestId)
-                .body(demoOrderService.listMine(currentEmail(authentication)));
+                .body(body);
     }
 
     @GetMapping("/{orderKey}")
@@ -63,8 +75,12 @@ public class DemoOrderController {
             @PathVariable String orderKey
     ) {
         String requestId = currentRequestId();
-        DemoOrderService.DemoOrderResponse body = demoOrderService.cancel(
-                currentEmail(authentication), orderKey, requestId);
+        DemoOrderService.DemoOrderResponse body = OperationLog.observe(Operation.DEMO_ORDER_CANCEL, scope -> {
+            scope.stage("auth");
+            String email = currentEmail(authentication);
+            scope.stage("cancel");
+            return demoOrderService.cancel(email, orderKey, requestId);
+        });
         return ResponseEntity.ok()
                 .header("X-Request-Id", requestId)
                 .body(body);

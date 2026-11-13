@@ -45,7 +45,7 @@ class PurchaseAnalyticsMathTest {
                 List.of(),
                 List.of(),
                 "ALL");
-        PurchaseAnalyticsService.Aggregate aggregate = PurchaseAnalyticsService.aggregate(octoberLines(), query);
+        PurchaseAnalyticsService.Aggregate aggregate = LegacyJavaPurchaseAnalytics.aggregate(octoberLines(), query);
 
         // Expected values were written from the table in the class javadoc, not from Aggregate.
         assertEquals(3, aggregate.orderCount());
@@ -74,12 +74,12 @@ class PurchaseAnalyticsMathTest {
                 List.of("LIP"),
                 List.of("20대"),
                 "DEMO");
-        List<PurchaseAnalyticsService.PurchaseLine> filtered = octoberLines().stream()
+        List<LegacyJavaPurchaseAnalytics.PurchaseLine> filtered = octoberLines().stream()
                 .filter(line -> line.productName().equals("Verify Shade"))
                 .filter(line -> line.categoryLabel().equals("LIP"))
                 .filter(line -> line.ageBand().equals("20대"))
                 .toList();
-        PurchaseAnalyticsService.Aggregate aggregate = PurchaseAnalyticsService.aggregate(filtered, query);
+        PurchaseAnalyticsService.Aggregate aggregate = LegacyJavaPurchaseAnalytics.aggregate(filtered, query);
         // Hand: one PAID line 12_000×3 → 1 order, qty 3, sales 36_000
         assertEquals(1, aggregate.orderCount());
         assertEquals(3, aggregate.quantity());
@@ -115,7 +115,7 @@ class PurchaseAnalyticsMathTest {
         return aggregate.trend().stream().filter(item -> item.name().equals(bucket)).findFirst().orElseThrow();
     }
 
-    private static List<PurchaseAnalyticsService.PurchaseLine> octoberLines() {
+    private static List<LegacyJavaPurchaseAnalytics.PurchaseLine> octoberLines() {
         return List.of(
                 line("demo-purchase-20261001-1", "2026-10-01T10:00:00", 28, "20대", "Verify Shade", "LIP", 12000, 3, 0, 36000, "PAID"),
                 line("demo-purchase-20261015-1", "2026-10-15T15:00:00", 41, "40대", "Demo Fact A", "팩트", 14000, 2, 0, 28000, "PAID"),
@@ -124,7 +124,7 @@ class PurchaseAnalyticsMathTest {
                 line("fx-paid", "2026-10-31T23:59:00", 52, "50대 이상", "Demo Skin C", "스킨케어", 20000, 1, 0, 20000, "PAID"));
     }
 
-    private static PurchaseAnalyticsService.PurchaseLine line(
+    private static LegacyJavaPurchaseAnalytics.PurchaseLine line(
             String order,
             String at,
             Integer age,
@@ -137,7 +137,7 @@ class PurchaseAnalyticsMathTest {
             int amount,
             String status
     ) {
-        return new PurchaseAnalyticsService.PurchaseLine(
+        return new LegacyJavaPurchaseAnalytics.PurchaseLine(
                 order, LocalDateTime.parse(at), age, band, "DEMO", product, category, price, quantity, discount, amount, status);
     }
 }

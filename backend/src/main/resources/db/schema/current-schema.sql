@@ -87,6 +87,16 @@ CREATE TABLE IF NOT EXISTS `payment_histories` (
   `user_email` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS `test_payment_claims` (
+  `payment_key` varchar(255) NOT NULL,
+  `order_id` varchar(255) NOT NULL,
+  `user_email` varchar(255) NOT NULL,
+  `state` varchar(32) NOT NULL,
+  `provider_status` varchar(64) DEFAULT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`payment_key`),
+  KEY `idx_test_payment_claims_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE IF NOT EXISTS `product_colors` (
   `id` int NOT NULL AUTO_INCREMENT,
   `product_id` int NOT NULL,

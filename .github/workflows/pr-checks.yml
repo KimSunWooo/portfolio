@@ -42,6 +42,11 @@ jobs:
         working-directory: backend
         run: ./gradlew test --no-daemon
 
+      # gradlew test는 삭제·이름 변경·비활성화된 클래스에는 초록으로 남는다.
+      # 핵심 스위트(DEMO 주문 동시성, 상품 목록 캐시, 구매 분석, 세션 복구, 결제 복구)가 실제로 실행됐는지 JUnit XML로 고정한다.
+      - name: 필수 백엔드 테스트 실행 여부 확인
+        run: bash ops/tests/check-required-backend-tests.sh backend/build/test-results/test
+
       - name: 백엔드 테스트 결과 보관
         if: always()
         uses: actions/upload-artifact@v4
@@ -126,11 +131,27 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:8080
           INTERNAL_API_URL: http://127.0.0.1:8080
 
+      # 구매 분석 스펙은 DEMO 구매 데이터를 전제한다. 백엔드가 verify 계정과 상품을 만든 뒤에만 넣을 수 있다.
+      # 고정 12건 묶음(2026-10 PAID 2건/6개/72500)과 오늘 기준 300건 묶음을 격리 MySQL에만 넣는다.
+      - name: DEMO 구매 데이터 시드 (격리 MySQL)
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8080/api/products/1 >/dev/null 2>&1 \
+              && test -f backend/build/verify-accounts.properties; then
+              break
+            fi
+            sleep 2
+          done
+          test -f backend/build/verify-accounts.properties
+          bash backend/scripts/seed-demo-purchases.sh
+          bash backend/scripts/seed-bulk-demo-purchases.sh
+
       - name: 핵심 브라우저 시나리오
         working-directory: frontend
         run: |
           node --input-type=module <<'NODE'
           import { execFileSync, spawn } from "node:child_process";
+          import { readdirSync } from "node:fs";
           async function wait(stage, probe, timeoutMs = 180000) {
             const started = Date.now();
             let last = "no response";
@@ -158,13 +179,23 @@ jobs:
             const response = await fetch("http://localhost:3000/login");
             return response.ok ? true : `status ${response.status}`;
           });
-          const child = spawn("npx", [
-            "playwright",
-            "test",
+          // 순서가 의미를 가진다. product-network는 verify 백엔드를 껐다 켜므로 다른 스펙 사이가 아니라 맨 뒤쪽에 둔다.
+          // 스펙을 건너뛰어 시간을 아끼지 않는다. e2e/ 아래 새 스펙이 이 목록에 없으면 실행 전에 실패한다.
+          const specs = [
             "e2e/merge-retry.spec.ts",
             "e2e/late-refresh.spec.ts",
             "e2e/home-and-payment-fail.spec.ts",
-          ], { stdio: "inherit", env: process.env });
+            "e2e/demo-order.spec.ts",
+            "e2e/purchase-analytics.spec.ts",
+            "e2e/product-network.spec.ts",
+          ];
+          const onDisk = readdirSync("e2e").filter((name) => name.endsWith(".spec.ts")).map((name) => `e2e/${name}`);
+          const unlisted = onDisk.filter((file) => !specs.includes(file));
+          const missing = specs.filter((file) => !onDisk.includes(file));
+          if (unlisted.length > 0 || missing.length > 0) {
+            throw new Error(`browser spec list is out of sync. unlisted=${unlisted.join(",")} missing=${missing.join(",")}`);
+          }
+          const child = spawn("npx", ["playwright", "test", ...specs], { stdio: "inherit", env: process.env });
           const code = await new Promise((resolve) => child.on("exit", (value) => resolve(value ?? 1)));
           process.exit(code);
           NODE
