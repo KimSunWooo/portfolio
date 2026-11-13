@@ -198,6 +198,11 @@ class ProdProfileExistingSchemaStartupTest {
                 assertEquals("SQL", rows.getString(2));
                 assertEquals("V10__project_revisions.sql", rows.getString(3));
                 assertTrue(rows.getBoolean(4));
+                assertTrue(rows.next());
+                assertEquals("11", rows.getString(1));
+                assertEquals("SQL", rows.getString(2));
+                assertEquals("V11__test_payment_claims.sql", rows.getString(3));
+                assertTrue(rows.getBoolean(4));
                 assertFalse(rows.next());
             }
             assertTrue(FlywaySchemaFixture.tableExists(connection, "password_change_outbox"));
@@ -210,6 +215,7 @@ class ProdProfileExistingSchemaStartupTest {
             assertTrue(FlywaySchemaFixture.tableExists(connection, "purchase_lines"));
             assertTrue(FlywaySchemaFixture.tableExists(connection, "purchase_demo_member_profiles"));
             assertTrue(FlywaySchemaFixture.tableExists(connection, "purchase_seed_batches"));
+            assertTrue(FlywaySchemaFixture.tableExists(connection, "test_payment_claims"));
             assertEquals(productsBefore, FlywaySchemaFixture.columnSnapshot(connection, "products"));
             assertEquals(legacyBefore, FlywaySchemaFixture.columnSnapshot(connection, "legacy_orders"));
             try (ResultSet rows = connection.createStatement().executeQuery(

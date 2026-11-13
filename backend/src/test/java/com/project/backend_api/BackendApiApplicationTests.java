@@ -1,6 +1,9 @@
 package com.project.backend_api;
 
+import com.project.backend_api.service.ProductListCache;
+import com.project.backend_api.service.ProductListCacheGeneration;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -9,6 +12,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @Testcontainers
@@ -23,6 +28,12 @@ import org.testcontainers.mysql.MySQLContainer;
         "spring.jpa.hibernate.ddl-auto=create"
 })
 class BackendApiApplicationTests {
+
+    @Autowired
+    ProductListCache productListCache;
+
+    @Autowired
+    ProductListCacheGeneration productListCacheGeneration;
 
     @Container
     static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4");
@@ -42,5 +53,13 @@ class BackendApiApplicationTests {
 
     @Test
     void contextLoads() {
+    }
+
+    @Test
+    void productListCacheUsesTheSharedGenerationBean() {
+        long before = productListCache.generation();
+        long updated = productListCacheGeneration.bump();
+        assertEquals(before + 1, productListCache.generation());
+        assertEquals(updated, productListCache.generation());
     }
 }
