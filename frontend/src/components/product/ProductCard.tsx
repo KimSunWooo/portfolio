@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link"; // 💡 a 태그 대신 Link 사용
+import Link from "next/link";
 import Icon from "../common/Icon";
 import { ProductListResponse, resolveAssetUrl, addCartItem } from "../../lib/api";
 import { useState } from "react";
@@ -37,7 +37,6 @@ export default function ProductCard({
 
   return (
     <article className="min-w-0">
-      {/* 💡 a 태그 -> Link로 변경, 경로를 /product 으로 통일, prefetch 끄기 (404 방지) */}
       <div className="group relative aspect-[1/1.22] overflow-hidden bg-[#f1efec]">
         <Link href={`/product/${product.id}`} prefetch={false} className="block h-full no-underline">
           {badge && (
@@ -62,7 +61,6 @@ export default function ProductCard({
         </button>
       </div>
       <div className="pt-[13px]">
-        {/* 💡 여기도 Link로 변경 및 경로 통일 */}
         <Link href={`/product/${product.id}`} prefetch={false} className="block text-[12px] leading-[1.45] text-[#111] no-underline">
           {product.name}
         </Link>

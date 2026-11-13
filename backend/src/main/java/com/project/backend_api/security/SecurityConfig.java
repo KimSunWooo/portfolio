@@ -50,7 +50,6 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
                 
-                // 💡 누구나 접근 가능한 공개 API (회원가입, 로그인, 상품 목록/상세 조회)
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/users/signUp", "/api/users/login", "/api/users/refresh", "/api/users/logout", "/api/users/password/**").permitAll()
                 .requestMatchers("/api/verify/mailbox", "/api/verify/fail-next-revoke", "/api/verify/fail-next-product").permitAll()
@@ -80,7 +79,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 💡 2. CORS 허용 규칙 상세 설정 (새로 추가된 메서드)
+    // CORS 허용 규칙
     @Value("${app.cors.allowed-origins:https://swportfolioservices.com}")
     private String allowedOrigins;
 

@@ -36,7 +36,6 @@ public class UserService {
     private final RefreshSessionService refreshSessionService;
     private final MailSender mailSender;
     
-    // 💡 ConcurrentHashMap 제거 및 StringRedisTemplate 주입
     private final StringRedisTemplate redisTemplate;
     private final PlatformTransactionManager transactionManager;
     private final ObjectProvider<PasswordChangeOutbox> passwordChangeOutbox;

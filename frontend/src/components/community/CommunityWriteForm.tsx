@@ -30,7 +30,7 @@ export default function CommunityWriteForm() {
   const [techStack, setTechStack] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [situation, setSituation] = useState("");
-  const [content, setContent] = useState(""); // 💡 순수 해결 과정만 담기 위한 상태
+  const [content, setContent] = useState("");
 
   useEffect(() => {
     if (mounted && !isAdmin) {
@@ -51,7 +51,6 @@ export default function CommunityWriteForm() {
     try {
       setSubmitting(true);
       
-      // 💡 거대한 문자열 조립을 제거하고 개별 데이터 객체로 구성합니다.
       const postData: CommunityPostCreatePayload = {
         category: category as CommunityCategory,
         title: title.trim(),
@@ -60,7 +59,6 @@ export default function CommunityWriteForm() {
         isPinned,
       };
 
-      // 💡 선택된 카테고리가 TECH일 때만 추가 메타데이터 필드들을 함께 보냅니다.
       if (category === "TECH") {
         postData.occurrenceDate = occurrenceDate;
         postData.status = status;
@@ -124,7 +122,6 @@ export default function CommunityWriteForm() {
             />
           </div>
 
-          {/* 💡 TECH 카테고리일 때만 트러블슈팅 폼 렌더링 */}
           {category === "TECH" && (
             <>
               <div className="grid grid-cols-[140px_1fr] items-center border-b border-black/10 py-5 max-sm:grid-cols-1 max-sm:gap-3">

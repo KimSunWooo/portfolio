@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-// 💡 lib/api.ts에서 방금 추가한 API 함수들을 가져옵니다.
 import {
   sendPasswordResetCode,
   verifyPasswordResetCode,
@@ -34,7 +33,6 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // 💡 api.ts의 함수 호출 (Base URL 적용됨)
       await sendPasswordResetCode(email);
       
       setSuccessMessage("계정이 있으면 이메일로 인증 코드를 보냈습니다.");
@@ -54,7 +52,6 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // 💡 api.ts의 함수 호출
       await verifyPasswordResetCode(email, code);
 
       setSuccessMessage("인증이 완료되었습니다. 새 비밀번호를 입력해주세요.");
@@ -74,7 +71,6 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // 💡 api.ts의 함수 호출
       const result = await resetPassword(email, code, newPassword);
       alert(result.message);
       router.push("/login");

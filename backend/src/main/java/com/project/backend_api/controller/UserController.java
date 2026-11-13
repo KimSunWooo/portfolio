@@ -55,7 +55,6 @@ public class UserController {
         }
     }
 
-    // 💡 새로고침 시 토큰을 재발급해주는 엔드포인트
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(
             @CookieValue(value = "refreshToken", required = false) String refreshToken

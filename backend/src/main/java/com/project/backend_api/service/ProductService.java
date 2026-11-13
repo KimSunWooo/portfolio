@@ -116,7 +116,6 @@ public class ProductService {
                 .map(ProductListResponse::from)
                 .toList();
 
-        // 🌟 마지막에 List를 감싸서 반환!
         return new ProductListWrapper(list);
 }
 
@@ -362,10 +361,7 @@ public class ProductService {
             );
         }
 
-        // -----------------------------------------------------
-        // 💡 핵심 1: ImageType 변수 선언 및 String -> Enum 변환
-        // -----------------------------------------------------
-        ImageType type; // 여기서 변수를 선언해야 아래에서 에러가 안 납니다!
+        ImageType type;
         
         try {
             type = imageType == null || imageType.isBlank()
@@ -401,7 +397,7 @@ public class ProductService {
                         imageUrl,
                         caption,
                         altText,
-                        type,      // 💡 핵심 2: 변환이 완료된 Enum 타입(type)을 전달
+                        type,
                         sortOrder
                 );
 

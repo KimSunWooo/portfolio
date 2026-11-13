@@ -19,7 +19,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   let product;
   try {
-    // 💡 getProductById 로 함수명 변경
     product = await getProductById(id);
   } catch (error) {
     if (error instanceof ApiRequestError && error.status === 404) {

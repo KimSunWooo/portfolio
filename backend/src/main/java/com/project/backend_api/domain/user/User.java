@@ -28,7 +28,7 @@ public class User {
     private String name;
 
     @Column(length = 20)
-    private String phoneNumber; // 💡 나중에 SMS 인증 추가 시 사용하기 위해 미리 빼둠
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -4,7 +4,6 @@ import { addGuestLine, recoverGuestCart, type GuestLineInput } from "./guestCart
 
 const IS_SERVER = typeof window === "undefined";
 
-// 💡 수정된 API_BASE_URL 설정
 const API_BASE_URL = IS_SERVER
   // 서버(SSR)일 때: 각 환경(.env)에 맞는 내부 주소 사용
   ? (process.env.INTERNAL_API_URL || "http://localhost:8080")
@@ -697,7 +696,6 @@ export async function fetchProject(projectId: number | string): Promise<Portfoli
   if (!response.ok) await handleResponseError(response); return response.json();
 }
 
-// 💡 프로젝트 등록/수정/삭제 모두 /api/admin 경로로 변경
 export interface ProjectMediaUpload {
   file: File;
   caption?: string;
@@ -1308,7 +1306,6 @@ export interface CommunityPostCreatePayload {
   situation?: string;
 }
 
-// 💡 작성 API의 경우 관리자 권한으로 변경 (/admin/community/posts)
 export const createCommunityPost = async (data: CommunityPostCreatePayload) => {
   const response = await authSend("/api/admin/community/posts", "POST", JSON.stringify(data));
   return response.json();

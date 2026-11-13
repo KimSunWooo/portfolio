@@ -36,7 +36,7 @@ Next.js와 Spring Boot로 이력·프로젝트·콘텐츠 관리, 상품 조회,
 
 ### 담당 범위와 개발 방식
 
-Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, Redis 캐시, Docker 이미지, GitHub Actions와 배포 스크립트를 구현했습니다. 기능 구현과 리팩터링에 Cursor를 활용했으며, 요구사항 정의·설계 선택·생성 코드 검토와 수정·테스트를 통해 결과를 검증했습니다.
+Spring Boot API, Next.js 화면, MySQL 스키마와 Flyway 마이그레이션, Redis 캐시, Docker 이미지, GitHub Actions와 배포 스크립트를 구현했습니다. 요구사항 정의·설계·구현·검토·테스트까지 직접 검증했습니다.
 
 ## 핵심 문제 해결
 
