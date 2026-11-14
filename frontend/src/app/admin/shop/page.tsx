@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import ShopHeader from "@/components/admin/shop/ShopHeader";
 import ShopSidebar from "@/components/admin/shop/ShopSidebar";
 import ShopEditor from "@/components/admin/shop/ShopEditor";
 
@@ -17,8 +16,6 @@ export default function AdminShopPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f4ef]">
-      <ShopHeader />
-
       <div className="flex min-h-[calc(100vh-64px)] flex-col md:flex-row">
         
         {/* 사이드바는 ShopSidebar 내부 코드에서 반응형 탭(Tab) 형태로 자동 변환됩니다 */}

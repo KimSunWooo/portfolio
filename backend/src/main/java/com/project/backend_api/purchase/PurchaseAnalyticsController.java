@@ -74,8 +74,10 @@ public class PurchaseAnalyticsController {
 
     @PostMapping("/parse-query")
     public Map<String, Object> parseQuery(@RequestBody Map<String, String> body) {
+        boolean demoOnly = SecurityRoles.isDemo();
         PurchaseAnalyticsQueryParser.ParseResult parsed =
-                queryParser.parse(body == null ? null : body.get("text"), SecurityRoles.isDemo());
+                queryParser.parse(body == null ? null : body.get("text"), demoOnly,
+                        purchaseAnalyticsService.filterOptions(demoOnly).categories());
         return Map.of(
                 "ok", parsed.ok(),
                 "message", parsed.message() == null ? "" : parsed.message(),

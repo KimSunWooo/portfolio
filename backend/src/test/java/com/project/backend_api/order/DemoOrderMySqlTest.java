@@ -183,6 +183,24 @@ class DemoOrderMySqlTest {
     }
 
     @Test
+    void listMineReturnsSameOrdersAndLinesAsIndividualLookupsWithoutLeakingOtherUsers() {
+        DemoOrderService.DemoOrderResponse first = service.confirm(buyer.getEmail(), "list-first", "req");
+        Product secondProduct = productRepository.save(Product.create(new ProductRequest(
+                "Second", null, "demo", "Cheek", 3000, null, null, false, false, 2, "SALE", null)));
+        Cart buyerCart = cartRepository.findByUserEmailWithProducts(buyer.getEmail()).orElseThrow();
+        cartItemRepository.save(CartItem.builder().cart(buyerCart).product(secondProduct).quantity(2).build());
+        DemoOrderService.DemoOrderResponse second = service.confirm(buyer.getEmail(), "list-second", "req");
+        service.cancel(buyer.getEmail(), second.orderKey(), "cancel");
+
+        var orders = service.listMine(buyer.getEmail());
+        assertEquals(2, orders.size());
+        for (var order : orders) assertEquals(service.getMine(buyer.getEmail(), order.orderKey()), order);
+        assertTrue(orders.stream().anyMatch(order -> order.orderKey().equals(first.orderKey()) && order.paidAmount() == 5000));
+        assertTrue(orders.stream().anyMatch(order -> order.orderKey().equals(second.orderKey()) && order.status().equals("CANCELLED")));
+        assertTrue(service.listMine(other.getEmail()).isEmpty());
+    }
+
+    @Test
     void concurrentCancelRestoresStockExactlyOnce() throws Exception {
         jdbc.update("DELETE FROM cart_items");
         Product bulk = productRepository.save(Product.create(new ProductRequest(

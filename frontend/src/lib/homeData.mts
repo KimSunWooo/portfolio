@@ -22,6 +22,7 @@ export type HomeProject = {
   description?: string | null;
   techStack?: string | null;
   projectUrl?: string | null;
+  githubUrl?: string | null;
   status: string;
   isFeatured?: boolean;
   sortOrder?: number;
@@ -29,20 +30,16 @@ export type HomeProject = {
 
 export const HOME_FETCH_TIMEOUT_MS = 4_000;
 
-/** Verified public snapshot used when the projects API fails or times out. */
-export const PUBLIC_FEATURED_PROJECT_FALLBACK: HomeProject[] = [
-  {
-    id: 1,
-    title: "Portfolio Platform",
-    subtitle: "Full-stack",
-    description: "이력·쇼핑몰·결제 데모를 담은 포트폴리오 서비스",
-    techStack: "Spring Boot · Next.js · MySQL · Redis",
-    projectUrl: "/projects/1",
-    status: "COMPLETED",
-    isFeatured: true,
-    sortOrder: 1,
-  },
-];
+/** No project is invented when the API cannot be reached. */
+export const PUBLIC_FEATURED_PROJECT_FALLBACK: HomeProject[] = [];
+
+export function selectHomeProjects<T extends HomeProject>(projects: T[]): T[] {
+  const featured = projects.filter((project) => project.isFeatured);
+  if (featured.length) return featured;
+  return projects.filter((project) =>
+    Boolean(project.description?.trim() || project.githubUrl?.trim() || project.projectUrl?.trim())
+  ).slice(0, 3);
+}
 
 export function mergeResume<T extends HomeResumeData>(fetched: T, fallback: T): T {
   const hasContent =

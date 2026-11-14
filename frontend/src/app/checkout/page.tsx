@@ -1,32 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/header/Header";
 import Footer from "../../components/layout/Footer";
 import { fetchCartItems, resolveAssetUrl, type CartItemResponse, resolveAuthState, getGuestCart } from "../../lib/api";
-import DaumPostcodeEmbed, { type Address } from "react-daum-postcode";
-import { loadTossPayments } from '@tosspayments/payment-sdk';
+import { loadTossPayments } from "@tosspayments/payment-sdk";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
-  
-  const [zipCode, setZipCode] = useState("");
-  const [address, setAddress] = useState("");
-  const [detailAddress, setDetailAddress] = useState("");
-  
-  const [paymentMethod, setPaymentMethod] = useState("카드");
-  const [isPostOpen, setIsPostOpen] = useState(false);
-
-  const SHIPPING_FEE = 3000;
-  const clientKey = "test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq"; // 테스트 클라이언트 키
+  const [paymentMethod, setPaymentMethod] = useState<"카드" | "가상계좌">("카드");
+  const clientKey = "test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq";
 
   useEffect(() => {
     const loadOrderItems = async () => {
@@ -53,236 +42,91 @@ export default function CheckoutPage() {
         setLoading(false);
       }
     };
-    loadOrderItems();
+    void loadOrderItems();
   }, [router]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal + SHIPPING_FEE;
 
-  const handlePlaceOrder = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!authenticated) {
       router.push("/login?next=/checkout");
       return;
     }
-    if (!zipCode || !address) {
-      alert("배송지 주소를 입력해 주세요.");
-      return;
-    }
-
     try {
       const tossPayments = await loadTossPayments(clientKey);
-
-      // 결제 상품명을 동적으로 생성
-      const orderName = cartItems.length > 1 
-        ? `${cartItems[0].productName} 외 ${cartItems.length - 1}건` 
+      const orderName = cartItems.length > 1
+        ? `${cartItems[0].productName} 외 ${cartItems.length - 1}건`
         : cartItems[0]?.productName || "포트폴리오 테스트 결제";
-
-      await tossPayments.requestPayment(paymentMethod as "카드" | "가상계좌", {
-        amount: 100, // 테스트 결제 고정 금액. 실서비스에서는 total 사용
+      await tossPayments.requestPayment(paymentMethod, {
+        amount: 100,
         orderId: `ORDER_${new Date().getTime()}`,
-        orderName: orderName,
-        customerName: customerName,
-        customerEmail: customerEmail,
+        orderName,
+        customerName,
+        customerEmail,
         successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`, 
+        failUrl: `${window.location.origin}/payment/fail`,
       });
-      
     } catch (error) {
       console.error("결제창 호출 실패:", error);
       alert("결제창을 띄우는 중 오류가 발생했습니다.");
     }
   };
 
-  const handleCompletePost = (data: Address) => {
-    let fullAddress = data.address;
-    let extraAddress = "";
-
-    if (data.addressType === "R") {
-      if (data.bname !== "") extraAddress += data.bname;
-      if (data.buildingName !== "")
-        extraAddress += extraAddress !== "" ? `, ${data.buildingName}` : data.buildingName;
-      fullAddress += extraAddress !== "" ? ` (${extraAddress})` : "";
-    }
-
-    setZipCode(data.zonecode);
-    setAddress(fullAddress);
-    setIsPostOpen(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-white text-[11px] tracking-[0.2em] text-[#999]">
-        LOADING CHECKOUT...
-      </div>
-    );
-  }
+  if (loading) return <div className="flex h-screen items-center justify-center bg-white text-sm text-[#555]">결제 정보를 불러오는 중입니다...</div>;
 
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#f9f9f9] px-5 py-20 relative">
+      <main className="min-h-screen bg-[#f9f9f9] px-5 py-20">
         <div className="mx-auto max-w-[1200px]">
-          <h1 className="mb-12 text-center text-[24px] font-normal tracking-[-0.025em]">
-            CHECKOUT
-          </h1>
-
+          <h1 className="mb-4 text-center text-2xl font-normal">100원 테스트 결제</h1>
+          <p className="mb-10 text-center text-sm text-[#555]">배송이나 실제 상품 주문은 진행되지 않습니다.</p>
           <form onSubmit={handlePlaceOrder} className="flex items-start gap-10 max-lg:flex-col">
-            
-            <div className="flex-1 space-y-12 bg-white p-10 shadow-sm border border-black/10 max-sm:p-6 w-full">
-              
-              {/* 1. 주문자 정보 */}
+            <div className="w-full flex-1 space-y-10 border border-black/10 bg-white p-10 shadow-sm max-sm:p-6">
               <section>
-                <h2 className="mb-6 border-b border-black/10 pb-4 text-[13px] tracking-[0.1em]">
-                  CUSTOMER INFO
-                </h2>
+                <h2 className="mb-5 border-b border-black/10 pb-4 text-sm">결제 요청 정보</h2>
+                <p className="mb-4 text-sm text-[#555]">이름과 이메일은 테스트 결제 요청에 사용됩니다.</p>
                 <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                  <input type="text" placeholder="Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required className="w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black" />
-                  <input type="tel" placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required className="w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black" />
-                  <input type="email" placeholder="Email Address" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} required className="col-span-2 max-sm:col-span-1 w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black" />
+                  <label className="text-sm">이름<input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required className="mt-2 w-full border border-black/20 px-4 py-3 text-sm" /></label>
+                  <label className="text-sm">이메일<input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} required className="mt-2 w-full border border-black/20 px-4 py-3 text-sm" /></label>
                 </div>
               </section>
-
-              {/* 2. 배송지 정보 */}
               <section>
-                <h2 className="mb-6 border-b border-black/10 pb-4 text-[13px] tracking-[0.1em]">
-                  SHIPPING ADDRESS
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <input 
-                      type="text" 
-                      placeholder="Zip Code" 
-                      value={zipCode} 
-                      readOnly 
-                      required 
-                      className="w-[150px] border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black bg-gray-50 cursor-not-allowed" 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setIsPostOpen(true)}
-                      className="border border-black bg-black px-6 text-[10px] tracking-[0.1em] text-white transition hover:bg-[#333]"
-                    >
-                      SEARCH
-                    </button>
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Address" 
-                    value={address} 
-                    readOnly 
-                    required 
-                    className="w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black bg-gray-50 cursor-not-allowed" 
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Detailed Address" 
-                    value={detailAddress}
-                    onChange={(e) => setDetailAddress(e.target.value)}
-                    className="w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black" 
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Delivery Memo (Optional)" 
-                    className="w-full border border-black/10 px-4 py-3 text-[12px] outline-none transition focus:border-black" 
-                  />
-                </div>
-              </section>
-
-              {/* 3. 결제 수단 */}
-              <section>
-                <h2 className="mb-6 border-b border-black/10 pb-4 text-[13px] tracking-[0.1em]">
-                  PAYMENT METHOD
-                </h2>
+                <h2 className="mb-5 border-b border-black/10 pb-4 text-sm">결제 수단</h2>
                 <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                  <label className="flex cursor-pointer items-center gap-3 border border-black/10 p-4 transition hover:border-black">
-                    <input type="radio" name="payment" value="카드" checked={paymentMethod === "카드"} onChange={(e) => setPaymentMethod(e.target.value)} className="accent-black" />
-                    <span className="text-[12px] tracking-[0.05em]">Credit Card</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-3 border border-black/10 p-4 transition hover:border-black">
-                    <input type="radio" name="payment" value="가상계좌" checked={paymentMethod === "가상계좌"} onChange={(e) => setPaymentMethod(e.target.value)} className="accent-black" />
-                    <span className="text-[12px] tracking-[0.05em]">Virtual Account</span>
-                  </label>
+                  {(["카드", "가상계좌"] as const).map((method) => (
+                    <label key={method} className="flex cursor-pointer items-center gap-3 border border-black/20 p-4">
+                      <input type="radio" name="payment" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="accent-black" />
+                      <span className="text-sm">{method}</span>
+                    </label>
+                  ))}
                 </div>
               </section>
-
             </div>
-
-            {/* 오른쪽: 주문 요약 */}
-            <div className="sticky top-[100px] w-[400px] shrink-0 bg-white p-8 shadow-sm border border-black/10 max-lg:w-full max-lg:static">
-              <h2 className="mb-6 border-b border-black/10 pb-4 text-[13px] tracking-[0.1em]">
-                ORDER SUMMARY
-              </h2>
-
+            <div className="sticky top-[100px] w-[400px] shrink-0 border border-black/10 bg-white p-8 shadow-sm max-lg:static max-lg:w-full">
+              <h2 className="mb-6 border-b border-black/10 pb-4 text-sm">장바구니 상품</h2>
               <div className="mb-8 max-h-[300px] space-y-4 overflow-y-auto pr-2">
                 {cartItems.map((item) => (
                   <div key={item.cartItemId} className="flex gap-4">
                     <div className="h-[70px] w-[55px] shrink-0 bg-[#f5f4ef]">
-                      {item.thumbnailUrl && (
-                        <img 
-                          src={resolveAssetUrl(item.thumbnailUrl) || ""} 
-                          alt={item.productName} 
-                          className="h-full w-full object-cover" 
-                        />
-                      )}
+                      {item.thumbnailUrl && <img src={resolveAssetUrl(item.thumbnailUrl) || ""} alt={item.productName} className="h-full w-full object-cover" />}
                     </div>
-                    <div className="flex flex-1 flex-col justify-center">
-                      <p className="text-[12px] leading-snug text-black">{item.productName}</p>
-                      <p className="mt-1 text-[11px] text-[#777]">QTY: {item.quantity}</p>
-                    </div>
-                    <div className="flex items-center text-[12px] font-bold">
-                      ₩{(item.price * item.quantity).toLocaleString()}
-                    </div>
+                    <div className="flex flex-1 flex-col justify-center text-sm"><p>{item.productName}</p><p className="text-[#666]">수량: {item.quantity}</p></div>
+                    <div className="flex items-center text-sm">₩{(item.price * item.quantity).toLocaleString()}</div>
                   </div>
                 ))}
               </div>
-
-              <div className="space-y-4 border-t border-black/10 pt-6 text-[12px] tracking-[0.05em] text-[#555]">
-                <div className="flex justify-between">
-                  <span>SUBTOTAL</span>
-                  <span>₩{subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>SHIPPING</span>
-                  <span>₩{SHIPPING_FEE.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-between border-t border-black pt-6 text-[18px] font-bold tracking-[0.05em]">
-                <span>TOTAL</span>
-                <span>₩{total.toLocaleString()}</span>
-              </div>
-
-              <p className="mt-6 text-[11px] leading-6 text-[#777]">
-                이 화면의 결제는 100원 테스트 결제입니다. 승인 뒤 서버가 자동 취소하며, 장바구니를 주문 완료로 비우지 않습니다.
-              </p>
-              <button 
-                type="submit" 
-                className="mt-4 w-full bg-black py-4 text-[12px] tracking-[0.1em] text-white transition hover:bg-[#333]"
-              >
+              <div className="flex justify-between border-t border-black/10 pt-5 text-sm text-[#555]"><span>상품 합계 (참고)</span><span>₩{subtotal.toLocaleString()}</span></div>
+              <div className="mt-5 flex justify-between border-t border-black pt-5 text-lg font-bold"><span>테스트 요청 금액</span><span>₩100</span></div>
+              <p className="mt-5 text-sm leading-6 text-[#555]">승인된 테스트 결제는 서버에서 자동 취소를 시도합니다. 장바구니는 주문 완료 처리되지 않습니다.</p>
+              <button type="submit" className="mt-4 w-full bg-black py-4 text-sm text-white hover:bg-[#333]">
                 {authenticated ? "테스트 결제 100원" : "로그인 후 테스트 결제"}
               </button>
             </div>
           </form>
         </div>
       </main>
-      
-      {isPostOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-5">
-          <div className="relative w-full max-w-[500px] bg-white p-5 shadow-lg">
-            <button 
-              onClick={() => setIsPostOpen(false)}
-              className="absolute right-4 top-4 text-2xl text-black hover:text-gray-500 z-10"
-            >
-              x
-            </button>
-            <div className="mt-6 border border-black/10">
-              <DaumPostcodeEmbed onComplete={handleCompletePost} autoClose={true} />
-            </div>
-          </div>
-        </div>
-      )}
-
       <Footer />
     </>
   );

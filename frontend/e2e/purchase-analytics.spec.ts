@@ -73,6 +73,33 @@ test("admin purchase analytics reads database aggregates", async ({ page }) => {
     await expect(page.getByRole("region", { name: "상품분류별 상품 판매금액 비교" })).toBeVisible();
   });
 
+  await test.step("natural query applies age and resets previous filters", async () => {
+    const input = page.getByLabel("자연어 질문 (DEMO 시연)");
+    const convert = page.getByRole("button", { name: "필터로 변환" });
+    const age = page.getByRole("checkbox", { name: "20대", exact: true });
+    await expect(age).toBeAttached();
+    await input.fill("2026년 10월 20대 매출");
+    const ageRequest = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith("/api/admin/purchase-analytics")
+        && url.searchParams.get("from") === "2026-10-01"
+        && url.searchParams.getAll("ageBand").includes("20대") && response.ok();
+    });
+    await convert.click();
+    await expect(age).toBeChecked();
+    await ageRequest;
+
+    await input.fill("2026년 10월 전체 매출");
+    await convert.click();
+    await expect(age).not.toBeChecked();
+    await expect(page.getByRole("status").filter({ hasText: "연령 전체" })).toBeVisible();
+
+    await input.fill("2026년 10월 20대 남성 매출");
+    await convert.click();
+    await expect(page.getByRole("status").filter({ hasText: "인식하지 못한 조건" })).toBeVisible();
+    await expect(age).not.toBeChecked();
+  });
+
   await test.step("legacy DEMO mid-October stays 2/6/72500 without the bulk batch", async () => {
     await page.getByLabel("시작일").fill("2026-10-01");
     await page.getByLabel("종료일").fill("2026-10-15");

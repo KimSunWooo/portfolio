@@ -87,7 +87,7 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
   useEffect(() => {
     let cancelled = false;
     const activeKey = filterKey;
-    void fetchPurchaseAnalytics({
+    const timer = window.setTimeout(() => { void fetchPurchaseAnalytics({
       from,
       to,
       grain,
@@ -111,9 +111,10 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
             error: caught instanceof Error ? caught.message : "구매 분석을 불러오지 못했습니다.",
           });
         }
-      });
+      }); }, 250);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [filterKey, from, to, grain, metric, topN, recordSource, products, categories, ageBands]);
 
@@ -123,7 +124,7 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
     setGrain("DAY");
     setMetric("SALES_AMOUNT");
     setTopN(5);
-    setRecordSource("ALL");
+    setRecordSource(options?.recordSources?.length === 1 ? options.recordSources[0] : "ALL");
     setProducts([]);
     setCategories([]);
     setAgeBands([]);
@@ -181,7 +182,7 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
           role="status"
           className="border border-[#c4b28a] bg-[#f7f1df] px-3 py-2 text-[12px] text-[#5c4b1f]"
         >
-          시연용 구매기록 포함 · {data.sourceLabel}
+          {data.sourceLabel}
         </p>
       )}
 
@@ -194,12 +195,12 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
             id={`${formId}-natural`}
             value={naturalQuery}
             onChange={(event) => setNaturalQuery(event.target.value)}
-            placeholder="예: 2026년 10월 LIP 매출"
+            placeholder="예: 2026년 10월 20대 매출"
             className="w-full border border-black/15 bg-[#faf9f6] px-2 py-2 text-sm"
           />
           <button
             type="button"
-            className="border border-black px-4 py-2 text-[11px] tracking-[0.1em] hover:bg-black hover:text-white"
+            className="whitespace-nowrap border border-black px-4 py-2 text-[11px] tracking-[0.1em] hover:bg-black hover:text-white"
             onClick={async () => {
               try {
                 const parsed = await parsePurchaseAnalyticsQuery(naturalQuery);
@@ -208,13 +209,19 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
                   return;
                 }
                 const filters = parsed.filters;
+                const nextProducts = Array.isArray(filters.product) ? filters.product.map(String) : [];
+                const nextCategories = Array.isArray(filters.category) ? filters.category.map(String) : [];
+                const nextAgeBands = Array.isArray(filters.ageBand) ? filters.ageBand.map(String) : [];
                 setFrom(String(filters.from ?? from));
                 setTo(String(filters.to ?? to));
                 setGrain(String(filters.grain ?? grain));
                 setMetric(String(filters.metric ?? metric));
                 setRecordSource(String(filters.recordSource ?? recordSource));
-                setCategories(Array.isArray(filters.category) ? filters.category.map(String) : []);
-                setNaturalMessage("필터로 변환했습니다. 집계는 서버 API가 계산합니다.");
+                setTopN(Number(filters.topN ?? 5));
+                setProducts(nextProducts);
+                setCategories(nextCategories);
+                setAgeBands(nextAgeBands);
+                setNaturalMessage(`적용 조건: ${String(filters.from)} ~ ${String(filters.to)} · 연령 ${nextAgeBands.join(", ") || "전체"} · 분류 ${nextCategories.join(", ") || "전체"} · 상품 ${nextProducts.join(", ") || "전체"} · 출처 ${String(filters.recordSource)}`);
               } catch (error) {
                 setNaturalMessage(error instanceof Error ? error.message : "변환 요청에 실패했습니다.");
               }
@@ -226,6 +233,7 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
         {naturalMessage && (
           <p className="mt-2 text-[12px] text-[#555]" role="status">{naturalMessage}</p>
         )}
+        <p className="mt-2 text-xs text-[#555]">기간과 연령대, 등록된 상품분류, 지표를 입력할 수 있습니다. 상품명 등 지원하지 않는 조건은 아래 필터에서 직접 선택해 주세요.</p>
       </div>
 
       <form
@@ -301,9 +309,11 @@ export default function PurchaseAnalyticsPanel({ mode }: { mode: Mode }) {
             value={recordSource}
             onChange={(event) => setRecordSource(event.target.value)}
           >
-            <option value="ALL">전체</option>
-            <option value="LIVE">실제 구매(LIVE)</option>
-            <option value="DEMO">시연 기록(DEMO)</option>
+            {(options?.recordSources ?? ["ALL", "LIVE", "DEMO"]).map((source) => (
+              <option key={source} value={source}>
+                {source === "ALL" ? "전체" : source === "LIVE" ? "실제 구매(LIVE)" : "시연 기록(DEMO)"}
+              </option>
+            ))}
           </select>
         </label>
         {mode === "full" && (

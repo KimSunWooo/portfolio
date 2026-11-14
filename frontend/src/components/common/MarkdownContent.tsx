@@ -5,11 +5,15 @@ import remarkBreaks from "remark-breaks";
 type MarkdownContentProps = {
   content?: string | null;
   variant?: "light" | "dark";
+  className?: string;
+  inheritSize?: boolean;
 };
 
 export default function MarkdownContent({
   content,
   variant = "light",
+  className = "",
+  inheritSize = false,
 }: MarkdownContentProps) {
   if (!content?.trim()) {
     return null;
@@ -21,10 +25,11 @@ export default function MarkdownContent({
     <div
       className={[
         "markdown-content",
-        "text-[14px] max-sm:text-[13px]",
+        inheritSize ? "" : "text-[16px] max-sm:text-[15px]",
         "leading-[1.85]",
         "tracking-[-0.01em]",
         isDark ? "text-white/72" : "text-[#555]",
+        className,
       ].join(" ")}
     >
       <ReactMarkdown

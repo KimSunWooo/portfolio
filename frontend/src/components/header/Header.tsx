@@ -141,6 +141,13 @@ export default function Header() {
               SHOP
             </Link>
 
+            {!isLoadingUI && isLoggedIn && (
+              <Link href="/mypage" className="whitespace-nowrap hover:text-gray-500">MY PAGE</Link>
+            )}
+            {!isLoadingUI && isAdmin && (
+              <Link href="/admin/resume" className="hover:text-gray-500">ADMIN</Link>
+            )}
+
             {isLoadingUI ? (
               <div className="w-[120px] h-[16px] animate-pulse bg-gray-100 rounded-sm"></div>
             ) : (

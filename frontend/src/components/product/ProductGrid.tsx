@@ -16,8 +16,8 @@ export default function ProductGrid({
 
   return (
     <div className={`grid ${columnClass} gap-x-3 gap-y-[42px] max-sm:gap-x-2 max-sm:gap-y-7`}>
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+      {products.map((product, index) => (
+        <ProductCard key={product.id} product={product} eager={index < 4} />
       ))}
     </div>
   );

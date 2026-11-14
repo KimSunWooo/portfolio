@@ -455,6 +455,10 @@ export default function CartPage() {
                   <span>₩{totalPrice.toLocaleString()}</span>
                 </div>
 
+                <p className="mt-6 text-sm leading-6 text-[#555]">
+                  데모 주문은 공유 시연 재고를 차감하고 장바구니를 비웁니다. 주문을 취소하면 재고가 복구됩니다.
+                  100원 테스트 결제는 별도의 결제 흐름이며 주문을 확정하지 않습니다.
+                </p>
                 <button
                   type="button"
                   onClick={async () => {

@@ -7,9 +7,10 @@ import { useState } from "react";
 import { useCartStore } from "../../store/useCartStore";
 
 export default function ProductCard({ 
-  product 
+  product, eager = false,
 }: { 
-  product: ProductListResponse; 
+  product: ProductListResponse;
+  eager?: boolean;
 }) {
   const imageUrl = resolveAssetUrl(product.thumbnail) || "/images/no-image.png";
   
@@ -47,6 +48,8 @@ export default function ProductCard({
           <img
             src={imageUrl}
             alt={product.name}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
             className="block h-full w-full object-cover transition-transform duration-[550ms] ease-out group-hover:scale-[1.025]"
           />
         </Link>

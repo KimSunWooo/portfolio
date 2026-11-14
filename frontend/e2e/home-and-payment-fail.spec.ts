@@ -77,4 +77,26 @@ test.describe("home first viewport and payment fail", () => {
     await expect(page.getByRole("heading", { name: "결제에 실패했습니다." })).toBeVisible();
     await expect(page.getByRole("link", { name: "장바구니로 돌아가기" })).toBeVisible();
   });
+
+  test("shop filters real categories and preserves search/sort in browser history", async ({ page }) => {
+    await page.route("**/api/products", (route) => route.fulfill({ json: [
+      { id: 501, name: "색조 A", price: 200, category: "Cheek", isBest: true },
+      { id: 502, name: "색조 B", price: 100, category: "cheek" },
+      { id: 503, name: "기타", price: 300, category: null },
+    ] }));
+    await page.goto("/shop");
+    await expect(page.getByText("3 PRODUCTS")).toBeVisible();
+    await page.getByRole("button", { name: "Cheek", exact: true }).click();
+    await expect(page.getByText("2 PRODUCTS")).toBeVisible();
+    await page.getByLabel("정렬").selectOption("price-asc");
+    await expect(page.locator("article").first()).toContainText("색조 B");
+    await page.getByLabel("상품명").fill("색조 A");
+    await page.getByRole("button", { name: "검색" }).click();
+    await expect(page.getByText("1 PRODUCTS")).toBeVisible();
+    await page.goBack();
+    await expect(page.getByText("2 PRODUCTS")).toBeVisible();
+    await page.getByRole("button", { name: "미분류", exact: true }).click();
+    await expect(page.getByText("1 PRODUCTS")).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: "기타" })).toBeVisible();
+  });
 });
