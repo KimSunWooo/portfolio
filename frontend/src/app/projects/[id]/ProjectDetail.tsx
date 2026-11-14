@@ -85,7 +85,7 @@ export default function ProjectDetail({
             <img
               src={heroImage}
               alt={project.title}
-              className="h-full w-full object-cover max-[820px]:aspect-[1/1.18] max-[820px]:h-auto"
+              className="h-full w-full object-contain max-[820px]:aspect-[1/1.18] max-[820px]:h-auto"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-[10px] tracking-[0.18em] text-[#999] max-[820px]:aspect-[1/1.18]">
@@ -162,12 +162,6 @@ export default function ProjectDetail({
             </div>
 
             {/* DESCRIPTION */}
-            {project.description && (
-              <p className="mt-9 whitespace-pre-line text-[12px] leading-[1.9] text-[#555]">
-                {project.description}
-              </p>
-            )}
-
             {/* LINKS */}
             {(project.githubUrl ||
               project.projectUrl) && (
@@ -235,7 +229,7 @@ export default function ProjectDetail({
         </h2>
 
         {project.description && (
-          <p className="mx-auto mt-6 max-w-[680px] whitespace-pre-line text-[12px] leading-[2] text-[#777]">
+          <p className="mx-auto mt-6 max-w-[760px] whitespace-pre-line text-left text-[16px] leading-[1.9] text-[#444]">
             {project.description}
           </p>
         )}

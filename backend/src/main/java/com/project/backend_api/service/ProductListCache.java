@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.Locale;
 import java.util.concurrent.Callable;
 
 @Component
@@ -30,13 +29,12 @@ public class ProductListCache {
     }
 
     public static String key(String category, String search) {
-        String normalizedCategory = category == null || category.isBlank()
-                ? "ALL"
-                : category.trim().toLowerCase(Locale.ROOT);
-        String normalizedSearch = search == null || search.isBlank()
-                ? "NONE"
-                : search.trim().toLowerCase(Locale.ROOT);
-        return normalizedCategory + "_" + normalizedSearch;
+        String categoryValue = category == null || category.isBlank() ? "" : category;
+        String searchValue = search == null || search.isBlank() ? "" : search;
+        // Length prefixes prevent delimiter/sentinel collisions. Preserve nonblank input
+        // exactly because the repository receives it unchanged.
+        return "v2:" + categoryValue.length() + ":" + categoryValue
+                + ":" + searchValue.length() + ":" + searchValue;
     }
 
     public long generation() {
@@ -80,6 +78,9 @@ public class ProductListCache {
         Cache cache = cacheManager.getCache(NAME);
         if (cache == null) {
             return false;
+        }
+        if (cache instanceof GenerationBoundCache bound) {
+            return bound.putForGeneration(cacheKey, value, expectedGeneration);
         }
         cache.put(cacheKey, value);
         if (generation.current() != expectedGeneration) {

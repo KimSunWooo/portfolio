@@ -6,8 +6,8 @@ import org.springframework.lang.Nullable;
 import java.util.concurrent.Callable;
 
 /**
- * Rejects cache puts that race past an eviction: a loader that observed generation G
- * must not store its result after generation has moved past G.
+ * Namespaces cached values by the shared generation. A loader that observed an old
+ * generation may complete, but its result cannot be read under the new namespace.
  */
 final class GenerationBoundCache implements Cache {
 
@@ -33,9 +33,10 @@ final class GenerationBoundCache implements Cache {
     @Override
     @Nullable
     public ValueWrapper get(Object key) {
-        ValueWrapper hit = delegate.get(key);
+        long observed = generation.current();
+        ValueWrapper hit = delegate.get(scopedKey(key, observed));
         if (hit == null) {
-            loadGeneration.set(generation.current());
+            loadGeneration.set(observed);
         } else {
             loadGeneration.remove();
         }
@@ -45,9 +46,10 @@ final class GenerationBoundCache implements Cache {
     @Override
     @Nullable
     public <T> T get(Object key, @Nullable Class<T> type) {
-        T value = delegate.get(key, type);
+        long observed = generation.current();
+        T value = delegate.get(scopedKey(key, observed), type);
         if (value == null) {
-            loadGeneration.set(generation.current());
+            loadGeneration.set(observed);
         } else {
             loadGeneration.remove();
         }
@@ -59,7 +61,7 @@ final class GenerationBoundCache implements Cache {
     public <T> T get(Object key, Callable<T> valueLoader) {
         long observed = generation.current();
         try {
-            return delegate.get(key, () -> {
+            return delegate.get(scopedKey(key, observed), () -> {
                 loadGeneration.set(observed);
                 return valueLoader.call();
             });
@@ -72,13 +74,8 @@ final class GenerationBoundCache implements Cache {
     public void put(Object key, @Nullable Object value) {
         try {
             Long observed = loadGeneration.get();
-            if (observed != null && observed != generation.current()) {
-                return;
-            }
-            delegate.put(key, value);
-            if (observed != null && observed != generation.current()) {
-                delegate.evict(key);
-            }
+            long target = observed == null ? generation.current() : observed;
+            if (target == generation.current()) delegate.put(scopedKey(key, target), value);
         } finally {
             loadGeneration.remove();
         }
@@ -89,10 +86,9 @@ final class GenerationBoundCache implements Cache {
     public ValueWrapper putIfAbsent(Object key, @Nullable Object value) {
         try {
             Long observed = loadGeneration.get();
-            if (observed != null && observed != generation.current()) {
-                return delegate.get(key);
-            }
-            return delegate.putIfAbsent(key, value);
+            long current = generation.current();
+            if (observed != null && observed != current) return delegate.get(scopedKey(key, current));
+            return delegate.putIfAbsent(scopedKey(key, current), value);
         } finally {
             loadGeneration.remove();
         }
@@ -100,12 +96,22 @@ final class GenerationBoundCache implements Cache {
 
     @Override
     public void evict(Object key) {
-        delegate.evict(key);
+        delegate.evict(scopedKey(key, generation.current()));
     }
 
     @Override
     public void clear() {
         generation.bump();
         delegate.clear();
+    }
+
+    boolean putForGeneration(Object key, @Nullable Object value, long observed) {
+        if (observed != generation.current()) return false;
+        delegate.put(scopedKey(key, observed), value);
+        return observed == generation.current();
+    }
+
+    static String scopedKey(Object key, long observed) {
+        return "generation:" + observed + ":" + key;
     }
 }

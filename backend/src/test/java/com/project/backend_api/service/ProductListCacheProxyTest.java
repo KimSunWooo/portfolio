@@ -46,6 +46,8 @@ class ProductListCacheProxyTest {
         private ProductRepository productRepository;
         @Autowired
         private CacheManager cacheManager;
+        @Autowired
+        private ProductListCacheGeneration generation;
 
         @Test
         void repeatCallHitsTheCacheAndSeparateFiltersDoNot() {
@@ -54,6 +56,8 @@ class ProductListCacheProxyTest {
                     .thenReturn(List.of());
             when(productRepository.findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus.SALE, "sample"))
                     .thenReturn(List.of());
+            when(productRepository.findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus.SALE, "lip"))
+                    .thenReturn(List.of());
 
             ProductListWrapper first = productService.getProducts(null, null);
             ProductListWrapper second = productService.getProducts("  ", "");
@@ -61,18 +65,22 @@ class ProductListCacheProxyTest {
             verify(productRepository, times(1)).findByStatusOrderByIdAsc(ProductStatus.SALE);
 
             productService.getProducts(" LIP ", null);
+            productService.getProducts(" LIP ", " ");
             productService.getProducts("lip", " ");
             verify(productRepository, times(1))
                     .findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus.SALE, " LIP ");
             productService.getProducts("sample", null);
             verify(productRepository, times(1))
                     .findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus.SALE, "sample");
-            verify(productRepository, times(0))
+            verify(productRepository, times(1))
                     .findByStatusAndCategoryIgnoreCaseOrderByIdAsc(ProductStatus.SALE, "lip");
 
             Object nativeCache = cacheManager.getCache(ProductListCache.NAME).getNativeCache();
             org.junit.jupiter.api.Assertions.assertEquals(
-                    java.util.Set.of("ALL_NONE", "lip_NONE", "sample_NONE"),
+                    java.util.Set.of(GenerationBoundCache.scopedKey(ProductListCache.key(null, null), generation.current()),
+                            GenerationBoundCache.scopedKey(ProductListCache.key(" LIP ", null), generation.current()),
+                            GenerationBoundCache.scopedKey(ProductListCache.key("lip", null), generation.current()),
+                            GenerationBoundCache.scopedKey(ProductListCache.key("sample", null), generation.current())),
                     ((java.util.Map<?, ?>) nativeCache).keySet()
             );
         }

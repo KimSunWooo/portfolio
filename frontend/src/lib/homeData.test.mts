@@ -6,6 +6,7 @@ import {
   loadHomeContent,
   mergeResume,
   resolveProjects,
+  selectHomeProjects,
   withTimeout,
 } from "./homeData.mts";
 
@@ -39,6 +40,16 @@ test("mergeResume keeps fallback sections when API returns empty arrays", () => 
   assert.equal(merged.profile?.name, "API");
   assert.equal(merged.skills[0]?.name, "Java");
   assert.equal(merged.experiences.length, 1);
+});
+
+test("home uses actual featured projects, or described public projects when none are featured", () => {
+  const projects = [
+    { id: 2, title: "Incomplete", status: "IN_PROGRESS", description: "" },
+    { id: 3, title: "Case study", status: "IN_PROGRESS", description: "Verified scope" },
+  ];
+  assert.deepEqual(selectHomeProjects(projects).map((project) => project.id), [3]);
+  assert.deepEqual(selectHomeProjects([{ ...projects[0], isFeatured: true }, projects[1]]).map((project) => project.id), [2]);
+  assert.deepEqual(PUBLIC_FEATURED_PROJECT_FALLBACK, []);
 });
 
 test("resolveProjects uses public fallback on rejection", () => {

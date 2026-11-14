@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 /**
  * Portfolio test payment: approve 100원 then auto-cancel.
@@ -35,7 +35,8 @@ public class PaymentService {
     private final PaymentClaimStore claimStore;
     private final TransactionOperations transactions;
     /** Intra-process serialization on top of DB claims (unit tests / same JVM). */
-    private final ConcurrentHashMap<String, Object> paymentLocks = new ConcurrentHashMap<>();
+    // Bounded stripes preserve same-key synchronization without retaining every payment key.
+    private final Object[] paymentLocks = IntStream.range(0, 256).mapToObj(ignored -> new Object()).toArray();
 
     @Autowired
     public PaymentService(
@@ -91,7 +92,7 @@ public class PaymentService {
 
             String paymentKey = request.getPaymentKey().trim();
             String orderId = request.getOrderId().trim();
-            Object lock = paymentLocks.computeIfAbsent(paymentKey, ignored -> new Object());
+            Object lock = paymentLocks[Math.floorMod(paymentKey.hashCode(), paymentLocks.length)];
             synchronized (lock) {
                 scope.stage("claim");
                 PaymentGatewayException[] cancelFailure = new PaymentGatewayException[1];

@@ -9,11 +9,18 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 class ProductListCacheTest {
 
@@ -29,13 +36,14 @@ class ProductListCacheTest {
 
     @Test
     void blankAndNullFiltersShareOneKey() {
-        assertEquals("ALL_NONE", ProductListCache.key(null, null));
-        assertEquals("ALL_NONE", ProductListCache.key("  ", ""));
+        assertEquals(ProductListCache.key(null, null), ProductListCache.key("  ", ""));
     }
 
     @Test
-    void categoryAndSearchAreNormalized() {
-        assertEquals("lip_red", ProductListCache.key(" LIP ", " Red "));
+    void keyPreservesNonblankInputAndCannotConfuseDelimitersOrSentinels() {
+        assertNotEquals(ProductListCache.key("lip", "red_blue"), ProductListCache.key("lip_red", "blue"));
+        assertNotEquals(ProductListCache.key(" LIP ", " Red "), ProductListCache.key("lip", "red"));
+        assertNotEquals(ProductListCache.key(null, null), ProductListCache.key("ALL", "NONE"));
     }
 
     @AfterEach
@@ -87,5 +95,35 @@ class ProductListCacheTest {
 
         assertTrue(productListCache.putIfGenerationMatches("ALL_NONE", "fresh", productListCache.generation()));
         assertEquals("fresh", aware.getCache(ProductListCache.NAME).get("ALL_NONE", String.class));
+    }
+
+    @Test
+    void stalePutPausedAfterGenerationCheckIsInvisibleAfterInvalidation() throws Exception {
+        ProductListCacheGeneration generation = new ProductListCacheGeneration();
+        ConcurrentMapCache delegate = spy(new ConcurrentMapCache(ProductListCache.NAME));
+        GenerationBoundCache first = new GenerationBoundCache(delegate, generation);
+        GenerationBoundCache second = new GenerationBoundCache(delegate, generation);
+        CountDownLatch enteredPut = new CountDownLatch(1);
+        CountDownLatch allowPut = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            enteredPut.countDown();
+            if (!allowPut.await(5, TimeUnit.SECONDS)) throw new AssertionError("put did not resume");
+            return invocation.callRealMethod();
+        }).when(delegate).put(any(), any());
+
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var loader = executor.submit(() -> {
+                assertNull(first.get("race"));
+                first.put("race", "stale");
+            });
+            try {
+                assertTrue(enteredPut.await(5, TimeUnit.SECONDS));
+                second.clear();
+            } finally {
+                allowPut.countDown();
+            }
+            loader.get(5, TimeUnit.SECONDS);
+            assertNull(second.get("race"));
+        }
     }
 }

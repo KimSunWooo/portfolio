@@ -19,6 +19,7 @@ import {
 import {
   PUBLIC_FEATURED_PROJECT_FALLBACK,
   loadHomeContent,
+  selectHomeProjects,
 } from "../lib/homeData.mts";
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export default async function Home() {
    */
   const { resume, projects } = await loadHomeContent({
     fetchResume,
-    fetchProjects: () => fetchProjects(true),
+    fetchProjects: async () => selectHomeProjects(await fetchProjects()),
     fallbackResume: fallback,
     fallbackProjects: PUBLIC_FEATURED_PROJECT_FALLBACK as PortfolioProject[],
   });
@@ -222,7 +223,7 @@ export default async function Home() {
                 <h1 className={`${ribbonStyles.name} mt-6`}>{displayName}</h1>
                 {englishName ? <p className={ribbonStyles.english}>{englishName}</p> : null}
                 <div className="mt-8 border-t border-[#242225]/15 pt-5">
-                  <p className={`${ribbonStyles.copy} whitespace-pre-wrap`}>{profile.shortIntro}</p>
+                  <MarkdownContent content={profile.shortIntro} className={ribbonStyles.copy} inheritSize />
                 </div>
                 {profileImageUrl ? (
                   <div className={`${ribbonStyles.profileSlot} md:hidden`}>
@@ -417,6 +418,7 @@ export default async function Home() {
             <div className="grid grid-cols-2 max-md:grid-cols-1">
               {(
                 [
+                  ...projects,
                   {
                     id: -2,
                     title: "Trouble Shooting",
@@ -439,7 +441,6 @@ export default async function Home() {
                     isFeatured: true,
                     sortOrder: -2,
                   },
-                  ...projects,
                 ] as PortfolioProject[]
               ).map((project, index) => {
                 const href =

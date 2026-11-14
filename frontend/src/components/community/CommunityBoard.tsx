@@ -62,9 +62,7 @@ export default function CommunityBoard() {
 
   const postCount = useMemo(() => posts.length, [posts]);
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
-    e.preventDefault();
-    
+  const handleDelete = async (id: number) => {
     if (isDeleting) return; // 이미 삭제 중이면 리턴
     if (!window.confirm("정말 이 게시글을 삭제하시겠습니까?\n복구할 수 없습니다.")) return;
 
@@ -88,13 +86,14 @@ export default function CommunityBoard() {
         <div className="flex items-end justify-between gap-6">
           <div>
             <h1 className="m-0 text-[34px] font-normal tracking-[-0.05em] max-sm:text-[27px]">COMMUNITY</h1>
-            <nav className="mt-7 flex flex-wrap gap-[18px] text-[10px] tracking-[0.06em]">
+            <nav aria-label="게시글 분류" className="mt-7 flex flex-wrap gap-[18px] text-sm tracking-[0.06em]">
               {categories.map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => setCategory(item)}
-                  className={category === item ? "text-[#111]" : "text-[#999]"}
+                  aria-pressed={category === item}
+                  className={category === item ? "font-semibold text-[#111]" : "text-[#595959]"}
                 >
                   {item}
                 </button>
@@ -137,29 +136,29 @@ export default function CommunityBoard() {
         )}
 
         {!loading && !error && posts.map((post) => (
-          <Link
+          <div
             key={post.id}
-            href={`/community/${post.id}`}
-            className={`grid items-center border-b border-[#e9e9e9] py-[22px] text-[#111] no-underline transition-opacity hover:opacity-50 max-md:grid-cols-[56px_82px_1fr_92px] max-md:[&>*:nth-last-child(2)]:hidden max-sm:block max-sm:py-5 relative ${isAdmin ? 'grid-cols-[76px_100px_1fr_110px_70px_60px]' : 'grid-cols-[76px_100px_1fr_110px_70px]'}`}
+            className={`relative grid items-center border-b border-[#e9e9e9] py-[22px] text-[#111] max-md:grid-cols-[56px_82px_1fr_92px] max-md:[&>*:nth-last-child(2)]:hidden max-sm:block max-sm:py-5 ${isAdmin ? 'grid-cols-[76px_100px_1fr_110px_70px_60px]' : 'grid-cols-[76px_100px_1fr_110px_70px]'}`}
           >
-            <span className="text-[10px] text-[#888] max-sm:hidden">{post.id}</span>
-            <span className="text-[9px] tracking-[0.06em] text-[#888] max-sm:mb-2 max-sm:block">
+            <span className="text-xs text-[#666] max-sm:hidden">{post.id}</span>
+            <span className="text-xs tracking-[0.06em] text-[#666] max-sm:mb-2 max-sm:block">
               {post.isPinned ? "[PIN] " : ""}{post.category}
             </span>
-            <span className="text-[12px] max-sm:block max-sm:text-[13px] pr-4">{post.title}</span>
-            <span className="text-[10px] text-[#888] max-sm:mt-2 max-sm:block">{formatDate(post.createdAt)}</span>
-            <span className="text-[10px] text-[#888] max-sm:hidden">{post.viewCount ?? 0}</span>
+            <Link href={`/community/${post.id}`} className="pr-4 text-base text-[#111] no-underline hover:underline max-sm:block">{post.title}</Link>
+            <span className="text-xs text-[#666] max-sm:mt-2 max-sm:block">{formatDate(post.createdAt)}</span>
+            <span className="text-xs text-[#666] max-sm:hidden">{post.viewCount ?? 0}</span>
             
             {isAdmin && (
               <button 
-                onClick={(e) => handleDelete(e, post.id)}
+                onClick={() => handleDelete(post.id)}
                 disabled={isDeleting}
+                aria-label={`${post.title} 삭제`}
                 className="text-right text-[10px] text-red-500 hover:text-red-700 max-md:absolute max-md:right-0 max-md:top-1/2 max-md:-translate-y-1/2 max-sm:top-4 max-sm:translate-y-0"
               >
                 DEL
               </button>
             )}
-          </Link>
+          </div>
         ))}
       </div>
     </section>

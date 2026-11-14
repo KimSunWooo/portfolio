@@ -21,6 +21,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HexFormat;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -221,12 +223,39 @@ public class DemoOrderService {
 
     public List<DemoOrderResponse> listMine(String email) {
         User user = requireUser(email);
-        List<String> keys = jdbc.queryForList("""
-                SELECT order_key FROM purchase_orders
-                WHERE user_id = ? AND seed_batch_id IS NULL
-                ORDER BY purchased_at DESC
-                """, String.class, user.getId());
-        return keys.stream().map(key -> loadOrder(key, null)).toList();
+        Map<String, OrderRows> orders = jdbc.query("""
+                SELECT o.order_key, o.user_id, o.purchased_at, o.record_source,
+                       l.id AS line_id, l.product_id, l.color_id, l.product_name,
+                       l.category_name, l.unit_price, l.quantity, l.line_discount,
+                       l.line_amount, l.line_status
+                FROM purchase_orders o
+                LEFT JOIN purchase_lines l ON l.order_key = o.order_key
+                WHERE o.user_id = ? AND o.seed_batch_id IS NULL
+                ORDER BY o.purchased_at DESC, o.order_key DESC, l.id ASC
+                """, rs -> {
+            Map<String, OrderRows> grouped = new LinkedHashMap<>();
+            while (rs.next()) {
+                String key = rs.getString("order_key");
+                OrderRows order = grouped.get(key);
+                if (order == null) {
+                    Object userId = rs.getObject("user_id");
+                    order = new OrderRows(key, userId == null ? null : ((Number) userId).longValue(),
+                            String.valueOf(rs.getObject("purchased_at")), rs.getString("record_source"), new ArrayList<>());
+                    grouped.put(key, order);
+                }
+                if (rs.getObject("line_id") != null) {
+                    order.lines().add(new DemoOrderLine(
+                            (Integer) rs.getObject("product_id"), (Integer) rs.getObject("color_id"),
+                            rs.getString("product_name"), rs.getString("category_name"),
+                            rs.getInt("unit_price"), rs.getInt("quantity"), rs.getInt("line_discount"),
+                            rs.getInt("line_amount"), rs.getString("line_status")));
+                }
+            }
+            return grouped;
+        }, user.getId());
+        return orders == null ? List.of() : orders.values().stream()
+                .map(order -> response(order.key(), order.userId(), order.purchasedAt(), order.source(), order.lines(), null))
+                .toList();
     }
 
     public DemoOrderResponse getMine(String email, String orderKey) {
@@ -295,16 +324,22 @@ public class DemoOrderService {
                 rs.getInt("line_amount"),
                 rs.getString("line_status")
         ), orderKey);
+        Long userId = header.get("user_id") == null ? null : ((Number) header.get("user_id")).longValue();
+        return response(String.valueOf(header.get("order_key")), userId,
+                String.valueOf(header.get("purchased_at")), String.valueOf(header.get("record_source")), lines, requestId);
+    }
+
+    private static DemoOrderResponse response(String orderKey, Long userId, String purchasedAt,
+            String source, List<DemoOrderLine> lines, String requestId) {
         long paidAmount = lines.stream().filter(line -> "PAID".equals(line.status())).mapToLong(DemoOrderLine::lineAmount).sum();
         String status = lines.stream().allMatch(line -> "CANCELLED".equals(line.status()) || "REFUNDED".equals(line.status()))
                 ? "CANCELLED"
                 : "CONFIRMED";
-        Long userId = header.get("user_id") == null ? null : ((Number) header.get("user_id")).longValue();
         return new DemoOrderResponse(
-                String.valueOf(header.get("order_key")),
+                orderKey,
                 userId,
-                String.valueOf(header.get("purchased_at")),
-                String.valueOf(header.get("record_source")),
+                purchasedAt,
+                source,
                 status,
                 paidAmount,
                 lines,
@@ -343,6 +378,9 @@ public class DemoOrderService {
     }
 
     private record CartSnapshot(int productId, Integer colorId, int quantity) {
+    }
+
+    private record OrderRows(String key, Long userId, String purchasedAt, String source, List<DemoOrderLine> lines) {
     }
 
     public record DemoOrderLine(

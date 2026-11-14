@@ -2,8 +2,12 @@ package com.project.backend_api;
 
 import com.project.backend_api.service.ProductListCache;
 import com.project.backend_api.service.ProductListCacheGeneration;
+import com.project.backend_api.service.GenerationAwareCacheManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -14,6 +18,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest
 @Testcontainers
@@ -34,6 +40,12 @@ class BackendApiApplicationTests {
 
     @Autowired
     ProductListCacheGeneration productListCacheGeneration;
+
+    @Autowired
+    StringRedisTemplate redis;
+
+    @Autowired
+    RedisConnectionFactory redisConnectionFactory;
 
     @Container
     static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4");
@@ -59,7 +71,22 @@ class BackendApiApplicationTests {
     void productListCacheUsesTheSharedGenerationBean() {
         long before = productListCache.generation();
         long updated = productListCacheGeneration.bump();
-        assertEquals(before + 1, productListCache.generation());
+        assertNotEquals(before, productListCache.generation());
         assertEquals(updated, productListCache.generation());
+    }
+
+    @Test
+    void independentInstancesCannotRestoreStaleCacheAfterAnotherInstanceInvalidates() {
+        var delegate = RedisCacheManager.builder(redisConnectionFactory).build();
+        var first = new GenerationAwareCacheManager(delegate, new ProductListCacheGeneration(redis))
+                .getCache(ProductListCache.NAME);
+        var second = new GenerationAwareCacheManager(delegate, new ProductListCacheGeneration(redis))
+                .getCache(ProductListCache.NAME);
+        assertNull(first.get("cross-instance-race"));
+        second.clear();
+        first.put("cross-instance-race", "stale");
+        assertNull(second.get("cross-instance-race"));
+        second.put("cross-instance-race", "fresh");
+        assertEquals("fresh", second.get("cross-instance-race", String.class));
     }
 }

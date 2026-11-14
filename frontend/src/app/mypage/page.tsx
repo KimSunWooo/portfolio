@@ -25,14 +25,19 @@ function MyPageContent() {
   const [histories, setHistories] = useState<PaymentHistoryResponse[]>([]);
   const [orders, setOrders] = useState<DemoOrderResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reload, setReload] = useState(0);
   const [notice, setNotice] = useState("");
   const router = useRouter();
 
   useEffect(() => {
+    let active = true;
     const loadHistory = async () => {
       setLoading(true);
+      setLoadError("");
       try {
         const token = await ensureAccessToken();
+        if (!active) return;
         if (!isAccessTokenValid(token)) {
           router.replace("/login?next=/mypage");
           return;
@@ -43,21 +48,27 @@ function MyPageContent() {
           setNotice(savedNotice);
         }
         if (activeTab === "ORDERS") {
-          setOrders(await fetchDemoOrders());
+          const result = await fetchDemoOrders();
+          if (!active) return;
+          setOrders(result);
           setHistories([]);
         } else {
-          setHistories(await fetchPaymentHistory(activeTab));
+          const result = await fetchPaymentHistory(activeTab);
+          if (!active) return;
+          setHistories(result);
           setOrders([]);
         }
       } catch (error) {
         console.error("내역 로드 실패:", error);
+        if (active) setLoadError("내역을 불러오지 못했습니다. 다시 시도해 주세요.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     loadHistory();
-  }, [activeTab, router]);
+    return () => { active = false; };
+  }, [activeTab, router, reload]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -95,6 +106,11 @@ function MyPageContent() {
 
       {loading ? (
         <div className="py-20 text-center text-[11px] tracking-[0.1em] text-[#999]">LOADING...</div>
+      ) : loadError ? (
+        <div role="alert" className="py-20 text-center text-sm text-red-700">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-3 underline">다시 시도</button>
+        </div>
       ) : activeTab === "ORDERS" ? (
         orders.length === 0 ? (
           <div className="py-20 text-center text-[12px] tracking-[0.05em] text-[#777]">데모 주문이 없습니다.</div>
